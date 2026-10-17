@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.ContactsContract
+import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -19,16 +20,24 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.netgician.rplauncher.model.AutoNight
+import com.netgician.rplauncher.model.Landmarks
 import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.Pin
 import com.netgician.rplauncher.model.Themes
 import com.netgician.rplauncher.model.TileSpec
 import com.netgician.rplauncher.model.after
+import com.netgician.rplauncher.system.ScreenLock
+import kotlin.math.roundToInt
 
 /** A scrolling column of big rows, inside the viewing window. Used by the helper screens. */
 @Composable
@@ -91,6 +100,39 @@ fun SettingsScreen(state: AppState) {
             state.speaker.rate = next.rate
             state.say("${next.name} speech")
         }
+        SettingRow("Touch landmarks", if (c.touchLandmarks) "On" else "Off") {
+            val on = !c.touchLandmarks
+            state.update { it.copy(touchLandmarks = on) }
+            if (on) state.vibes.play(Landmarks.rowPattern(2))
+            state.say(if (on) "Touch landmarks on. A long press buzzes once for each row" else "Touch landmarks off")
+        }
+        SettingRow("Automatic night colours", c.autoNight.label) {
+            val next = AutoNight.entries.after(c.autoNight)
+            state.update { it.copy(autoNight = next) }
+            state.say("Automatic night colours: ${next.label}")
+        }
+        SettingRow("Night colours", c.nightTheme.name) {
+            val next = LauncherConfig.NIGHT_THEMES.after(c.nightTheme)
+            state.update { it.copy(nightThemeId = next.id) }
+            state.say(next.name)
+        }
+        if (c.autoNight == AutoNight.CLOCK) {
+            SettingRow("Night from", hourLabel(context, c.nightFromHour)) {
+                val next = LauncherConfig.NIGHT_FROM_HOURS.after(c.nightFromHour)
+                state.update { it.copy(nightFromHour = next) }
+                state.say("Night from ${hourLabel(context, next)}")
+            }
+            SettingRow("Night until", hourLabel(context, c.nightUntilHour)) {
+                val next = LauncherConfig.NIGHT_UNTIL_HOURS.after(c.nightUntilHour)
+                state.update { it.copy(nightUntilHour = next) }
+                state.say("Night until ${hourLabel(context, next)}")
+            }
+        }
+        SettingRow("Launcher brightness", brightnessLabel(c.brightness)) {
+            val next = LauncherConfig.BRIGHTNESS_CHOICES.after(c.brightness)
+            state.update { it.copy(brightness = next) }
+            state.say("Launcher brightness: ${brightnessLabel(next)}")
+        }
         SettingRow("Viewing window check") { state.go(Screen.WindowCheck(Screen.Settings)) }
         SettingRow("Edit tiles") { state.go(Screen.EditTiles) }
         SettingRow(if (c.pinHash == null) "Set a helper PIN" else "Change the helper PIN") {
@@ -115,6 +157,16 @@ fun SettingsScreen(state: AppState) {
         SettingRow("Version", version ?: "unknown") { state.say("RP Launcher version ${version ?: "unknown"}") }
     }
 }
+
+private fun hourLabel(context: Context, hour: Int): String =
+    if (DateFormat.is24HourFormat(context)) "%02d:00".format(hour)
+    else {
+        val h = if (hour % 12 == 0) 12 else hour % 12
+        "$h ${if (hour < 12) "AM" else "PM"}"
+    }
+
+private fun brightnessLabel(b: Float?): String =
+    if (b == null) "Phone setting" else "${(b * 100).roundToInt()}%"
 
 private fun requestHomeRole(context: Context, state: AppState, launch: (Intent) -> Unit) {
     val roles = context.getSystemService(RoleManager::class.java)
@@ -142,22 +194,35 @@ fun PinScreen(state: AppState, purpose: PinPurpose) {
             else "Choose a PIN of at least ${Pin.MIN_LENGTH} digits",
         )
     }
-    val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "ok")
+    val context = LocalContext.current
+    val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "ok") +
+        (if (purpose == PinPurpose.Unlock) listOf("forgot") else emptyList())
     InWindow(state.config.window) {
         PagedTiles(
             items = keys,
             page = 0,
             onPage = { _, _ -> },
             cols = 3,
-            rows = 4,
+            rows = if (purpose == PinPurpose.Unlock) 5 else 4,
             onSpeak = state::say,
             header = { m ->
                 val shown = if (entered.isEmpty()) message else "• ".repeat(entered.length).trim()
                 SpokenText(shown, m, state::say, spoken = "$message. ${entered.length} digits entered")
             },
             minTarget = 0f,
-        ) { key, m ->
+        ) { key, m, _ ->
             when (key) {
+                "forgot" -> Tile("Forgot PIN", m, spoken = "Forgot the PIN? Reset it") {
+                    if (ScreenLock.isSet(context)) {
+                        ScreenLock.confirm(
+                            context,
+                            onSuccess = { state.resetPin() },
+                            onFailure = { state.say("The PIN was not reset") },
+                        )
+                    } else {
+                        state.go(Screen.PinReset)
+                    }
+                }
                 "clear" -> if (entered.isEmpty()) {
                     Tile("Cancel", m) { state.back() }
                 } else {
@@ -272,6 +337,7 @@ fun AddTileScreen(state: AppState) {
         SettingRow("Messages") { add(TileSpec.Messages) }
         SettingRow("Contacts") { add(TileSpec.Contacts) }
         SettingRow("Torch") { add(TileSpec.Torch) }
+        SettingRow("See (camera magnifier)") { add(TileSpec.See) }
         SettingRow("All apps") { add(TileSpec.AllApps) }
     }
 }
@@ -290,6 +356,54 @@ private fun readPhoneContact(context: Context, uri: Uri): TileSpec.Contact? = ru
         TileSpec.Contact(if (name.isNullOrBlank()) number else name, number)
     }
 }.getOrNull()
+
+/**
+ * For phones with no screen lock: holding a tile for three seconds removes the PIN.
+ * The hold keeps it from happening by accident, which is all the PIN is for.
+ */
+@Composable
+fun PinResetScreen(state: AppState) {
+    val lv = LocalLv.current
+    val explain = "This phone has no screen lock. To remove the helper PIN, hold the Remove PIN tile " +
+        "for three seconds. To keep it, tap Back."
+    LaunchedEffect(Unit) { state.say(explain) }
+    HelperColumn(state) {
+        Box(Modifier.fillMaxWidth().semantics { contentDescription = explain }) {
+            FitText(explain, lv.fg, maxSp = 22f * lv.textScale, maxLines = 6, modifier = Modifier.fillMaxWidth())
+        }
+        HoldTile(
+            label = "Remove PIN (hold)",
+            seconds = 3,
+            modifier = Modifier.fillMaxWidth().height((96f * lv.textScale).dp),
+            onHeld = { state.resetPin() },
+        )
+        SettingRow("Back") { state.back() }
+    }
+}
+
+/** A tile that only acts after being held down for [seconds]. */
+@Composable
+fun HoldTile(label: String, seconds: Int, modifier: Modifier, onHeld: () -> Unit) {
+    val lv = LocalLv.current
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier = modifier
+            .border(BorderStroke(8.dp, lv.accent), shape)
+            .background(lv.tile, shape)
+            .semantics { contentDescription = "$label, hold for $seconds seconds" }
+            .pointerInput(seconds) {
+                awaitEachGesture {
+                    awaitFirstDown()
+                    val released = withTimeoutOrNull(seconds * 1000L) { waitForUpOrCancellation() }
+                    if (released == null) onHeld()
+                }
+            }
+            .padding(10.dp),
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        FitText(label, lv.fg, maxSp = 26f * lv.textScale, modifier = Modifier.fillMaxWidth())
+    }
+}
 
 /**
  * Shown instead of a black phone when the launcher failed to start twice in a row.

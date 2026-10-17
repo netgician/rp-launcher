@@ -3,6 +3,12 @@
 
     <!-- Contact tiles call directly after a spoken confirm. If refused, the dialer opens instead. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- The See tile: the camera as a magnifier. Asked for only when See is opened. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Touch landmarks: vibration patterns that say where a tile is. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Resetting a forgotten helper PIN with the phone's own screen lock. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <!-- A launcher sees other apps through <queries>, not QUERY_ALL_PACKAGES. -->
     <queries>
@@ -12,6 +18,7 @@
         </intent>
     </queries>
 
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 

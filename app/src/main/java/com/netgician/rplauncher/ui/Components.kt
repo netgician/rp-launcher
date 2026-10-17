@@ -245,6 +245,9 @@ fun SpokenText(
     }
 }
 
+/** Where a tile sits on its page, counting from 1. Used for touch landmarks. */
+data class TilePos(val row: Int, val col: Int)
+
 /**
  * A header, a grid of tiles and, when there are more items than fit, big Next and Back
  * tiles plus a "Page 2 of 3" line. The grid comes from [Layout.grid], so it obeys the
@@ -260,7 +263,7 @@ fun <T> PagedTiles(
     onSpeak: (String) -> Unit,
     header: @Composable (Modifier) -> Unit,
     minTarget: Float = Layout.MIN_TARGET_DP,
-    tile: @Composable (item: T, modifier: Modifier) -> Unit,
+    tile: @Composable (item: T, modifier: Modifier, pos: TilePos) -> Unit,
 ) {
     val lv = LocalLv.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -282,8 +285,9 @@ fun <T> PagedTiles(
         pages[current].forEachIndexed { i, slot ->
             val area = grid.tiles.getOrNull(i) ?: return@forEachIndexed
             val m = Modifier.place(area)
+            val pos = TilePos(row = i / grid.cols + 1, col = i % grid.cols + 1)
             when (slot) {
-                is Slot.Item -> tile(slot.value, m)
+                is Slot.Item -> tile(slot.value, m, pos)
                 Slot.Next -> Tile(
                     label = "Next",
                     modifier = m,

@@ -1,5 +1,6 @@
 package com.netgician.rplauncher
 
+import com.netgician.rplauncher.model.AutoNight
 import com.netgician.rplauncher.model.ConfigJson
 import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.Paging
@@ -63,11 +64,42 @@ class PagingAndConfigTest {
                 TileSpec.Contact("Mary O'Neil", "+1 919 555 0100"),
                 TileSpec.App("org.example.radio", "org.example.radio.Main", "Radio \"Live\""),
                 TileSpec.Phone,
+                TileSpec.See,
                 TileSpec.AllApps,
             ),
+            autoNight = AutoNight.LIGHT,
+            nightThemeId = "night_red",
+            nightFromHour = 21,
+            nightUntilHour = 6,
+            brightness = 0.5f,
+            touchLandmarks = true,
         )
         assertEquals(c, ConfigJson.decode(ConfigJson.encode(c)))
         assertEquals(c, ConfigJson.decodeSetupFile(ConfigJson.encode(c)))
+    }
+
+    @Test
+    fun version1SetupFilesStillLoad() {
+        val v1 = """{"version":1,"theme":"yellow","cols":2,"rows":3,"tiles":[{"type":"phone"},{"type":"torch"}]}"""
+        val c = ConfigJson.decodeSetupFile(v1)
+        assertEquals("yellow", c.themeId)
+        assertEquals(listOf(TileSpec.Phone, TileSpec.Torch), c.tiles)
+        assertEquals(AutoNight.OFF, c.autoNight)
+        assertEquals(null, c.brightness)
+        assertFalse(c.touchLandmarks)
+    }
+
+    @Test
+    fun aDayThemeCannotBeTheNightTheme() {
+        val c = ConfigJson.decode("""{"nightTheme":"yellow"}""")
+        assertEquals(LauncherConfig().nightThemeId, c.nightThemeId)
+    }
+
+    @Test
+    fun defaultHomeFitsOnePage() {
+        // Default tiles plus Setup fill the default 2x3 grid exactly, so nobody starts with paging.
+        val d = LauncherConfig()
+        assertEquals(d.cols * d.rows, d.tiles.size + 1)
     }
 
     @Test

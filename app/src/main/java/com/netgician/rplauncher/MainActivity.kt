@@ -9,6 +9,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -20,8 +22,10 @@ import com.netgician.rplauncher.model.TileSpec
 import com.netgician.rplauncher.system.Apps
 import com.netgician.rplauncher.system.ConfigStore
 import com.netgician.rplauncher.system.CrashGuard
+import com.netgician.rplauncher.system.LightSensor
 import com.netgician.rplauncher.system.Speaker
 import com.netgician.rplauncher.system.Torch
+import com.netgician.rplauncher.system.Vibes
 import com.netgician.rplauncher.ui.*
 import kotlinx.coroutines.delay
 
@@ -29,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var speaker: Speaker
     private lateinit var torch: Torch
     private lateinit var guard: CrashGuard
+    private var lightSensor: LightSensor? = null
     private var state: AppState? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,14 +52,22 @@ class MainActivity : ComponentActivity() {
         }
         guard.markStarting()
 
-        val s = AppState(this, ConfigStore(this), speaker, torch)
+        val s = AppState(this, ConfigStore(this), speaker, torch, Vibes(this))
         state = s
+        lightSensor = LightSensor(this) { lux -> s.onLux(lux) }
         setContent {
-            val brightness = s.config.theme.windowBrightness
+            val brightness = s.windowBrightness
             LaunchedEffect(brightness) { applyBrightness(brightness) }
             LaunchedEffect(Unit) {
                 delay(3_000)
                 guard.markStarted()
+            }
+            // Automatic night colours by clock: check now, then every minute.
+            LaunchedEffect(s.config.autoNight, s.config.nightFromHour, s.config.nightUntilHour) {
+                while (true) {
+                    s.refreshNightByClock()
+                    delay(60_000L - (System.currentTimeMillis() % 60_000L))
+                }
             }
             Root(s)
         }
@@ -79,7 +92,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Night themes dim the launcher's own window; other themes leave the phone's brightness alone. */
+    /** Night themes dim the launcher's own window; otherwise the limit from Setup, or the phone's setting. */
     private fun applyBrightness(level: Float?) {
         val attrs = window.attributes
         attrs.screenBrightness = level ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -94,11 +107,14 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         torch.start()
+        lightSensor?.start()
+        state?.refreshNightByClock()
     }
 
     override fun onStop() {
         super.onStop()
         torch.stop()
+        lightSensor?.stop()
         speaker.stop()
     }
 
@@ -111,36 +127,42 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Root(state: AppState) {
     val c = state.config
-    val style = remember(c.themeId, c.textScale) { LvStyle(c.theme, AtkinsonFamily, c.textScale) }
+    val theme = state.theme
+    val style = remember(theme, c.textScale) { LvStyle(theme, AtkinsonFamily, c.textScale) }
     SideEffect { state.speaker.rate = c.speechRate }
     CompositionLocalProvider(LocalLv provides style) {
         BackHandler { state.back() }
-        when (val s = state.screen) {
-            Screen.Home -> HomeScreen(state)
-            is Screen.WindowCheck -> WindowCheckScreen(state, s.returnTo)
-            Screen.Apps -> AppListScreen(
-                state = state,
-                title = "All apps",
-                leaveLabel = "Home",
-                onLeave = { state.go(Screen.Home) },
-            ) { app ->
-                state.start(Apps.launchIntent(app.packageName, app.className))
-                state.go(Screen.Home)
-            }
-            is Screen.ConfirmCall -> ConfirmCallScreen(state, s.contact)
-            is Screen.Pin -> PinScreen(state, s.purpose)
-            Screen.Settings -> SettingsScreen(state)
-            Screen.EditTiles -> EditTilesScreen(state)
-            Screen.AddTile -> AddTileScreen(state)
-            Screen.PickApp -> AppListScreen(
-                state = state,
-                title = "Pick an app",
-                leaveLabel = "Back",
-                onLeave = { state.go(Screen.AddTile) },
-            ) { app ->
-                state.update { it.copy(tiles = it.tiles + TileSpec.App(app.packageName, app.className, app.label)) }
-                state.say("${app.label} added")
-                state.go(Screen.EditTiles)
+        // A short fade between screens: no sudden jumps, and never a white frame.
+        Crossfade(targetState = state.screen, animationSpec = tween(180), label = "screen") { screen ->
+            when (screen) {
+                Screen.Home -> HomeScreen(state)
+                is Screen.WindowCheck -> WindowCheckScreen(state, screen.returnTo)
+                Screen.Apps -> AppListScreen(
+                    state = state,
+                    title = "All apps",
+                    leaveLabel = "Home",
+                    onLeave = { state.go(Screen.Home) },
+                ) { app ->
+                    state.start(Apps.launchIntent(app.packageName, app.className))
+                    state.go(Screen.Home)
+                }
+                Screen.See -> SeeScreen(state)
+                is Screen.ConfirmCall -> ConfirmCallScreen(state, screen.contact)
+                is Screen.Pin -> PinScreen(state, screen.purpose)
+                Screen.PinReset -> PinResetScreen(state)
+                Screen.Settings -> SettingsScreen(state)
+                Screen.EditTiles -> EditTilesScreen(state)
+                Screen.AddTile -> AddTileScreen(state)
+                Screen.PickApp -> AppListScreen(
+                    state = state,
+                    title = "Pick an app",
+                    leaveLabel = "Back",
+                    onLeave = { state.go(Screen.AddTile) },
+                ) { app ->
+                    state.update { it.copy(tiles = it.tiles + TileSpec.App(app.packageName, app.className, app.label)) }
+                    state.say("${app.label} added")
+                    state.go(Screen.EditTiles)
+                }
             }
         }
     }

@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.netgician.rplauncher.R
+import com.netgician.rplauncher.model.Landmarks
 import com.netgician.rplauncher.model.TileSpec
 import com.netgician.rplauncher.system.AppEntry
 import com.netgician.rplauncher.system.Apps
@@ -34,15 +35,26 @@ private sealed interface HomeItem {
     data object Setup : HomeItem
 }
 
-/** The long-press action: speak, if the person has that turned on. */
-fun longPress(state: AppState, text: String): (() -> Unit)? =
-    if (state.config.speakOnLongPress) ({ state.say(text) }) else null
+/**
+ * The long-press action: speak the tile, and with touch landmarks on, buzz once per row
+ * so the person can feel where their finger is. Null when both are off.
+ */
+fun longPress(state: AppState, text: String, pos: TilePos? = null): (() -> Unit)? {
+    val speak = state.config.speakOnLongPress
+    val feel = state.config.touchLandmarks && pos != null
+    if (!speak && !feel) return null
+    return {
+        if (feel && pos != null) state.vibes.play(Landmarks.rowPattern(pos.row))
+        if (speak) state.say(text)
+    }
+}
 
 fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.Phone -> TileIcon.Vector(Icons.Filled.Call)
     TileSpec.Messages -> TileIcon.Vector(Icons.Filled.Email)
     TileSpec.Contacts -> TileIcon.Vector(Icons.Filled.Person)
     TileSpec.Torch -> TileIcon.Drawable(R.drawable.ic_torch)
+    TileSpec.See -> TileIcon.Vector(Icons.Filled.Search)
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
     is TileSpec.App -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)
@@ -59,29 +71,29 @@ fun HomeScreen(state: AppState) {
             page = state.homePage,
             onPage = { p, n ->
                 state.homePage = p
-                state.say("Page ${p + 1} of $n")
+                state.onPageTurned(p, n)
             },
             cols = c.cols,
             rows = c.rows,
             onSpeak = state::say,
             header = { m -> StatusHeader(m, state::say) },
-        ) { item, m ->
+        ) { item, m, pos ->
             when (item) {
                 HomeItem.Setup -> Tile(
                     label = "Setup",
                     modifier = m,
                     spoken = "Setup, for helpers",
                     icon = TileIcon.Vector(Icons.Filled.Settings),
-                    onLongPress = longPress(state, "Setup, for helpers"),
+                    onLongPress = longPress(state, "Setup, for helpers", pos),
                 ) { state.openSetup() }
-                is HomeItem.Spec -> SpecTile(state, item.spec, m)
+                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos)
             }
         }
     }
 }
 
 @Composable
-private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier) {
+private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos) {
     val torchOn = spec == TileSpec.Torch && state.torch.isOn
     val label = if (torchOn) "Torch on" else spec.label
     val spoken = when {
@@ -95,7 +107,7 @@ private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier) {
         spoken = spoken,
         icon = iconFor(spec),
         emphasized = torchOn,
-        onLongPress = longPress(state, spoken),
+        onLongPress = longPress(state, spoken, pos),
     ) { state.open(spec) }
 }
 
@@ -150,24 +162,24 @@ fun AppListScreen(
             page = state.listPage,
             onPage = { p, n ->
                 state.listPage = p
-                state.say("Page ${p + 1} of $n")
+                state.onPageTurned(p, n)
             },
             cols = 1,
             rows = state.config.rows + 1,
             onSpeak = state::say,
             header = { m -> SpokenText(title, m, state::say) },
-        ) { item, m ->
+        ) { item, m, pos ->
             when (item) {
                 AppListItem.Leave -> Tile(
                     label = leaveLabel,
                     modifier = m,
                     icon = TileIcon.Vector(Icons.Filled.Home),
-                    onLongPress = longPress(state, leaveLabel),
+                    onLongPress = longPress(state, leaveLabel, pos),
                 ) { onLeave() }
                 is AppListItem.App -> Tile(
                     label = item.app.label,
                     modifier = m,
-                    onLongPress = longPress(state, item.app.label),
+                    onLongPress = longPress(state, item.app.label, pos),
                 ) { onPick(item.app) }
             }
         }
@@ -203,7 +215,7 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
             onSpeak = state::say,
             header = { m -> SpokenText(contact.name, m, state::say, spoken = "Call ${contact.name}?", maxLines = 2) },
             minTarget = 0f,
-        ) { item, m ->
+        ) { item, m, _ ->
             when (item) {
                 "call" -> Tile(
                     label = "Call",
