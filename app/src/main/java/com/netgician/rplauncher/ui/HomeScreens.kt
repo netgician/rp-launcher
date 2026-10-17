@@ -211,7 +211,7 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
         if (granted) call() else dial()
     }
     LaunchedEffect(contact) {
-        state.say("Call ${contact.name}? Tap Call to call, Message to send a text, or Cancel.")
+        state.say("Call ${contact.name}? Tap Call to call, Text to send a text, or Cancel.")
     }
     InWindow(state.config.window) {
         PagedTiles(
@@ -237,7 +237,7 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
                     if (granted) call() else permission.launch(Manifest.permission.CALL_PHONE)
                 }
                 "message" -> Tile(
-                    label = "Message",
+                    label = "Text",
                     modifier = m,
                     spoken = "Send ${contact.name} a text",
                     icon = TileIcon.Vector(Icons.Filled.Email),

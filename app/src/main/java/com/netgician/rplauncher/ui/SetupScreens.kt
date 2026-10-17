@@ -366,7 +366,7 @@ fun AddTileScreen(state: AppState) {
             }.onFailure { state.say("No contacts app found") }
         }
         SettingRow("Phone") { add(TileSpec.Phone) }
-        SettingRow("Messages") { add(TileSpec.Messages) }
+        SettingRow("Texts") { add(TileSpec.Messages) }
         SettingRow("Contacts") { add(TileSpec.Contacts) }
         SettingRow("Torch") { add(TileSpec.Torch) }
         SettingRow("See (camera magnifier)") { add(TileSpec.See) }

@@ -19,7 +19,7 @@ sealed class TileSpec {
     val label: String
         get() = when (this) {
             Phone -> "Phone"
-            Messages -> "Messages"
+            Messages -> "Texts"
             Contacts -> "Contacts"
             Torch -> "Torch"
             See -> "See"
