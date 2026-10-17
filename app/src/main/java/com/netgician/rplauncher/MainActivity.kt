@@ -228,6 +228,8 @@ fun Root(state: AppState) {
                     Screen.Texts -> TextsScreen(state)
                     is Screen.Conversation -> ConversationScreen(state, screen.threadId)
                     Screen.Compose -> ComposeScreen(state)
+                    Screen.ComposeMore -> ComposeMoreScreen(state)
+                    is Screen.Attachments -> AttachmentsScreen(state, screen.threadId)
                     Screen.QuickReply -> QuickReplyScreen(state)
                     Screen.NewText -> NewTextScreen(state)
                     is Screen.NumberPad -> NumberPadScreen(state, screen.purpose)

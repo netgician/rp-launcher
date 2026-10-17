@@ -49,6 +49,8 @@ sealed interface Screen {
     data object Texts : Screen
     data class Conversation(val threadId: Long) : Screen
     data object Compose : Screen
+    /** The less-used writing choices: photo, voice message, another person, read back, clear. */
+    data object ComposeMore : Screen
     data object QuickReply : Screen
     data object NewText : Screen
     data class NumberPad(val purpose: NumberPurpose) : Screen
@@ -57,6 +59,8 @@ sealed interface Screen {
     data class Picture(val threadId: Long, val partIds: List<Long>, val index: Int) : Screen
     data class Card(val threadId: Long, val partId: Long) : Screen
     data class Invite(val threadId: Long, val partId: Long) : Screen
+    /** Everything attached to one text, when there's more than one kind. */
+    data class Attachments(val threadId: Long) : Screen
     data object TextsSwitch : Screen
     data object TextsCheck : Screen
     /** The Texts tile, before RP Launcher is the texting app: choose what Texts does. */
@@ -239,7 +243,8 @@ class AppState(
                 if (texts.draft?.let { it.text.isNotBlank() || it.files.isNotEmpty() } == true) say("Your text is kept for now.")
                 go(if (thread != null) Screen.Conversation(thread) else Screen.Texts)
             }
-            Screen.QuickReply, Screen.AddPhoto, Screen.Record -> go(Screen.Compose)
+            Screen.QuickReply, Screen.AddPhoto, Screen.Record, Screen.ComposeMore -> go(Screen.Compose)
+            is Screen.Attachments -> go(Screen.Conversation(s.threadId))
             Screen.NewText -> if (texts.draft?.to.isNullOrEmpty()) { texts.draft = null; go(Screen.Texts) } else go(Screen.Compose)
             is Screen.NumberPad -> go(if (s.purpose == NumberPurpose.OWN_NUMBER) Screen.TextsCheck else Screen.NewText)
             is Screen.Picture -> go(Screen.Conversation(s.threadId))

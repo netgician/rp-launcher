@@ -297,14 +297,17 @@ fun <T> PagedTiles(
     onSpeak: (String) -> Unit,
     header: @Composable (Modifier) -> Unit,
     minTarget: Float = Layout.MIN_TARGET_DP,
+    /** Null for the usual header row; 0 for none, when the screen shows its title elsewhere. */
+    headerHeight: Float? = null,
     tile: @Composable (item: T, modifier: Modifier, pos: TilePos) -> Unit,
 ) {
     val lv = LocalLv.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val headerH = headerHeight ?: (52f * lv.textScale)
         val grid = Layout.grid(
             windowWidth = maxWidth.value,
             windowHeight = maxHeight.value,
-            headerHeight = 52f * lv.textScale,
+            headerHeight = headerH,
             footerHeight = 44f * lv.textScale,
             wantCols = cols,
             wantRows = rows,
@@ -314,7 +317,7 @@ fun <T> PagedTiles(
         val pages = Paging.paginate(items, grid.tiles.size)
         val current = page.coerceIn(0, pages.lastIndex)
 
-        header(Modifier.place(grid.header))
+        if (headerH > 0f) header(Modifier.place(grid.header))
 
         pages[current].forEachIndexed { i, slot ->
             val area = grid.tiles.getOrNull(i) ?: return@forEachIndexed

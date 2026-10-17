@@ -279,53 +279,42 @@ fun ConversationScreen(state: AppState, threadId: Long) {
         value = firstImage?.let { p -> withContext(Dispatchers.IO) { Pictures.load(context, p.id, 900) } }
     }
 
-    val controls = buildList {
-        add(Control("Older", spoken = "Older text") { if (i > 0) index = i - 1 else state.say("This is the first text") })
-        add(Control("Newer", spoken = "Newer text") { if (i < msgs.lastIndex) index = i + 1 else state.say("This is the newest text") })
-        add(Control("Reply", icon = SEND_ICON) { t.startReply(threadId) })
-        when {
-            m.box == Box.FAILED -> add(Control("Try again", spoken = "Try sending again", emphasized = true) { t.retry(m) })
-            m.box == Box.WAITING -> when (m.download) {
-                DownloadState.DOWNLOADING -> add(Control("Downloading", spoken = "Still downloading") {
-                    state.say("Still downloading. You'll hear when it arrives.")
-                })
-                DownloadState.NOT_STARTED -> add(Control("Download", spoken = "Download the picture text", emphasized = true) { t.retry(m) })
-                else -> add(Control("Try again", spoken = "Try downloading again", emphasized = true) { t.retry(m) })
+    // At most six controls, so they fit on one page: Older, Newer, Reply, the one thing this
+    // text needs (Try again, See picture, Play...), Call or Read again, and back to all texts.
+    // Tapping the words reads them again.
+    val extras = attachmentControls(state, threadId, m)
+    val action: Control? = when {
+        m.box == Box.FAILED -> Control("Try again", spoken = "Try sending again", emphasized = true) { t.retry(m) }
+        m.box == Box.WAITING -> when (m.download) {
+            DownloadState.DOWNLOADING -> Control("Downloading", spoken = "Still downloading") {
+                state.say("Still downloading. You'll hear when it arrives.")
             }
+            DownloadState.NOT_STARTED -> Control("Download", spoken = "Download the picture text", emphasized = true) { t.retry(m) }
+            else -> Control("Try again", spoken = "Try downloading again", emphasized = true) { t.retry(m) }
         }
-        val images = m.parts.filter { it.kind == PartKind.IMAGE }
-        if (images.isNotEmpty()) {
-            add(Control(if (images.size == 1) "See picture" else "See pictures", spoken = "See the picture bigger", emphasized = true) {
-                state.go(Screen.Picture(threadId, images.map { it.id }, 0))
-            })
+        extras.size == 1 -> extras[0]
+        extras.size > 1 -> Control("Attachments (${extras.size})", spoken = "See all ${extras.size} attachments", emphasized = true) {
+            t.attachmentsOf = m
+            state.go(Screen.Attachments(threadId))
         }
-        m.parts.filter { it.kind == PartKind.AUDIO }.forEach { a ->
-            val playing = t.playingPart == a.id
-            add(Control(if (playing) "Stop" else "Play", spoken = if (playing) "Stop the clip" else "Play the clip", icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) { t.play(a) })
-        }
-        m.parts.filter { it.kind == PartKind.VIDEO }.forEach { v ->
-            add(Control("Play video", spoken = "Play the video", icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) { t.openElsewhere(v) })
-        }
-        m.parts.filter { it.kind == PartKind.CONTACT }.forEach { c ->
-            add(Control("Contact card", spoken = "Open the contact card", emphasized = true) { state.go(Screen.Card(threadId, c.id)) })
-        }
-        m.parts.filter { it.kind == PartKind.EVENT }.forEach { e ->
-            add(Control("Invite", spoken = "Open the calendar invite", emphasized = true) { state.go(Screen.Invite(threadId, e.id)) })
-        }
-        m.parts.filter { it.kind == PartKind.OTHER }.forEach { o ->
-            add(Control("Open file", spoken = "Open the file in another app") { t.openElsewhere(o) })
-        }
-        add(Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { speakMessage() })
-        val callee = if (!m.outgoing && !m.from.isNullOrBlank()) m.from else data.people.singleOrNull()
-        callee?.let { number ->
-            val name = t.names.of(number)
-            add(Control("Call", spoken = "Call $name", icon = TileIcon.Vector(Icons.Filled.Call)) {
-                state.go(Screen.ConfirmCall(TileSpec.Contact(name, number)))
-            })
-        }
-        add(Control("Texts", spoken = "Back to all texts") { state.go(Screen.Texts) })
-        add(Control("Home", icon = HOME_ICON) { state.go(Screen.Home) })
+        else -> null
     }
+    val readAgain = Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { speakMessage() }
+    val callee = if (!m.outgoing && !m.from.isNullOrBlank()) m.from else data.people.singleOrNull()
+    val call = callee?.let { number ->
+        val name = t.names.of(number)
+        Control("Call", spoken = "Call $name", icon = TileIcon.Vector(Icons.Filled.Call)) {
+            state.go(Screen.ConfirmCall(TileSpec.Contact(name, number)))
+        }
+    }
+    val controls = listOfNotNull(
+        Control("Older", spoken = "Older text") { if (i > 0) index = i - 1 else state.say("This is the first text") },
+        Control("Newer", spoken = "Newer text") { if (i < msgs.lastIndex) index = i + 1 else state.say("This is the newest text") },
+        Control("Reply", icon = SEND_ICON) { t.startReply(threadId) },
+        action ?: readAgain,
+        call ?: (if (action != null) readAgain else Control("Home", icon = HOME_ICON) { state.go(Screen.Home) }),
+        Control("All texts", spoken = "Back to all texts") { state.go(Screen.Texts) },
+    )
 
     val lv = LocalLv.current
     ReaderLayout(
@@ -335,6 +324,8 @@ fun ConversationScreen(state: AppState, threadId: Long) {
         header = "${i + 1} of ${msgs.size} · $title",
         headerSpoken = "Text ${i + 1} of ${msgs.size}, with $title",
         controls = controls,
+        bodyWeight = 0.45f,
+        controlsHeader = false,
         bodyContent = {
             val b = thumb
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -358,6 +349,55 @@ fun ConversationScreen(state: AppState, threadId: Long) {
             }
         },
     ) { c, mod, pos -> ControlTile(state, c, mod, pos) }
+}
+
+/** One control for each thing attached to [m]: pictures together, then each clip, video, card, invite and file. */
+@Composable
+private fun attachmentControls(state: AppState, threadId: Long, m: TextMessage): List<Control> {
+    val t = state.texts
+    return buildList {
+        val images = m.parts.filter { it.kind == PartKind.IMAGE }
+        if (images.isNotEmpty()) {
+            add(Control(if (images.size == 1) "See picture" else "See pictures", spoken = "See the picture bigger", emphasized = true) {
+                state.go(Screen.Picture(threadId, images.map { it.id }, 0))
+            })
+        }
+        m.parts.filter { it.kind == PartKind.AUDIO }.forEach { a ->
+            val playing = t.playingPart == a.id
+            add(Control(if (playing) "Stop" else "Play", spoken = if (playing) "Stop the clip" else "Play the clip",
+                icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) { t.play(a) })
+        }
+        m.parts.filter { it.kind == PartKind.VIDEO }.forEach { v ->
+            add(Control("Play video", spoken = "Play the video", icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) {
+                t.openElsewhere(v)
+            })
+        }
+        m.parts.filter { it.kind == PartKind.CONTACT }.forEach { c ->
+            add(Control("Contact card", spoken = "Open the contact card", emphasized = true) { state.go(Screen.Card(threadId, c.id)) })
+        }
+        m.parts.filter { it.kind == PartKind.EVENT }.forEach { e ->
+            add(Control("Invite", spoken = "Open the calendar invite", emphasized = true) { state.go(Screen.Invite(threadId, e.id)) })
+        }
+        m.parts.filter { it.kind == PartKind.OTHER }.forEach { o ->
+            add(Control("Open file", spoken = "Open the file in another app") { t.openElsewhere(o) })
+        }
+    }
+}
+
+/** Everything attached to one text, one big row each. */
+@Composable
+fun AttachmentsScreen(state: AppState, threadId: Long) {
+    val m = state.texts.attachmentsOf
+    if (m == null) {
+        LaunchedEffect(Unit) { state.go(Screen.Conversation(threadId)) }
+        return
+    }
+    LaunchedEffect(Unit) { state.say("Attachments. ${TextSpeech.attachments(m.parts)}") }
+    ChoiceList(
+        state, "Attachments",
+        choices = listOf(Control("Back", spoken = "Back to the text") { state.go(Screen.Conversation(threadId)) }) +
+            attachmentControls(state, threadId, m),
+    )
 }
 
 // ==================================================================== writing
@@ -416,19 +456,7 @@ fun ComposeScreen(state: AppState) {
         add(Control("Send", spoken = "Send to $who", icon = SEND_ICON, emphasized = true) { t.send() })
         add(Control("Quick replies", spoken = "Choose a quick reply") { state.go(Screen.QuickReply) })
         add(Control("Keyboard", spoken = "Type with the keyboard") { typing = true })
-        add(Control("Add photo", spoken = "Add a photo or video") { state.go(Screen.AddPhoto) })
-        add(Control("Voice message", spoken = "Record a voice message") { state.go(Screen.Record) })
-        add(Control("Read it back", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { readBack() })
-        add(Control("Add a person", spoken = "Add a person to this text") {
-            t.addingPerson = true
-            state.go(Screen.NewText)
-        })
-        if (d.text.isNotBlank() || d.files.isNotEmpty()) {
-            add(Control("Clear", spoken = "Clear what's written") {
-                t.draft = d.copy(text = "", files = emptyList())
-                state.say("Cleared")
-            })
-        }
+        add(Control("More", spoken = "More: add a photo, a voice message or a person") { state.go(Screen.ComposeMore) })
         add(Control("Cancel", spoken = "Cancel this text", icon = TileIcon.Vector(Icons.Filled.Close)) { t.cancelDraft() })
     }
     ReaderLayout(
@@ -438,7 +466,48 @@ fun ComposeScreen(state: AppState) {
         header = "To $who",
         headerSpoken = "Text to $who",
         controls = controls,
+        bodyWeight = 0.45f,
+        controlsHeader = false,
     ) { c, m, pos -> ControlTile(state, c, m, pos) }
+}
+
+/** The less-used writing choices, so the writing screen keeps to one page. */
+@Composable
+fun ComposeMoreScreen(state: AppState) {
+    val t = state.texts
+    val d = t.draft
+    if (d == null) {
+        LaunchedEffect(Unit) { state.go(Screen.Texts) }
+        return
+    }
+    LaunchedEffect(Unit) { state.say("More") }
+    val who = People.join(d.to.map(t.names::of))
+    val attached = TextSpeech.attachments(d.files.map { TextPart(0, it.kind, it.contentType, null, "") })
+    ChoiceList(
+        state, "More",
+        choices = buildList {
+            add(Control("Back", spoken = "Back to the text") { state.go(Screen.Compose) })
+            add(Control("Add photo", spoken = "Add a photo or video") { state.go(Screen.AddPhoto) })
+            add(Control("Voice message", spoken = "Record a voice message") { state.go(Screen.Record) })
+            add(Control("Add a person", spoken = "Add a person to this text") {
+                t.addingPerson = true
+                state.go(Screen.NewText)
+            })
+            add(Control("Read it back", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) {
+                state.say(
+                    if (d.text.isBlank() && d.files.isEmpty()) "Nothing written yet."
+                    else "Text to $who. ${d.text} $attached".trim(),
+                )
+            })
+            if (d.text.isNotBlank() || d.files.isNotEmpty()) {
+                add(Control("Clear", spoken = "Clear what's written") {
+                    t.draft = d.copy(text = "", files = emptyList())
+                    state.say("Cleared")
+                    state.go(Screen.Compose)
+                })
+            }
+        },
+    )
 }
 
 /** Big-text typing. The keyboard's Done key, or the Done typing tile, finishes. */

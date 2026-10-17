@@ -52,6 +52,9 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     val names = Names(activity)
 
     var draft by mutableStateOf<Draft?>(null)
+
+    /** The text whose attachments are listed on the Attachments screen. */
+    var attachmentsOf by mutableStateOf<TextMessage?>(null)
     var unread by mutableIntStateOf(0)
         private set
 
@@ -341,6 +344,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
 /** Screens that belong to Texts, where "Sent" is said aloud. */
 val Screen.isTextsScreen: Boolean
     get() = this is Screen.Texts || this is Screen.Conversation || this is Screen.Compose || this is Screen.QuickReply ||
+        this is Screen.ComposeMore || this is Screen.Attachments ||
         this is Screen.NewText || this is Screen.NumberPad || this is Screen.Picture || this is Screen.Card ||
         this is Screen.Invite || this is Screen.Record || this is Screen.AddPhoto
 

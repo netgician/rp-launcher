@@ -33,12 +33,21 @@ internal fun <T> ReaderLayout(
     controls: List<T>,
     bodyWeight: Float = 0.5f,
     bodyContent: (@Composable BoxScope.() -> Unit)? = null,
+    /** False puts the title above the words, so all the room below goes to big controls. */
+    controlsHeader: Boolean = true,
     tile: @Composable (item: T, modifier: Modifier, pos: TilePos) -> Unit,
 ) {
     val lv = LocalLv.current
     var page by remember(controls.size) { mutableIntStateOf(0) }
     InWindow(state.config.window) {
         Column(Modifier.fillMaxSize()) {
+            if (!controlsHeader) {
+                SpokenText(
+                    header,
+                    Modifier.fillMaxWidth().height((40f * lv.textScale).dp).padding(horizontal = 8.dp).padding(top = 6.dp),
+                    state::say, spoken = headerSpoken, maxSp = 22f,
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -76,6 +85,7 @@ internal fun <T> ReaderLayout(
                     rows = 2,
                     onSpeak = state::say,
                     header = { m -> SpokenText(header, m, state::say, spoken = headerSpoken, maxSp = 22f) },
+                    headerHeight = if (controlsHeader) null else 0f,
                     tile = tile,
                 )
             }
