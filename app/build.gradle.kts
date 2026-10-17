@@ -13,8 +13,13 @@ android {
         // Android 10: brings the system role picker for home, phone and SMS apps.
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
+
+        // ONNX Runtime ships native code; phones only (32- and 64-bit ARM) keeps the app small.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     signingConfigs {
@@ -60,6 +65,10 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+
+    // Text reading: our :ocr module on the Android build of ONNX Runtime (MIT).
+    implementation(project(":ocr"))
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 
     // CameraX for the See tile (open source, Apache-2.0).
     val camerax = "1.4.1"

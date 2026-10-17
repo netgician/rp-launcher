@@ -11,6 +11,7 @@ sealed class TileSpec {
     data object Contacts : TileSpec()
     data object Torch : TileSpec()
     data object See : TileSpec()
+    data object Alerts : TileSpec()
     data object AllApps : TileSpec()
     data class App(val packageName: String, val className: String, val appLabel: String) : TileSpec()
     data class Contact(val name: String, val number: String) : TileSpec()
@@ -22,6 +23,7 @@ sealed class TileSpec {
             Contacts -> "Contacts"
             Torch -> "Torch"
             See -> "See"
+            Alerts -> "Alerts"
             AllApps -> "All apps"
             is App -> appLabel
             is Contact -> name
@@ -39,6 +41,20 @@ enum class AutoNight(val id: String, val label: String) {
 
     companion object {
         fun byId(id: String?): AutoNight = entries.firstOrNull { it.id == id } ?: OFF
+    }
+}
+
+/**
+ * How the person uses the phone, from sight-first to speech-first. Switching modes keeps
+ * tiles and settings; it only changes how tiles respond and how they're laid out.
+ */
+enum class VisionMode(val id: String, val label: String, val explain: String) {
+    SIGHT("sight", "Sight first", "Tap a tile to open it. Long press to hear it."),
+    SIGHT_SPEECH("sight_speech", "Sight and speech", "Tap a tile to hear it. Double tap to open it."),
+    SPEECH("speech", "Speech first", "Tiles form one list. Tap to hear, double tap to open.");
+
+    companion object {
+        fun byId(id: String?): VisionMode = entries.firstOrNull { it.id == id } ?: SIGHT
     }
 }
 
@@ -61,7 +77,16 @@ data class LauncherConfig(
     val brightness: Float? = null,
     /** Vibration patterns that say where a tile is: buzz count = row number. */
     val touchLandmarks: Boolean = false,
+    val visionMode: VisionMode = VisionMode.SIGHT,
+    /** Speech first only: a black screen that still works by touch and speech. Setup is never darkened. */
+    val darkScreen: Boolean = false,
 ) {
+    /** Tap to hear, double tap to open. */
+    val touchToHear: Boolean get() = visionMode != VisionMode.SIGHT
+
+    /** Speech first lays tiles out as one list, in a fixed order. */
+    val homeCols: Int get() = if (visionMode == VisionMode.SPEECH) 1 else cols
+
     val theme: LvTheme get() = Themes.byId(themeId)
     val nightTheme: LvTheme get() = Themes.byId(nightThemeId)
 
@@ -94,7 +119,7 @@ fun <T> List<T>.after(current: T): T = this[(indexOf(current) + 1) % size]
 
 /** The setup file: the whole configuration as JSON, so it can move to the next phone. */
 object ConfigJson {
-    private const val VERSION = 2
+    private const val VERSION = 3
 
     fun encode(c: LauncherConfig): String = JSONObject().apply {
         put("version", VERSION)
@@ -118,6 +143,8 @@ object ConfigJson {
         put("nightUntil", c.nightUntilHour)
         if (c.brightness != null) put("brightness", c.brightness.toDouble())
         put("touchLandmarks", c.touchLandmarks)
+        put("visionMode", c.visionMode.id)
+        put("darkScreen", c.darkScreen)
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -127,6 +154,7 @@ object ConfigJson {
             TileSpec.Contacts -> put("type", "contacts")
             TileSpec.Torch -> put("type", "torch")
             TileSpec.See -> put("type", "see")
+            TileSpec.Alerts -> put("type", "alerts")
             TileSpec.AllApps -> put("type", "all_apps")
             is TileSpec.App -> {
                 put("type", "app"); put("pkg", t.packageName); put("cls", t.className); put("label", t.appLabel)
@@ -181,6 +209,8 @@ object ConfigJson {
             nightUntilHour = o.optInt("nightUntil", d.nightUntilHour).coerceIn(0, 23),
             brightness = brightness,
             touchLandmarks = o.optBoolean("touchLandmarks", d.touchLandmarks),
+            visionMode = VisionMode.byId(o.optString("visionMode", d.visionMode.id)),
+            darkScreen = o.optBoolean("darkScreen", d.darkScreen),
         )
     }
 
@@ -190,6 +220,7 @@ object ConfigJson {
         "contacts" -> TileSpec.Contacts
         "torch" -> TileSpec.Torch
         "see" -> TileSpec.See
+        "alerts" -> TileSpec.Alerts
         "all_apps" -> TileSpec.AllApps
         "app" -> {
             val pkg = o.optString("pkg"); val cls = o.optString("cls")

@@ -61,6 +61,18 @@ data class LvStyle(val theme: LvTheme, val font: FontFamily, val textScale: Floa
 
 val LocalLv = staticCompositionLocalOf<LvStyle> { error("LvStyle not provided") }
 
+/**
+ * How tiles respond to a tap. With touch to hear on, a tap speaks the tile and a double tap
+ * opens it; the tile last heard gets a thicker outline. Off whenever TalkBack is running.
+ */
+data class TapMode(
+    val touchToHear: Boolean = false,
+    val heard: String? = null,
+    val onHear: (String) -> Unit = {},
+)
+
+val LocalTapMode = compositionLocalOf { TapMode() }
+
 /** Places a composable at a box computed by the layout rules, in dp. */
 fun Modifier.place(a: Area): Modifier = this.offset(a.left.dp, a.top.dp).size(a.width.dp, a.height.dp)
 
@@ -157,29 +169,47 @@ fun Tile(
     onClick: () -> Unit,
 ) {
     val lv = LocalLv.current
+    val tap = LocalTapMode.current
     val view = LocalView.current
     val shape = RoundedCornerShape(12.dp)
+    val heardNow = tap.touchToHear && tap.heard == spoken
+    val longClick = onLongPress?.let { speak ->
+        {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            speak()
+        }
+    }
+    val press = if (tap.touchToHear) {
+        Modifier.combinedClickable(
+            onClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                tap.onHear(spoken)
+            },
+            onDoubleClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                onClick()
+            },
+            onLongClick = longClick,
+        )
+    } else {
+        Modifier.combinedClickable(
+            onClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                onClick()
+            },
+            onLongClick = longClick,
+        )
+    }
     BoxWithConstraints(
         modifier = modifier
             .clip(shape)
             .background(lv.tile)
-            .border(BorderStroke(if (emphasized) 8.dp else 4.dp, lv.accent), shape)
+            .border(BorderStroke(if (emphasized || heardNow) 8.dp else 4.dp, lv.accent), shape)
             .semantics(mergeDescendants = true) {
                 contentDescription = spoken
                 role = Role.Button
             }
-            .combinedClickable(
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onClick()
-                },
-                onLongClick = onLongPress?.let { speak ->
-                    {
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        speak()
-                    }
-                },
-            )
+            .then(press)
             .padding(10.dp),
         contentAlignment = Alignment.Center,
     ) {

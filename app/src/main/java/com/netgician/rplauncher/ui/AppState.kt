@@ -8,13 +8,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.netgician.rplauncher.model.AimHelp
 import com.netgician.rplauncher.model.AutoNight
 import com.netgician.rplauncher.model.ConfigJson
 import com.netgician.rplauncher.model.Landmarks
+import com.netgician.rplauncher.model.Language
 import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.LvTheme
 import com.netgician.rplauncher.model.NightMode
 import com.netgician.rplauncher.model.TileSpec
+import com.netgician.rplauncher.model.VisionMode
+import com.netgician.rplauncher.ocr.OcrEngine
+import com.netgician.rplauncher.ocr.OcrResult
 import com.netgician.rplauncher.system.Apps
 import com.netgician.rplauncher.system.ConfigStore
 import com.netgician.rplauncher.system.Speaker
@@ -34,7 +39,18 @@ sealed interface Screen {
     data object EditTiles : Screen
     data object AddTile : Screen
     data object PickApp : Screen
+    data object ReadText : Screen
+    data object Alerts : Screen
 }
+
+/** Screens for helpers. These are never darkened and never use the person's layout mode. */
+val Screen.isHelperScreen: Boolean
+    get() = this is Screen.Settings || this is Screen.Pin || this is Screen.PinReset ||
+        this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
+        this is Screen.WindowCheck
+
+/** What the camera read: one line per page, the voice to use, and any aiming advice. */
+data class ReadText(val lines: List<String>, val language: String, val hints: List<String>)
 
 enum class PinPurpose { Unlock, Set }
 
@@ -57,6 +73,35 @@ class AppState(
     var homePage by mutableIntStateOf(0)
     var listPage by mutableIntStateOf(0)
 
+    /** The last tile spoken in touch-to-hear mode; it gets a thicker outline. */
+    var heard by mutableStateOf<String?>(null)
+
+    /** The latest text read from the camera. */
+    var readText by mutableStateOf<ReadText?>(null)
+        private set
+
+    private var engine: OcrEngine? = null
+
+    /** The text reader, loaded on first use (about a second). Call off the main thread. */
+    @Synchronized
+    fun ocr(): OcrEngine = engine ?: OcrEngine.fromResources(threads = 2).also { engine = it }
+
+    fun closeOcr() {
+        engine?.close()
+        engine = null
+    }
+
+    /** Shows what the camera read and speaks it: advice first, then the text in its own voice. */
+    fun showRead(result: OcrResult) {
+        val lines = result.lines.map { it.text }
+        val language = Language.guess(result.text)
+        val hints = AimHelp.hints(result.lines.flatMap { it.boxes }, result.imageWidth, result.imageHeight)
+        readText = ReadText(lines, language, hints)
+        go(Screen.ReadText)
+        hints.forEach { speaker.speak(it, flush = false) }
+        if (lines.isNotEmpty()) speaker.speak(lines.joinToString(". "), language, flush = hints.isEmpty())
+    }
+
     /** True while automatic night colours are on. */
     var nightActive by mutableStateOf(false)
         private set
@@ -65,9 +110,13 @@ class AppState(
     val theme: LvTheme
         get() = if (nightActive && config.autoNight != AutoNight.OFF) config.nightTheme else config.theme
 
-    /** The launcher window's brightness: the theme's own (night themes dim), else the limit set in Setup. */
+    /** Speech first with the dark screen on, outside the helper screens. */
+    val darkScreenNow: Boolean
+        get() = config.visionMode == VisionMode.SPEECH && config.darkScreen && !screen.isHelperScreen
+
+    /** The launcher window's brightness: lowest under the dark screen, the theme's own, else the Setup limit. */
     val windowBrightness: Float?
-        get() = theme.windowBrightness ?: config.brightness
+        get() = if (darkScreenNow) 0.01f else theme.windowBrightness ?: config.brightness
 
     fun update(change: (LauncherConfig) -> LauncherConfig) {
         config = change(config)
@@ -126,7 +175,8 @@ class AppState(
             is Screen.WindowCheck -> if (config.windowChecked) go(s.returnTo)
             is Screen.Pin -> go(if (s.purpose == PinPurpose.Set) Screen.Settings else Screen.Home)
             Screen.PinReset -> go(Screen.Pin(PinPurpose.Unlock))
-            Screen.Apps, Screen.See, is Screen.ConfirmCall, Screen.Settings -> go(Screen.Home)
+            Screen.Apps, Screen.See, Screen.Alerts, is Screen.ConfirmCall, Screen.Settings -> go(Screen.Home)
+            Screen.ReadText -> go(Screen.See)
             Screen.EditTiles -> go(Screen.Settings)
             Screen.AddTile -> go(Screen.EditTiles)
             Screen.PickApp -> go(Screen.AddTile)
@@ -158,6 +208,7 @@ class AppState(
                 null -> say("This phone has no torch")
             }
             TileSpec.See -> go(Screen.See)
+            TileSpec.Alerts -> go(Screen.Alerts)
             TileSpec.AllApps -> go(Screen.Apps)
             is TileSpec.App -> start(
                 Apps.launchIntent(spec.packageName, spec.className),

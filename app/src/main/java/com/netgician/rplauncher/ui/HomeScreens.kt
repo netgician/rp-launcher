@@ -24,6 +24,7 @@ import com.netgician.rplauncher.model.Landmarks
 import com.netgician.rplauncher.model.TileSpec
 import com.netgician.rplauncher.system.AppEntry
 import com.netgician.rplauncher.system.Apps
+import com.netgician.rplauncher.system.AlertsStore
 import com.netgician.rplauncher.system.Battery
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -55,6 +56,7 @@ fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.Contacts -> TileIcon.Vector(Icons.Filled.Person)
     TileSpec.Torch -> TileIcon.Drawable(R.drawable.ic_torch)
     TileSpec.See -> TileIcon.Vector(Icons.Filled.Search)
+    TileSpec.Alerts -> TileIcon.Vector(Icons.Filled.Notifications)
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
     is TileSpec.App -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)
@@ -65,6 +67,7 @@ fun HomeScreen(state: AppState) {
     val c = state.config
     // The Setup tile is always last, so a helper can always get in.
     val items = remember(c.tiles) { c.tiles.map<TileSpec, HomeItem> { HomeItem.Spec(it) } + HomeItem.Setup }
+    val alerts by AlertsStore.items.collectAsState()
     InWindow(c.window) {
         PagedTiles(
             items = items,
@@ -73,7 +76,7 @@ fun HomeScreen(state: AppState) {
                 state.homePage = p
                 state.onPageTurned(p, n)
             },
-            cols = c.cols,
+            cols = c.homeCols,
             rows = c.rows,
             onSpeak = state::say,
             header = { m -> StatusHeader(m, state::say) },
@@ -86,19 +89,24 @@ fun HomeScreen(state: AppState) {
                     icon = TileIcon.Vector(Icons.Filled.Settings),
                     onLongPress = longPress(state, "Setup, for helpers", pos),
                 ) { state.openSetup() }
-                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos)
+                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size)
             }
         }
     }
 }
 
 @Composable
-private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos) {
+private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos, alertCount: Int) {
     val torchOn = spec == TileSpec.Torch && state.torch.isOn
-    val label = if (torchOn) "Torch on" else spec.label
+    val label = when {
+        torchOn -> "Torch on"
+        spec == TileSpec.Alerts && alertCount > 0 -> "Alerts ($alertCount)"
+        else -> spec.label
+    }
     val spoken = when {
         spec is TileSpec.Contact -> "Call ${spec.name}"
-        torchOn -> "Torch is on. Tap to turn it off"
+        torchOn -> "Torch is on"
+        spec == TileSpec.Alerts -> if (alertCount == 0) "Alerts, none new" else "Alerts, $alertCount new"
         else -> spec.label
     }
     Tile(

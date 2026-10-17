@@ -16,6 +16,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color as ComposeColor
 import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.Themes
 import com.netgician.rplauncher.model.TileSpec
@@ -120,6 +125,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         speaker.shutdown()
+        state?.closeOcr()
         super.onDestroy()
     }
 }
@@ -130,38 +136,55 @@ fun Root(state: AppState) {
     val theme = state.theme
     val style = remember(theme, c.textScale) { LvStyle(theme, AtkinsonFamily, c.textScale) }
     SideEffect { state.speaker.rate = c.speechRate }
-    CompositionLocalProvider(LocalLv provides style) {
+    val tapMode = TapMode(
+        touchToHear = c.touchToHear && !state.speaker.screenReaderOn,
+        heard = state.heard,
+        onHear = { label ->
+            state.heard = label
+            state.say(label)
+        },
+    )
+    // The dark screen draws black over everything; touches and speech still work underneath.
+    val curtain = if (state.darkScreenNow) Modifier.drawWithContent {
+        drawContent()
+        drawRect(ComposeColor.Black)
+    } else Modifier
+    CompositionLocalProvider(LocalLv provides style, LocalTapMode provides tapMode) {
         BackHandler { state.back() }
         // A short fade between screens: no sudden jumps, and never a white frame.
-        Crossfade(targetState = state.screen, animationSpec = tween(180), label = "screen") { screen ->
-            when (screen) {
-                Screen.Home -> HomeScreen(state)
-                is Screen.WindowCheck -> WindowCheckScreen(state, screen.returnTo)
-                Screen.Apps -> AppListScreen(
-                    state = state,
-                    title = "All apps",
-                    leaveLabel = "Home",
-                    onLeave = { state.go(Screen.Home) },
-                ) { app ->
-                    state.start(Apps.launchIntent(app.packageName, app.className))
-                    state.go(Screen.Home)
-                }
-                Screen.See -> SeeScreen(state)
-                is Screen.ConfirmCall -> ConfirmCallScreen(state, screen.contact)
-                is Screen.Pin -> PinScreen(state, screen.purpose)
-                Screen.PinReset -> PinResetScreen(state)
-                Screen.Settings -> SettingsScreen(state)
-                Screen.EditTiles -> EditTilesScreen(state)
-                Screen.AddTile -> AddTileScreen(state)
-                Screen.PickApp -> AppListScreen(
-                    state = state,
-                    title = "Pick an app",
-                    leaveLabel = "Back",
-                    onLeave = { state.go(Screen.AddTile) },
-                ) { app ->
-                    state.update { it.copy(tiles = it.tiles + TileSpec.App(app.packageName, app.className, app.label)) }
-                    state.say("${app.label} added")
-                    state.go(Screen.EditTiles)
+        Box(Modifier.fillMaxSize().then(curtain)) {
+            Crossfade(targetState = state.screen, animationSpec = tween(180), label = "screen") { screen ->
+                when (screen) {
+                    Screen.Home -> HomeScreen(state)
+                    is Screen.WindowCheck -> WindowCheckScreen(state, screen.returnTo)
+                    Screen.Apps -> AppListScreen(
+                        state = state,
+                        title = "All apps",
+                        leaveLabel = "Home",
+                        onLeave = { state.go(Screen.Home) },
+                    ) { app ->
+                        state.start(Apps.launchIntent(app.packageName, app.className))
+                        state.go(Screen.Home)
+                    }
+                    Screen.See -> SeeScreen(state)
+                    Screen.ReadText -> TextReaderScreen(state)
+                    Screen.Alerts -> AlertsScreen(state)
+                    is Screen.ConfirmCall -> ConfirmCallScreen(state, screen.contact)
+                    is Screen.Pin -> PinScreen(state, screen.purpose)
+                    Screen.PinReset -> PinResetScreen(state)
+                    Screen.Settings -> SettingsScreen(state)
+                    Screen.EditTiles -> EditTilesScreen(state)
+                    Screen.AddTile -> AddTileScreen(state)
+                    Screen.PickApp -> AppListScreen(
+                        state = state,
+                        title = "Pick an app",
+                        leaveLabel = "Back",
+                        onLeave = { state.go(Screen.AddTile) },
+                    ) { app ->
+                        state.update { it.copy(tiles = it.tiles + TileSpec.App(app.packageName, app.className, app.label)) }
+                        state.say("${app.label} added")
+                        state.go(Screen.EditTiles)
+                    }
                 }
             }
         }

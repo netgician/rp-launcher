@@ -4,13 +4,20 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
+import android.util.Size
 import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -44,6 +51,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.netgician.rplauncher.R
 import com.netgician.rplauncher.model.CameraMath
 import com.netgician.rplauncher.model.after
+import com.netgician.rplauncher.ocr.RgbImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
+import kotlin.coroutines.resume
 import kotlin.math.abs
 
 /**
@@ -62,6 +76,8 @@ class SeeCamera(context: Context) {
 
     private var provider: ProcessCameraProvider? = null
     private var camera: Camera? = null
+    private var capture: ImageCapture? = null
+    private val worker = Executors.newSingleThreadExecutor()
 
     var ready by mutableStateOf(false)
         private set
@@ -89,9 +105,19 @@ class SeeCamera(context: Context) {
             runCatching {
                 val preview = Preview.Builder().build()
                 preview.setSurfaceProvider(previewView.surfaceProvider)
+                // Stills for reading text: sharp enough for small print, small enough to read fast.
+                val still = ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .setResolutionSelector(
+                        ResolutionSelector.Builder().setResolutionStrategy(
+                            ResolutionStrategy(Size(2048, 1536), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER),
+                        ).build(),
+                    )
+                    .build()
                 p.unbindAll()
-                val cam = p.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview)
+                val cam = p.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, still)
                 camera = cam
+                capture = still
                 cam.cameraInfo.zoomState.observe(owner) { z ->
                     minZoom = z.minZoomRatio
                     maxZoom = z.maxZoomRatio
@@ -107,8 +133,37 @@ class SeeCamera(context: Context) {
     fun unbind() {
         runCatching { provider?.unbindAll() }
         camera = null
+        capture = null
         ready = false
     }
+
+    /** A full-resolution still, upright, at the current zoom. Null if the camera can't take one. */
+    suspend fun photo(): Bitmap? = suspendCancellableCoroutine { cont ->
+        val ic = capture
+        if (ic == null) {
+            cont.resume(null)
+            return@suspendCancellableCoroutine
+        }
+        ic.takePicture(worker, object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: ImageProxy) {
+                val bmp = runCatching {
+                    val raw = image.toBitmap()
+                    val degrees = image.imageInfo.rotationDegrees
+                    if (degrees == 0) raw
+                    else Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(degrees.toFloat()) }, true)
+                }.getOrNull()
+                image.close()
+                if (cont.isActive) cont.resume(bmp)
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                if (cont.isActive) cont.resume(null)
+            }
+        })
+    }
+
+    /** What the screen shows right now, as a fallback when a still can't be taken. */
+    fun screenPicture(): Bitmap? = runCatching { previewView.bitmap }.getOrNull()
 
     /** Returns false at the limit. */
     fun closer(): Boolean = setZoom(CameraMath.closer(zoom, maxZoom))
@@ -163,10 +218,24 @@ class SeeCamera(context: Context) {
     }
 }
 
-private enum class SeeControl { CLOSER, WIDER, FREEZE, LIGHT, COLOURS, HOME }
+private enum class SeeControl { READ, CLOSER, WIDER, FREEZE, LIGHT, COLOURS, HOME }
 
 private const val SEE_INTRO = "See. Point the camera at what you want to look at. " +
-    "Closer and Wider zoom. Freeze holds the picture still. Colours makes print light on black."
+    "Read reads printed text aloud. Closer and Wider zoom. Freeze holds the picture still."
+
+/** Copies a picture into the text reader's format, scaled so its longest side is at most [maxSide]. */
+private fun Bitmap.toRgbImage(maxSide: Int = 2048): RgbImage {
+    var b = if (config == Bitmap.Config.HARDWARE) copy(Bitmap.Config.ARGB_8888, false) else this
+    val scale = maxSide.toFloat() / maxOf(b.width, b.height)
+    if (scale < 1f) {
+        b = Bitmap.createScaledBitmap(
+            b, (b.width * scale).toInt().coerceAtLeast(1), (b.height * scale).toInt().coerceAtLeast(1), true,
+        )
+    }
+    val pixels = IntArray(b.width * b.height)
+    b.getPixels(pixels, 0, b.width, 0, 0, b.width, b.height)
+    return RgbImage(b.width, b.height, pixels)
+}
 
 @Composable
 fun SeeScreen(state: AppState) {
@@ -192,13 +261,15 @@ fun SeeScreen(state: AppState) {
         onDispose { see.unbind() }
     }
 
+    val scope = rememberCoroutineScope()
+    var reading by remember { mutableStateOf(false) }
     var frozenScale by remember { mutableFloatStateOf(1f) }
     var frozenOffset by remember { mutableStateOf(Offset.Zero) }
     var page by remember { mutableIntStateOf(0) }
 
     val frozen = see.frozen
     val shownZoom = if (frozen != null) frozenScale else see.zoom
-    val status = "${if (frozen != null) "Frozen" else "Live"} · ${CameraMath.shortZoom(shownZoom)}"
+    val status = if (reading) "Reading…" else "${if (frozen != null) "Frozen" else "Live"} · ${CameraMath.shortZoom(shownZoom)}"
     val spokenStatus = "${if (frozen != null) "Frozen picture" else "Live picture"}, " +
         "${CameraMath.describeZoom(shownZoom)}, ${see.filter.label}, ${see.light.label}"
 
@@ -251,12 +322,36 @@ fun SeeScreen(state: AppState) {
                         page = p
                         state.onPageTurned(p, n)
                     },
-                    cols = 3,
+                    cols = 4,
                     rows = 2,
                     onSpeak = state::say,
                     header = { m -> SpokenText(status, m, state::say, spoken = spokenStatus, maxSp = 22f) },
                 ) { control, m, pos ->
                     when (control) {
+                        SeeControl.READ -> Tile(
+                            if (reading) "Reading…" else "Read", m,
+                            spoken = "Read the text aloud",
+                            icon = TileIcon.Vector(Icons.Filled.PlayArrow),
+                            emphasized = true,
+                            onLongPress = longPress(state, "Read the text aloud", pos),
+                        ) {
+                            if (!reading && granted) {
+                                reading = true
+                                state.say("Reading. Hold still.")
+                                val still = frozen
+                                scope.launch {
+                                    val picture = still ?: see.photo() ?: see.screenPicture()
+                                    val result = picture?.let { pic ->
+                                        runCatching {
+                                            withContext(Dispatchers.Default) { state.ocr().read(pic.toRgbImage()) }
+                                        }.getOrNull()
+                                    }
+                                    reading = false
+                                    if (result == null) state.say("Sorry, the text could not be read. Try again.")
+                                    else state.showRead(result)
+                                }
+                            }
+                        }
                         SeeControl.CLOSER -> Tile(
                             "Closer", m, spoken = "Zoom closer",
                             onLongPress = longPress(state, "Closer", pos),

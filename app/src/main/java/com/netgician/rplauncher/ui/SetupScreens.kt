@@ -35,7 +35,9 @@ import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.Pin
 import com.netgician.rplauncher.model.Themes
 import com.netgician.rplauncher.model.TileSpec
+import com.netgician.rplauncher.model.VisionMode
 import com.netgician.rplauncher.model.after
+import com.netgician.rplauncher.system.AlertsStore
 import com.netgician.rplauncher.system.ScreenLock
 import kotlin.math.roundToInt
 
@@ -67,6 +69,27 @@ fun SettingsScreen(state: AppState) {
     HelperColumn(state) {
         SettingRow("Done") { state.go(Screen.Home) }
 
+        SettingRow("Vision mode", c.visionMode.label) {
+            val next = VisionMode.entries.after(c.visionMode)
+            // Speech modes turn on touch landmarks too; the person can still turn them off.
+            state.update { it.copy(visionMode = next, touchLandmarks = it.touchLandmarks || next != VisionMode.SIGHT) }
+            state.heard = null
+            val talkBack = if (state.speaker.screenReaderOn) " TalkBack is on, so tiles work the TalkBack way." else ""
+            state.say("${next.label}. ${next.explain}$talkBack")
+        }
+        if (c.visionMode == VisionMode.SPEECH) {
+            SettingRow("Dark screen", if (c.darkScreen) "On" else "Off") {
+                val on = !c.darkScreen
+                state.update { it.copy(darkScreen = on) }
+                state.say(
+                    if (on) "Dark screen on. Tiles still work by touch and speech. Setup is never darkened."
+                    else "Dark screen off",
+                )
+            }
+        }
+        SettingRow("Alerts access", if (AlertsStore.hasAccess(context)) "On" else "Off") {
+            state.start(AlertsStore.accessIntent(context), "Could not open the setting")
+        }
         SettingRow("Colours", c.theme.name) {
             val next = Themes.next(c.theme)
             state.update { it.copy(themeId = next.id) }
@@ -338,6 +361,7 @@ fun AddTileScreen(state: AppState) {
         SettingRow("Contacts") { add(TileSpec.Contacts) }
         SettingRow("Torch") { add(TileSpec.Torch) }
         SettingRow("See (camera magnifier)") { add(TileSpec.See) }
+        SettingRow("Alerts (notifications read aloud)") { add(TileSpec.Alerts) }
         SettingRow("All apps") { add(TileSpec.AllApps) }
     }
 }

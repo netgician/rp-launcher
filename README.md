@@ -37,6 +37,18 @@ screen the person can actually see, on a dark, glare-free background.
 - **Forgot the helper PIN?** Reset it with the phone's own screen lock, or by holding a
   tile for three seconds on phones without one.
 
+## What's new in version 0.3
+
+- **Read text aloud.** In See, tap Read: the camera takes a sharp photo, reads the print
+  on the phone itself (no internet), and shows it one line at a time in large text.
+  English and Spanish, each read in its own voice. If text is cut off or missing, it
+  says how to aim better.
+- **Alerts tile:** new notifications shown large and read aloud, one at a time, with
+  Open and Dismiss. Needs notification access; nothing is stored or sent anywhere.
+- **Vision modes:** Sight first (tap opens), Sight and speech (tap to hear, double tap
+  to open), and Speech first (one list, tap to hear, optional dark screen). When TalkBack
+  is on, tiles work the TalkBack way.
+
 No accounts, no ads, no tracking, and no internet permission.
 
 ## Testable rules
@@ -71,3 +83,8 @@ RP Launcher is free software under the [GNU General Public License v3.0](LICENSE
 
 The typeface is **Atkinson Hyperlegible** by the Braille Institute of America, under the
 SIL Open Font License 1.1 ([licence text](licenses/Atkinson-Hyperlegible-OFL.txt)).
+
+Text reading uses the **PP-OCRv6 tiny** models from PaddleOCR, as packaged by OnnxOCR, both
+under the Apache License 2.0 ([licence text](licenses/OnnxOCR-and-PaddleOCR-models-Apache-2.0.txt)),
+running on **ONNX Runtime** (MIT licence). Before an F-Droid release, ONNX Runtime will be
+built from source, as F-Droid requires.
