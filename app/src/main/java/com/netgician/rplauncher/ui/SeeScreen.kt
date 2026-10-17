@@ -224,7 +224,7 @@ private const val SEE_INTRO = "See. Point the camera at what you want to look at
     "Read reads printed text aloud. Closer and Wider zoom. Freeze holds the picture still."
 
 /** Copies a picture into the text reader's format, scaled so its longest side is at most [maxSide]. */
-private fun Bitmap.toRgbImage(maxSide: Int = 2048): RgbImage {
+internal fun Bitmap.toRgbImage(maxSide: Int = 2048): RgbImage {
     var b = if (config == Bitmap.Config.HARDWARE) copy(Bitmap.Config.ARGB_8888, false) else this
     val scale = maxSide.toFloat() / maxOf(b.width, b.height)
     if (scale < 1f) {

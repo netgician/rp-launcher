@@ -68,6 +68,9 @@ fun HomeScreen(state: AppState) {
     // The Setup tile is always last, so a helper can always get in.
     val items = remember(c.tiles) { c.tiles.map<TileSpec, HomeItem> { HomeItem.Spec(it) } + HomeItem.Setup }
     val alerts by AlertsStore.items.collectAsState()
+    val textsVersion by com.netgician.rplauncher.texts.TextsBus.version.collectAsState()
+    LaunchedEffect(textsVersion) { state.texts.refreshUnread() }
+    val newTexts = state.texts.unread
     InWindow(c.window) {
         PagedTiles(
             items = items,
@@ -89,24 +92,26 @@ fun HomeScreen(state: AppState) {
                     icon = TileIcon.Vector(Icons.Filled.Settings),
                     onLongPress = longPress(state, "Setup, for helpers", pos),
                 ) { state.openSetup() }
-                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size)
+                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size, newTexts)
             }
         }
     }
 }
 
 @Composable
-private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos, alertCount: Int) {
+private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos, alertCount: Int, textCount: Int) {
     val torchOn = spec == TileSpec.Torch && state.torch.isOn
     val label = when {
         torchOn -> "Torch on"
         spec == TileSpec.Alerts && alertCount > 0 -> "Alerts ($alertCount)"
+        spec == TileSpec.Messages && textCount > 0 -> "Texts ($textCount)"
         else -> spec.label
     }
     val spoken = when {
         spec is TileSpec.Contact -> "Call ${spec.name}"
         torchOn -> "Torch is on"
         spec == TileSpec.Alerts -> if (alertCount == 0) "Alerts, none new" else "Alerts, $alertCount new"
+        spec == TileSpec.Messages && textCount > 0 -> if (textCount == 1) "Texts, 1 new" else "Texts, $textCount new"
         else -> spec.label
     }
     Tile(
@@ -114,7 +119,7 @@ private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos,
         modifier = m,
         spoken = spoken,
         icon = iconFor(spec),
-        emphasized = torchOn,
+        emphasized = torchOn || (spec == TileSpec.Messages && textCount > 0),
         onLongPress = longPress(state, spoken, pos),
     ) { state.open(spec) }
 }
@@ -242,8 +247,12 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
                     spoken = "Send ${contact.name} a text",
                     icon = TileIcon.Vector(Icons.Filled.Email),
                 ) {
-                    state.start(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Uri.encode(contact.number))))
-                    state.go(Screen.Home)
+                    if (state.texts.isDefault) {
+                        state.texts.compose(listOf(contact.number), null, emptyList())
+                    } else {
+                        state.start(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Uri.encode(contact.number))))
+                        state.go(Screen.Home)
+                    }
                 }
                 else -> Tile(
                     label = "Cancel",

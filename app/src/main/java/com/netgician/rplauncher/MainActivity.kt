@@ -32,8 +32,16 @@ import com.netgician.rplauncher.system.LightSensor
 import com.netgician.rplauncher.system.Speaker
 import com.netgician.rplauncher.system.Torch
 import com.netgician.rplauncher.system.Vibes
+import com.netgician.rplauncher.texts.ComposeActivity
+import com.netgician.rplauncher.texts.MmsDownloads
+import com.netgician.rplauncher.texts.TextNotifications
+import com.netgician.rplauncher.texts.TextRole
+import com.netgician.rplauncher.texts.TextsBus
 import com.netgician.rplauncher.ui.*
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var speaker: Speaker
@@ -58,8 +66,9 @@ class MainActivity : ComponentActivity() {
         }
         guard.markStarting()
 
-        val s = AppState(this, ConfigStore(this), speaker, torch, Vibes(this))
+        val s = AppState(this, ConfigStore(this), speaker, torch, Vibes(this), lifecycleScope)
         state = s
+        handleTextIntent(intent)
         lightSensor = LightSensor(this) { lux -> s.onLux(lux) }
         setContent {
             val brightness = s.windowBrightness
@@ -68,6 +77,10 @@ class MainActivity : ComponentActivity() {
                 if (s.screen == Screen.Home) s.announceMode()
                 delay(3_000)
                 guard.markStarted()
+            }
+            // Texts: say what arrived, what was sent, and what didn't go through.
+            LaunchedEffect(Unit) {
+                TextsBus.events.collect { s.texts.onEvent(it) }
             }
             // Automatic night colours by clock: check now, then every minute.
             LaunchedEffect(s.config.autoNight, s.config.nightFromHour, s.config.nightUntilHour) {
@@ -109,20 +122,54 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.hasCategory(Intent.CATEGORY_HOME)) state?.onHomePressed()
+        handleTextIntent(intent)
+    }
+
+    /** Opened from a text notification, or from another app's "send a text". */
+    private fun handleTextIntent(intent: Intent?) {
+        val s = state ?: return
+        when (intent?.action) {
+            TextNotifications.ACTION_OPEN_THREAD -> {
+                val thread = intent.getLongExtra(TextNotifications.EXTRA_THREAD, -1L)
+                if (thread >= 0 && s.config.windowChecked) s.texts.openThread(thread)
+            }
+            ComposeActivity.ACTION_COMPOSE -> {
+                if (!s.config.windowChecked) return
+                val to = intent.getStringArrayListExtra(ComposeActivity.EXTRA_TO).orEmpty()
+                val files = intent.getStringArrayListExtra(ComposeActivity.EXTRA_FILES).orEmpty()
+                val types = intent.getStringArrayListExtra(ComposeActivity.EXTRA_TYPES).orEmpty()
+                s.texts.compose(
+                    to,
+                    intent.getStringExtra(ComposeActivity.EXTRA_BODY),
+                    files.mapIndexed { i, f -> DraftFile(f, types.getOrNull(i) ?: "application/octet-stream") },
+                )
+            }
+        }
+        // Handled once; a later restart shouldn't open it again.
+        if (intent != null && (intent.action == TextNotifications.ACTION_OPEN_THREAD || intent.action == ComposeActivity.ACTION_COMPOSE)) {
+            intent.action = null
+        }
     }
 
     override fun onStart() {
         super.onStart()
+        TextsBus.foreground = true
         torch.start()
         lightSensor?.start()
         state?.refreshNightByClock()
+        state?.texts?.refreshUnread()
+        if (TextRole.isDefault(this)) {
+            lifecycleScope.launch(Dispatchers.IO) { runCatching { MmsDownloads.resume(this@MainActivity) } }
+        }
     }
 
     override fun onStop() {
         super.onStop()
+        TextsBus.foreground = false
         torch.stop()
         lightSensor?.stop()
         speaker.stop()
+        state?.texts?.stopPlaying()
     }
 
     override fun onDestroy() {
@@ -178,6 +225,19 @@ fun Root(state: AppState) {
                     Screen.Settings -> SettingsScreen(state)
                     Screen.EditTiles -> EditTilesScreen(state)
                     Screen.AddTile -> AddTileScreen(state)
+                    Screen.Texts -> TextsScreen(state)
+                    is Screen.Conversation -> ConversationScreen(state, screen.threadId)
+                    Screen.Compose -> ComposeScreen(state)
+                    Screen.QuickReply -> QuickReplyScreen(state)
+                    Screen.NewText -> NewTextScreen(state)
+                    is Screen.NumberPad -> NumberPadScreen(state, screen.purpose)
+                    Screen.AddPhoto -> AddPhotoScreen(state)
+                    Screen.Record -> RecordScreen(state)
+                    is Screen.Picture -> PictureScreen(state, screen)
+                    is Screen.Card -> CardScreen(state, screen)
+                    is Screen.Invite -> InviteScreen(state, screen)
+                    Screen.TextsSwitch -> TextsSwitchScreen(state)
+                    Screen.TextsCheck -> TextsCheckScreen(state)
                     Screen.PickApp -> AppListScreen(
                         state = state,
                         title = "Pick an app",

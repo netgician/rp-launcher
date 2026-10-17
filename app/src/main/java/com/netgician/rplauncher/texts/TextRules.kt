@@ -195,34 +195,54 @@ object TextSpeech {
      * Everything said for one message, in order: who, when, the words, what's attached,
      * then how sending or downloading went.
      */
-    fun message(m: TextMessage, fromName: String?, group: Boolean, whenText: String): String = buildList {
-        add(
-            when {
-                m.outgoing -> "You sent, $whenText."
-                group -> "From ${fromName ?: "someone"}, in the group, $whenText."
-                else -> "From ${fromName ?: "someone"}, $whenText."
-            },
-        )
-        m.subject?.takeIf { it.isNotBlank() }?.let { add("Subject: $it.") }
-        if (m.box == Box.WAITING) {
+    /** A message to be spoken in three parts, so the words can be read in their own language's voice. */
+    data class Spoken(val head: String, val body: String, val tail: String) {
+        val all: String get() = listOf(head, body, tail).filter { it.isNotBlank() }.let { bits ->
+            bits.mapIndexed { i, b -> if (i < bits.lastIndex && b.last() !in ".!?…:;") "$b." else b }
+        }.joinToString(" ")
+    }
+
+    /**
+     * Everything said for one message, in order: who and when; the words; what's attached and
+     * how sending or downloading went.
+     */
+    fun spoken(m: TextMessage, fromName: String?, group: Boolean, whenText: String): Spoken {
+        val head = buildList {
             add(
-                when (m.download) {
-                    DownloadState.FAILED -> "A picture text that didn't download. ${m.problem ?: ""} Double tap Try again.".replace("  ", " ")
-                    DownloadState.RETRYING -> "A picture text. It didn't download yet; trying again soon."
-                    else -> "A picture text, downloading."
+                when {
+                    m.outgoing -> "You sent, $whenText."
+                    group -> "From ${fromName ?: "someone"}, in the group, $whenText."
+                    else -> "From ${fromName ?: "someone"}, $whenText."
                 },
             )
-        } else {
-            if (m.body.isNotBlank()) add(m.body.trim())
-            attachments(m.parts).takeIf { it.isNotEmpty() }?.let { add(it) }
-            if (m.body.isBlank() && m.parts.isEmpty()) add("No words.")
-        }
-        when {
-            m.box == Box.FAILED -> add("Not sent. ${m.problem ?: ""} Double tap Try again.".replace("  ", " "))
-            m.box == Box.SENDING -> add("Sending.")
-            m.outgoing && m.delivered -> add("Delivered.")
-        }
-    }.joinToString(" ")
+            m.subject?.takeIf { it.isNotBlank() }?.let { add("Subject: $it.") }
+        }.joinToString(" ")
+        val body = if (m.box == Box.WAITING) "" else m.body.trim()
+        val tail = buildList {
+            if (m.box == Box.WAITING) {
+                add(
+                    when (m.download) {
+                        DownloadState.FAILED -> "A picture text that didn't download. ${m.problem ?: ""} Double tap Try again.".replace("  ", " ")
+                        DownloadState.RETRYING -> "A picture text. It didn't download yet; trying again soon."
+                        DownloadState.NOT_STARTED -> "A picture text waiting at the carrier. Double tap Download."
+                        DownloadState.DOWNLOADING -> "A picture text, downloading."
+                    },
+                )
+            } else {
+                attachments(m.parts).takeIf { it.isNotEmpty() }?.let { add(it) }
+                if (m.body.isBlank() && m.parts.isEmpty()) add("No words.")
+            }
+            when {
+                m.box == Box.FAILED -> add("Not sent. ${m.problem ?: ""} Double tap Try again.".replace("  ", " "))
+                m.box == Box.SENDING -> add("Sending.")
+                m.outgoing && m.delivered -> add("Delivered.")
+            }
+        }.joinToString(" ")
+        return Spoken(head, body, tail)
+    }
+
+    fun message(m: TextMessage, fromName: String?, group: Boolean, whenText: String): String =
+        spoken(m, fromName, group, whenText).all
 
     /** How a conversation is read in the list: "Mary. 2 new. Running late." */
     fun conversation(c: Conversation): String = buildList {

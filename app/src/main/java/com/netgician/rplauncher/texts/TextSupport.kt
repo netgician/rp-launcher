@@ -139,9 +139,8 @@ object SendRecords {
         prefs(c).getString("mine", "").orEmpty().split('\n').filter { it.isNotBlank() }
 
     fun learnNumber(c: Context, number: String) {
-        val now = learnedNumbers(c)
-        if (now.any { Addresses.same(it, number) }) return
-        prefs(c).edit().putString("mine", (now + number).takeLast(4).joinToString("\n")).commit()
+        val now = learnedNumbers(c).filterNot { Addresses.same(it, number) }
+        prefs(c).edit().putString("mine", (listOf(number) + now).take(4).joinToString("\n")).commit()
     }
 }
 
@@ -172,6 +171,9 @@ class Names(private val context: Context) {
         get() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
 
     fun of(address: String): String = cache.getOrPut(address) { lookUp(address) }
+
+    /** Forget looked-up names, after contacts access is turned on. */
+    fun forget() = cache.clear()
 
     private fun lookUp(address: String): String {
         if (address.isBlank()) return "Unknown"

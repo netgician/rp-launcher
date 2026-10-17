@@ -24,13 +24,15 @@ import com.netgician.rplauncher.system.AlertsStore
  * big controls in the bottom half. Tapping the text reads it again.
  */
 @Composable
-private fun <T> ReaderLayout(
+internal fun <T> ReaderLayout(
     state: AppState,
     body: String,
     onBodyTap: () -> Unit,
     header: String,
     headerSpoken: String,
     controls: List<T>,
+    bodyWeight: Float = 0.5f,
+    bodyContent: (@Composable BoxScope.() -> Unit)? = null,
     tile: @Composable (item: T, modifier: Modifier, pos: TilePos) -> Unit,
 ) {
     val lv = LocalLv.current
@@ -40,7 +42,7 @@ private fun <T> ReaderLayout(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.5f)
+                    .weight(bodyWeight)
                     .padding(8.dp)
                     .border(BorderStroke(2.dp, lv.accent), RoundedCornerShape(12.dp))
                     .semantics(mergeDescendants = true) { contentDescription = body }
@@ -48,17 +50,21 @@ private fun <T> ReaderLayout(
                     .padding(12.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                FitText(
-                    text = body,
-                    color = lv.fg,
-                    maxSp = 30f * lv.textScale,
-                    minSp = 14f,
-                    maxLines = 8,
-                    align = TextAlign.Start,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (bodyContent != null) {
+                    bodyContent()
+                } else {
+                    FitText(
+                        text = body,
+                        color = lv.fg,
+                        maxSp = 30f * lv.textScale,
+                        minSp = 14f,
+                        maxLines = 8,
+                        align = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
-            Box(Modifier.fillMaxWidth().weight(0.5f)) {
+            Box(Modifier.fillMaxWidth().weight(1f - bodyWeight)) {
                 PagedTiles(
                     items = controls,
                     page = page,
@@ -102,7 +108,7 @@ fun TextReaderScreen(state: AppState) {
             header = "No text",
             headerSpoken = "No text found",
             controls = listOf(ReadControl.CAMERA, ReadControl.HOME),
-        ) { c, m, pos -> ReadTile(state, c, m, pos) { if (c == ReadControl.CAMERA) state.go(Screen.See) else state.go(Screen.Home) } }
+        ) { c, m, pos -> ReadTile(state, c, m, pos) { if (c == ReadControl.CAMERA) state.go(read?.backTo ?: Screen.See) else state.go(Screen.Home) } }
         return
     }
 
@@ -127,7 +133,7 @@ fun TextReaderScreen(state: AppState) {
                     speakLine(i + 1)
                 } else state.say("That was the last line")
                 ReadControl.ALL -> state.speaker.speak(lines.drop(i).joinToString(". "), language)
-                ReadControl.CAMERA -> state.go(Screen.See)
+                ReadControl.CAMERA -> state.go(read?.backTo ?: Screen.See)
                 ReadControl.HOME -> state.go(Screen.Home)
             }
         }
@@ -141,7 +147,9 @@ private fun ReadTile(state: AppState, c: ReadControl, m: Modifier, pos: TilePos,
         ReadControl.ALL -> TileIcon.Vector(Icons.Filled.PlayArrow)
         else -> null
     }
-    Tile(c.label, m, icon = icon, onLongPress = longPress(state, c.label, pos), onClick = onClick)
+    // "Camera" goes back to See; from a picture text it's "Back".
+    val label = if (c == ReadControl.CAMERA && (state.readText?.backTo ?: Screen.See) != Screen.See) "Back" else c.label
+    Tile(label, m, icon = icon, onLongPress = longPress(state, label, pos), onClick = onClick)
 }
 
 private enum class AlertControl(val label: String) {

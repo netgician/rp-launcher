@@ -26,6 +26,7 @@ import com.netgician.rplauncher.system.ConfigStore
 import com.netgician.rplauncher.system.Speaker
 import com.netgician.rplauncher.system.Torch
 import com.netgician.rplauncher.system.Vibes
+import kotlinx.coroutines.CoroutineScope
 import java.util.Calendar
 
 sealed interface Screen {
@@ -42,13 +43,32 @@ sealed interface Screen {
     data object PickApp : Screen
     data object ReadText : Screen
     data object Alerts : Screen
+
+    // Texts
+    data object Texts : Screen
+    data class Conversation(val threadId: Long) : Screen
+    data object Compose : Screen
+    data object QuickReply : Screen
+    data object NewText : Screen
+    data class NumberPad(val purpose: NumberPurpose) : Screen
+    data object AddPhoto : Screen
+    data object Record : Screen
+    data class Picture(val threadId: Long, val partIds: List<Long>, val index: Int) : Screen
+    data class Card(val threadId: Long, val partId: Long) : Screen
+    data class Invite(val threadId: Long, val partId: Long) : Screen
+    data object TextsSwitch : Screen
+    data object TextsCheck : Screen
 }
+
+/** Why the number pad is open: a person to text, or this phone's own number for Check texts. */
+enum class NumberPurpose { TEXT, OWN_NUMBER }
 
 /** Screens for helpers. These are never darkened and never use the person's layout mode. */
 val Screen.isHelperScreen: Boolean
     get() = this is Screen.Settings || this is Screen.Pin || this is Screen.PinReset ||
         this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
-        this is Screen.WindowCheck
+        this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck ||
+        (this is Screen.NumberPad && purpose == NumberPurpose.OWN_NUMBER)
 
 /**
  * Touch to hear (tap to hear, double tap to open) is for the person's own screens.
@@ -57,8 +77,8 @@ val Screen.isHelperScreen: Boolean
 fun touchToHearOn(config: LauncherConfig, screenReaderOn: Boolean, screen: Screen): Boolean =
     config.touchToHear && !screenReaderOn && !screen.isHelperScreen
 
-/** What the camera read: one line per page, the voice to use, and any aiming advice. */
-data class ReadText(val lines: List<String>, val language: String, val hints: List<String>)
+/** What the camera read: one line per page, the voice to use, any aiming advice, and where Back goes. */
+data class ReadText(val lines: List<String>, val language: String, val hints: List<String>, val backTo: Screen = Screen.See)
 
 enum class PinPurpose { Unlock, Set }
 
@@ -69,6 +89,7 @@ class AppState(
     val speaker: Speaker,
     val torch: Torch,
     val vibes: Vibes,
+    val scope: CoroutineScope,
 ) {
     var config by mutableStateOf(store.load())
         private set
@@ -99,12 +120,15 @@ class AppState(
         engine = null
     }
 
+    /** Texts: what's being written, played and checked. */
+    val texts = TextsState(this, activity, scope)
+
     /** Shows what the camera read and speaks it: advice first, then the text in its own voice. */
-    fun showRead(result: OcrResult) {
+    fun showRead(result: OcrResult, backTo: Screen = Screen.See) {
         val lines = result.lines.map { it.text }
         val language = Language.guess(result.text)
         val hints = AimHelp.hints(result.lines.flatMap { it.boxes }, result.imageWidth, result.imageHeight)
-        readText = ReadText(lines, language, hints)
+        readText = ReadText(lines, language, hints, backTo)
         go(Screen.ReadText)
         hints.forEach { speaker.speak(it, flush = false) }
         if (lines.isNotEmpty()) speaker.speak(lines.joinToString(". "), language, flush = hints.isEmpty())
@@ -135,6 +159,7 @@ class AppState(
     fun go(to: Screen) {
         val from = screen
         listPage = 0
+        if (from is Screen.Conversation && to !is Screen.Conversation) texts.stopPlaying()
         screen = to
         if (to == Screen.Home && from.isHelperScreen) announceMode()
     }
@@ -193,10 +218,26 @@ class AppState(
             is Screen.Pin -> go(if (s.purpose == PinPurpose.Set) Screen.Settings else Screen.Home)
             Screen.PinReset -> go(Screen.Pin(PinPurpose.Unlock))
             Screen.Apps, Screen.See, Screen.Alerts, is Screen.ConfirmCall, Screen.Settings -> go(Screen.Home)
-            Screen.ReadText -> go(Screen.See)
+            Screen.ReadText -> go(readText?.backTo ?: Screen.See)
             Screen.EditTiles -> go(Screen.Settings)
             Screen.AddTile -> go(Screen.EditTiles)
             Screen.PickApp -> go(Screen.AddTile)
+            Screen.Texts -> go(Screen.Home)
+            is Screen.Conversation -> go(Screen.Texts)
+            Screen.Compose -> {
+                // Back keeps what was written; only Cancel throws it away.
+                val thread = texts.draft?.threadId
+                if (texts.draft?.let { it.text.isNotBlank() || it.files.isNotEmpty() } == true) say("Your text is kept for now.")
+                go(if (thread != null) Screen.Conversation(thread) else Screen.Texts)
+            }
+            Screen.QuickReply, Screen.AddPhoto, Screen.Record -> go(Screen.Compose)
+            Screen.NewText -> if (texts.draft?.to.isNullOrEmpty()) { texts.draft = null; go(Screen.Texts) } else go(Screen.Compose)
+            is Screen.NumberPad -> go(if (s.purpose == NumberPurpose.OWN_NUMBER) Screen.TextsCheck else Screen.NewText)
+            is Screen.Picture -> go(Screen.Conversation(s.threadId))
+            is Screen.Card -> go(Screen.Conversation(s.threadId))
+            is Screen.Invite -> go(Screen.Conversation(s.threadId))
+            Screen.TextsSwitch -> go(Screen.Settings)
+            Screen.TextsCheck -> go(Screen.TextsSwitch)
         }
     }
 
@@ -213,9 +254,7 @@ class AppState(
     fun open(spec: TileSpec) {
         when (spec) {
             TileSpec.Phone -> start(Intent(Intent.ACTION_DIAL))
-            TileSpec.Messages -> start(
-                Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING),
-            )
+            TileSpec.Messages -> texts.openTile()
             TileSpec.Contacts -> start(
                 Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CONTACTS),
             )

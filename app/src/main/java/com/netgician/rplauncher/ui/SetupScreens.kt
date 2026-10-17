@@ -44,7 +44,7 @@ import kotlin.math.roundToInt
 
 /** A scrolling column of big rows, inside the viewing window. Used by the helper screens. */
 @Composable
-private fun HelperColumn(state: AppState, content: @Composable ColumnScope.() -> Unit) {
+internal fun HelperColumn(state: AppState, content: @Composable ColumnScope.() -> Unit) {
     InWindow(state.config.window) {
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp),
@@ -175,6 +175,9 @@ fun SettingsScreen(state: AppState) {
                 state.update { it.copy(pinHash = null) }
                 state.say("PIN removed")
             }
+        }
+        SettingRow("Texting app", if (com.netgician.rplauncher.texts.TextRole.isDefault(context)) "RP Launcher" else "Another app") {
+            state.go(Screen.TextsSwitch)
         }
         SettingRow("Make RP Launcher the home screen") {
             requestHomeRole(context, state) { homeRole.launch(it) }
