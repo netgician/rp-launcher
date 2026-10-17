@@ -224,11 +224,11 @@ fun AlertsScreen(state: AppState) {
     when {
         !access -> ReaderLayout(
             state, ACCESS_HELP, { state.say(ACCESS_HELP) }, "Alerts", "Alerts need access",
-            listOf(AlertControl.ALLOW, AlertControl.APP_INFO, AlertControl.HOME), tile,
+            listOf(AlertControl.ALLOW, AlertControl.APP_INFO, AlertControl.HOME), tile = tile,
         )
         current == null -> ReaderLayout(
             state, "No new alerts", { state.say("No new alerts") }, "Alerts", "No new alerts",
-            listOf(AlertControl.HOME), tile,
+            listOf(AlertControl.HOME), tile = tile,
         )
         else -> ReaderLayout(
             state = state,
