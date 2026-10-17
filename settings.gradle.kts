@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "rp-launcher"
 include(":app")
+include(":ocr")

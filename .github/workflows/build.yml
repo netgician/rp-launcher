@@ -23,7 +23,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests (the testable rules)
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon testDebugUnitTest :ocr:test
 
       - name: Count tests
         if: always()
@@ -31,7 +31,7 @@ jobs:
           python3 - <<'EOF'
           import glob, xml.etree.ElementTree as ET
           t = f = e = s = 0
-          for p in glob.glob("app/build/test-results/testDebugUnitTest/*.xml"):
+          for p in glob.glob("app/build/test-results/testDebugUnitTest/*.xml") + glob.glob("ocr/build/test-results/test/*.xml"):
               r = ET.parse(p).getroot()
               t += int(r.get("tests", 0)); f += int(r.get("failures", 0))
               e += int(r.get("errors", 0)); s += int(r.get("skipped", 0))
@@ -68,5 +68,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
-          path: app/build/reports/tests/
+          path: |
+            app/build/reports/tests/
+            ocr/build/reports/tests/
           if-no-files-found: ignore
