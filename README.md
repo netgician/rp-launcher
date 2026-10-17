@@ -25,6 +25,18 @@ screen the person can actually see, on a dark, glare-free background.
 - **Safe screen:** if the launcher fails to start twice in a row, a plain screen with
   Phone, Contacts and settings appears instead of a black phone.
 
+## What's new in version 0.2
+
+- **See tile:** the camera as a magnifier, inside the viewing window. Closer and Wider
+  zoom (below normal size on phones with a wide lens, to fit more into a narrow field),
+  Freeze holds a still picture you can pinch to zoom, Light brightens dim scenes or turns
+  on the torch, and Colours turns dark print on white paper into light print on black.
+- **Automatic night colours,** by clock or by room light, in amber or red.
+- **Launcher brightness limit,** and short fades between screens.
+- **Touch landmarks:** a long press buzzes once per row; page turns buzz twice.
+- **Forgot the helper PIN?** Reset it with the phone's own screen lock, or by holding a
+  tile for three seconds on phones without one.
+
 No accounts, no ads, no tracking, and no internet permission.
 
 ## Testable rules
