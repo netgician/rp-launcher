@@ -102,6 +102,8 @@ data class LauncherConfig(
     val sosContacts: List<TileSpec.Contact> = emptyList(),
     /** Seconds to cancel an SOS before it sends. */
     val sosSeconds: Int = 5,
+    /** The person chose to keep texting in another app: the Texts tile opens it straight away. */
+    val textsElsewhere: Boolean = false,
 ) {
     /** Tap to hear, double tap to open. */
     val touchToHear: Boolean get() = visionMode != VisionMode.SIGHT
@@ -172,6 +174,7 @@ object ConfigJson {
             c.sosContacts.forEach { put(JSONObject().apply { put("name", it.name); put("number", it.number) }) }
         })
         put("sosSeconds", c.sosSeconds)
+        put("textsElsewhere", c.textsElsewhere)
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -245,6 +248,7 @@ object ConfigJson {
                 (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { decodeTile(it.put("type", "contact")) as? TileSpec.Contact } }
             } ?: d.sosContacts,
             sosSeconds = o.optInt("sosSeconds", d.sosSeconds).let { s -> if (s in Sos.COUNTDOWN_CHOICES) s else d.sosSeconds },
+            textsElsewhere = o.optBoolean("textsElsewhere", d.textsElsewhere),
         )
     }
 

@@ -80,11 +80,24 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
 
     /** The Texts tile: RP Launcher's own texts when it's the texting app, otherwise the phone's. */
     fun openTile() {
-        if (isDefault) {
-            app.go(Screen.Texts)
-        } else {
-            app.start(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING))
+        when {
+            isDefault -> app.go(Screen.Texts)
+            app.config.textsElsewhere -> openOtherApp()
+            else -> app.go(Screen.TextsNotSet)
         }
+    }
+
+    /** The phone's own texting app (or the one it last used). */
+    fun openOtherApp() {
+        val pkg = android.provider.Telephony.Sms.getDefaultSmsPackage(activity)
+        val launch = pkg?.let { activity.packageManager.getLaunchIntentForPackage(it) }
+            ?: Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)
+        app.start(launch, "No texting app found")
+    }
+
+    /** Going on to make RP Launcher the texting app: a helper job, behind the PIN if there is one. */
+    fun setUp() {
+        app.go(if (app.config.pinHash != null) Screen.Pin(PinPurpose.Unlock, next = Screen.TextsSwitch) else Screen.TextsSwitch)
     }
 
     fun openThread(threadId: Long) {

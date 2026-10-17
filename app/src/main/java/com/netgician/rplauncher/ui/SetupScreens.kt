@@ -179,7 +179,7 @@ fun SettingsScreen(state: AppState) {
         SettingRow("SOS", if (c.sosContacts.isEmpty()) "not set up" else "${c.sosContacts.size} contacts") {
             state.go(Screen.SosSetup)
         }
-        SettingRow("Texting app", if (com.netgician.rplauncher.texts.TextRole.isDefault(context)) "RP Launcher" else "Another app") {
+        SettingRow("Texting app", com.netgician.rplauncher.texts.TextRole.currentAppName(context) ?: "none set") {
             state.go(Screen.TextsSwitch)
         }
         SettingRow("Make RP Launcher the home screen") {
@@ -269,7 +269,7 @@ fun PinScreen(state: AppState, purpose: PinPurpose) {
                 "ok" -> Tile("OK", m, emphasized = true) {
                     when (purpose) {
                         PinPurpose.Unlock -> if (Pin.matches(entered, state.config.pinHash)) {
-                            state.go(Screen.Settings)
+                            state.go((state.screen as? Screen.Pin)?.next ?: Screen.Settings)
                         } else {
                             entered = ""
                             message = "Wrong PIN. Try again"

@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -56,20 +57,46 @@ object TextsBus {
 /** Is RP Launcher the phone's texting app? Only then may it send, receive and store texts. */
 object TextRole {
     fun isDefault(context: Context): Boolean =
-        Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
+        runCatching { context.getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_SMS) == true }.getOrDefault(false) ||
+            Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
 
-    /** The texting app before RP Launcher, if it's one we know has chat features (RCS). */
-    fun rcsApp(context: Context): String? {
-        val current = Telephony.Sms.getDefaultSmsPackage(context) ?: return null
-        return when (current) {
+    /** The name of the phone's texting app right now, e.g. "Messages", or null if none is set. */
+    fun currentAppName(context: Context): String? {
+        val pkg = Telephony.Sms.getDefaultSmsPackage(context) ?: return null
+        if (pkg == context.packageName) return "RP Launcher"
+        return runCatching {
+            val pm = context.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+        }.getOrNull() ?: when (pkg) {
             "com.google.android.apps.messaging" -> "Google Messages"
-            "com.samsung.android.messaging" -> "Samsung Messages"
-            else -> null
+            else -> pkg
         }
     }
 
+    /** Opens the phone's own setting for choosing the texting app. */
+    fun defaultAppsSettings(): Intent = Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+
+    private val chatApps = linkedMapOf(
+        "com.google.android.apps.messaging" to "Google Messages",
+        "com.samsung.android.messaging" to "Samsung Messages",
+    )
+
+    private fun installed(context: Context, pkg: String) =
+        runCatching { context.packageManager.getApplicationInfo(pkg, 0); true }.getOrDefault(false)
+
+    /** The package of the texting app with chat features (RCS): the current one, else one that's installed. */
+    private fun rcsPackage(context: Context): String? {
+        val current = Telephony.Sms.getDefaultSmsPackage(context)
+        if (current != null && current in chatApps) return current
+        return chatApps.keys.firstOrNull { installed(context, it) }
+    }
+
+    /** The name of a texting app on this phone that has chat features (RCS), if any. */
+    fun rcsApp(context: Context): String? = rcsPackage(context)?.let { chatApps[it] }
+
     fun previousAppIntent(context: Context): Intent? =
-        Telephony.Sms.getDefaultSmsPackage(context)?.let { context.packageManager.getLaunchIntentForPackage(it) }
+        (rcsPackage(context) ?: Telephony.Sms.getDefaultSmsPackage(context))
+            ?.let { context.packageManager.getLaunchIntentForPackage(it) }
 }
 
 /**

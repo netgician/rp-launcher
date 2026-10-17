@@ -238,6 +238,7 @@ fun Root(state: AppState) {
                     is Screen.Invite -> InviteScreen(state, screen)
                     Screen.TextsSwitch -> TextsSwitchScreen(state)
                     Screen.TextsCheck -> TextsCheckScreen(state)
+                    Screen.TextsNotSet -> TextsNotSetScreen(state)
                     is Screen.Sos -> SosScreen(state, screen.practice)
                     Screen.WhereAmI -> WhereAmIScreen(state)
                     Screen.SosSetup -> SosSetupScreen(state)

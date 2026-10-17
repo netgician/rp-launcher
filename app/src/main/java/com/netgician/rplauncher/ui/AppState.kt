@@ -35,7 +35,8 @@ sealed interface Screen {
     data object Apps : Screen
     data object See : Screen
     data class ConfirmCall(val contact: TileSpec.Contact) : Screen
-    data class Pin(val purpose: PinPurpose) : Screen
+    /** [next] is where a correct PIN leads: Setup, or one Setup screen. */
+    data class Pin(val purpose: PinPurpose, val next: Screen = Settings) : Screen
     data object PinReset : Screen
     data object Settings : Screen
     data object EditTiles : Screen
@@ -58,6 +59,8 @@ sealed interface Screen {
     data class Invite(val threadId: Long, val partId: Long) : Screen
     data object TextsSwitch : Screen
     data object TextsCheck : Screen
+    /** The Texts tile, before RP Launcher is the texting app: choose what Texts does. */
+    data object TextsNotSet : Screen
 
     // Safety
     data class Sos(val practice: Boolean) : Screen
@@ -243,6 +246,7 @@ class AppState(
             is Screen.Card -> go(Screen.Conversation(s.threadId))
             is Screen.Invite -> go(Screen.Conversation(s.threadId))
             Screen.TextsSwitch -> go(Screen.Settings)
+            Screen.TextsNotSet -> go(Screen.Home)
             Screen.TextsCheck -> go(Screen.TextsSwitch)
             is Screen.Sos -> go(if (s.practice) Screen.SosSetup else Screen.Home)
             Screen.WhereAmI -> go(Screen.Home)

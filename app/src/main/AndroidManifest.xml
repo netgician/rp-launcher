@@ -37,6 +37,11 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Which app is the phone's texting app, to name it. -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
         <!-- Voice replies: the phone's speech recogniser. -->
         <intent>
             <action android:name="android.speech.RecognitionService" />

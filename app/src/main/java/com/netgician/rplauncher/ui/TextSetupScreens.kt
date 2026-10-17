@@ -71,6 +71,7 @@ fun TextsSwitchScreen(state: AppState) {
     val role = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         isDefault = TextRole.isDefault(context)
         if (isDefault) {
+            state.update { it.copy(textsElsewhere = false) }
             state.say(
                 "RP Launcher is now the texting app. All your texts are still here. " +
                     "Next, allow the questions that follow, then tap Check texts to test it with your carrier.",
@@ -91,11 +92,12 @@ fun TextsSwitchScreen(state: AppState) {
         isDefault = TextRole.isDefault(context)
         onPauseOrDispose { }
     }
+    val current = remember(isDefault) { TextRole.currentAppName(context) }
     val explain = if (isDefault) {
         "RP Launcher is the texting app. Texts, picture texts and group texts all come here, and are kept in the " +
             "phone's shared message store. To go back to another texting app, tap Switch back. Nothing is lost either way."
     } else {
-        rcsAdvice(rcs)
+        (if (current == null) "No texting app is set on this phone right now. " else "Right now, texts go to $current. ") + rcsAdvice(rcs)
     }
     LaunchedEffect(isDefault) { state.say(explain) }
 
@@ -109,6 +111,12 @@ fun TextsSwitchScreen(state: AppState) {
                     if (i != null) state.start(i) else state.say("$rcs couldn't be opened")
                 }
             }
+            if (state.config.textsElsewhere) {
+                SettingRow("Texts tile opens", current ?: "the texting app") {
+                    state.update { it.copy(textsElsewhere = false) }
+                    state.say("The Texts tile will ask again")
+                }
+            }
             SettingRow(if (rcs != null) "Chats are off. Switch now" else "Switch now") {
                 val roles = context.getSystemService(RoleManager::class.java)
                 if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_SMS)) {
@@ -119,6 +127,7 @@ fun TextsSwitchScreen(state: AppState) {
                 }
             }
         } else {
+            SettingRow("Open Texts") { state.go(Screen.Texts) }
             SettingRow("Check texts") { state.go(Screen.TextsCheck) }
             SettingRow("Switch back to another texting app") {
                 state.start(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS), "Could not open the setting")

@@ -1021,3 +1021,42 @@ fun InviteScreen(state: AppState, screen: Screen.Invite) {
         controls = controls,
     ) { c, m, pos -> ControlTile(state, c, m, pos) }
 }
+
+/**
+ * The Texts tile before RP Launcher is the texting app: say which app texts go to now,
+ * and let the person choose, instead of jumping into another app.
+ */
+@Composable
+fun TextsNotSetScreen(state: AppState) {
+    val context = LocalContext.current
+    val t = state.texts
+    val current = remember { com.netgician.rplauncher.texts.TextRole.currentAppName(context) }
+    val words = if (current == null) {
+        "RP Launcher isn't the texting app yet, and no texting app is set on this phone right now. " +
+            "Choose Use RP Launcher for texts to set it up."
+    } else {
+        "RP Launcher isn't the texting app yet. Right now, texts go to $current. " +
+            "Choose Use RP Launcher for texts to have them here instead, or keep using $current."
+    }
+    LaunchedEffect(Unit) { state.say(words) }
+    val controls = buildList {
+        add(Control("Use RP Launcher for texts", spoken = "Use RP Launcher for texts. A helper sets this up once.", emphasized = true) { t.setUp() })
+        if (current != null) {
+            add(Control("Open $current") { t.openOtherApp() })
+            add(Control("Keep using $current", spoken = "Always open $current from the Texts tile") {
+                state.update { it.copy(textsElsewhere = true) }
+                state.say("The Texts tile will open $current. You can change this in Setup, Texting app.")
+                t.openOtherApp()
+            })
+        } else {
+            add(Control("Phone settings", spoken = "Open the phone's default apps setting") {
+                state.start(com.netgician.rplauncher.texts.TextRole.defaultAppsSettings(), "Could not open the setting")
+            })
+        }
+        add(Control("Home", icon = HOME_ICON) { state.go(Screen.Home) })
+    }
+    ReaderLayout(
+        state = state, body = words, onBodyTap = { state.say(words) },
+        header = "Texts", headerSpoken = "Texts", controls = controls,
+    ) { c, m, pos -> ControlTile(state, c, m, pos) }
+}

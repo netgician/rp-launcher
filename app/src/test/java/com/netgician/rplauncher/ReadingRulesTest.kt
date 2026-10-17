@@ -111,6 +111,17 @@ class ReadingRulesTest {
     }
 
     @Test
+    fun theTextsChoiceIsThePersonsOwnScreen_andThePinCanLeadToOneSetupScreen() {
+        val speech = LauncherConfig(visionMode = VisionMode.SPEECH)
+        assertTrue(touchToHearOn(speech, screenReaderOn = false, screen = Screen.TextsNotSet))
+        assertEquals(Screen.Settings, Screen.Pin(PinPurpose.Unlock).next)
+        assertEquals(Screen.TextsSwitch, Screen.Pin(PinPurpose.Unlock, next = Screen.TextsSwitch).next)
+        val keep = LauncherConfig(textsElsewhere = true)
+        assertEquals(keep, ConfigJson.decodeSetupFile(ConfigJson.encode(keep)))
+        assertFalse(LauncherConfig().textsElsewhere)
+    }
+
+    @Test
     fun newSettingsSurviveTheSetupFile() {
         val c = LauncherConfig(
             visionMode = VisionMode.SPEECH,
