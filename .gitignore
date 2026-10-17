@@ -10,3 +10,6 @@
 .cxx
 *.keystore
 *.jks
+
+# Debug-only key with the standard public "android" password, so test builds install over each other.
+!app/debug.keystore

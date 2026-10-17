@@ -17,6 +17,14 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        // Test builds only: a fixed debug key (standard "android" password, not a secret)
+        // so each new test build installs over the last one. Releases use a separate key.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

@@ -40,8 +40,10 @@ The spec's promises are checked by unit tests on every build:
 
 ## Build
 
-GitHub Actions builds the app and runs the tests on every push. Download the
-`rp-launcher-debug-apk` artifact from the latest run under **Actions**.
+GitHub Actions builds the app and runs the tests on every push. Each push to `main`
+replaces the **Latest test build** release: open **Releases** on a phone, tap
+`rp-launcher-test.apk`, and allow installing from your browser. Test builds share one
+debug key, so a new one installs over the last.
 
 To build locally you need JDK 17 and the Android SDK (compileSdk 35):
 
