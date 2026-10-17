@@ -68,6 +68,7 @@ dependencies {
 
     // Text reading: our :ocr module on the Android build of ONNX Runtime (MIT).
     implementation(project(":ocr"))
+    implementation(project(":mms"))
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 
     // CameraX for the See tile (open source, Apache-2.0).

@@ -51,7 +51,12 @@ class MmsMessage(
     val transactionId: ByteArray?,
     val mmsVersion: Int,
     val parts: List<MmsPart>,
+    /** The carrier's retrieve status: 0 when not given, 0x80 for OK, anything else means it's gone. */
+    val retrieveStatus: Int = 0,
 ) {
+    /** False when the carrier sent an error instead of the message (expired, deleted, refused). */
+    val retrieveOk: Boolean get() = retrieveStatus == 0 || retrieveStatus == 0x80
+
     /** All the words, in order. */
     val text: String
         get() = parts.filter { it.kind == PartKind.TEXT }
@@ -159,6 +164,7 @@ object MmsCodec {
             transactionId = pdu.transactionId,
             mmsVersion = pdu.mmsVersion,
             parts = parts,
+            retrieveStatus = pdu.retrieveStatus,
         )
     }
 

@@ -376,7 +376,7 @@ fun AddTileScreen(state: AppState) {
 }
 
 /** Reads the picked phone number. The picker grants access to that one row, so no contacts permission. */
-private fun readPhoneContact(context: Context, uri: Uri): TileSpec.Contact? = runCatching {
+internal fun readPhoneContact(context: Context, uri: Uri): TileSpec.Contact? = runCatching {
     val columns = arrayOf(
         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
         ContactsContract.CommonDataKinds.Phone.NUMBER,

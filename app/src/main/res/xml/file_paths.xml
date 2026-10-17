@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Folders other apps may be handed one file from, for a moment: picture texts on their way
+     to and from the carrier, and attachments the person opens in another app. -->
+<paths>
+    <cache-path name="mms" path="mms/" />
+    <cache-path name="open" path="open/" />
+    <cache-path name="camera" path="camera/" />
+</paths>
