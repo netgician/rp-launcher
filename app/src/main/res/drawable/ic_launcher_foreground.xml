@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Four bold tiles inside a frame: the viewing window idea. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFE14D"
+        android:pathData="M33,33h19v19h-19z M56,33h19v19h-19z M33,56h19v19h-19z M56,56h19v19h-19z" />
+</vector>
