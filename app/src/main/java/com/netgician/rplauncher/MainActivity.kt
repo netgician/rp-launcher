@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color as ComposeColor
+import com.netgician.rplauncher.model.Hints
 import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.Themes
 import com.netgician.rplauncher.model.TileSpec
@@ -64,6 +65,7 @@ class MainActivity : ComponentActivity() {
             val brightness = s.windowBrightness
             LaunchedEffect(brightness) { applyBrightness(brightness) }
             LaunchedEffect(Unit) {
+                if (s.screen == Screen.Home) s.announceMode()
                 delay(3_000)
                 guard.markStarted()
             }
@@ -141,7 +143,7 @@ fun Root(state: AppState) {
         heard = state.heard,
         onHear = { label ->
             state.heard = label
-            state.say(label)
+            state.say(Hints.heard(label, c.spokenHints))
         },
         speak = state::say,
     )

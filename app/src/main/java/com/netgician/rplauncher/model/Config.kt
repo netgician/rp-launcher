@@ -30,6 +30,18 @@ sealed class TileSpec {
         }
 }
 
+/** What touch to hear says, so nobody has to guess that a double tap opens a tile. */
+object Hints {
+    const val TOUCH = "Single tap to read aloud. Double tap to select."
+
+    /** Said on start-up and when leaving Setup, in a speech mode. */
+    fun modeAnnouncement(mode: VisionMode): String = "${mode.label} mode. $TOUCH"
+
+    /** Said on a single tap: the tile, then (with hints on) how to select it. */
+    fun heard(label: String, hintsOn: Boolean): String =
+        if (hintsOn) "$label. Double tap to select." else label
+}
+
 data class TextSize(val name: String, val scale: Float)
 data class SpeechSpeed(val name: String, val rate: Float)
 
@@ -50,8 +62,8 @@ enum class AutoNight(val id: String, val label: String) {
  */
 enum class VisionMode(val id: String, val label: String, val explain: String) {
     SIGHT("sight", "Sight first", "Tap a tile to open it. Long press to hear it."),
-    SIGHT_SPEECH("sight_speech", "Sight and speech", "Tap a tile to hear it. Double tap to open it."),
-    SPEECH("speech", "Speech first", "Tiles form one list. Tap to hear, double tap to open.");
+    SIGHT_SPEECH("sight_speech", "Sight and speech", Hints.TOUCH),
+    SPEECH("speech", "Speech first", "Tiles form one list. ${Hints.TOUCH}");
 
     companion object {
         fun byId(id: String?): VisionMode = entries.firstOrNull { it.id == id } ?: SIGHT
@@ -80,6 +92,8 @@ data class LauncherConfig(
     val visionMode: VisionMode = VisionMode.SIGHT,
     /** Speech first only: a black screen that still works by touch and speech. Setup is never darkened. */
     val darkScreen: Boolean = false,
+    /** In speech modes: say how the gestures work, on start-up and after each single tap. */
+    val spokenHints: Boolean = true,
 ) {
     /** Tap to hear, double tap to open. */
     val touchToHear: Boolean get() = visionMode != VisionMode.SIGHT
@@ -145,6 +159,7 @@ object ConfigJson {
         put("touchLandmarks", c.touchLandmarks)
         put("visionMode", c.visionMode.id)
         put("darkScreen", c.darkScreen)
+        put("spokenHints", c.spokenHints)
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -211,6 +226,7 @@ object ConfigJson {
             touchLandmarks = o.optBoolean("touchLandmarks", d.touchLandmarks),
             visionMode = VisionMode.byId(o.optString("visionMode", d.visionMode.id)),
             darkScreen = o.optBoolean("darkScreen", d.darkScreen),
+            spokenHints = o.optBoolean("spokenHints", d.spokenHints),
         )
     }
 

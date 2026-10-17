@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.netgician.rplauncher.model.AutoNight
+import com.netgician.rplauncher.model.Hints
 import com.netgician.rplauncher.model.Landmarks
 import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.Pin
@@ -77,6 +78,13 @@ fun SettingsScreen(state: AppState) {
             val talkBack = if (state.speaker.screenReaderOn) " TalkBack is on, so tiles work the TalkBack way." else ""
             val setup = if (next == VisionMode.SIGHT) "" else " Setup still works with a single tap."
             state.say("${next.label}. ${next.explain}$setup$talkBack")
+        }
+        if (c.visionMode != VisionMode.SIGHT) {
+            SettingRow("Spoken hints", if (c.spokenHints) "On" else "Off") {
+                val on = !c.spokenHints
+                state.update { it.copy(spokenHints = on) }
+                state.say(if (on) "Spoken hints on. ${Hints.TOUCH}" else "Spoken hints off")
+            }
         }
         if (c.visionMode == VisionMode.SPEECH) {
             SettingRow("Dark screen", if (c.darkScreen) "On" else "Off") {

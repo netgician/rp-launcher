@@ -3,6 +3,7 @@ package com.netgician.rplauncher
 import com.netgician.rplauncher.model.AimHelp
 import com.netgician.rplauncher.model.AlertItem
 import com.netgician.rplauncher.model.ConfigJson
+import com.netgician.rplauncher.model.Hints
 import com.netgician.rplauncher.model.Language
 import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.TileSpec
@@ -91,6 +92,22 @@ class ReadingRulesTest {
         // TalkBack always takes over, and sight-first never uses touch to hear.
         assertFalse(touchToHearOn(speech, screenReaderOn = true, screen = Screen.Home))
         assertFalse(touchToHearOn(LauncherConfig(), screenReaderOn = false, screen = Screen.Home))
+    }
+
+    @Test
+    fun speechModesSayHowToSelect() {
+        assertEquals(
+            "Sight and speech mode. Single tap to read aloud. Double tap to select.",
+            Hints.modeAnnouncement(VisionMode.SIGHT_SPEECH),
+        )
+        assertEquals("Phone. Double tap to select.", Hints.heard("Phone", hintsOn = true))
+        assertEquals("Phone", Hints.heard("Phone", hintsOn = false))
+        for (m in listOf(VisionMode.SIGHT_SPEECH, VisionMode.SPEECH)) {
+            assertTrue(m.label, m.explain.contains("Double tap to select"))
+        }
+        assertTrue("hints start on", LauncherConfig().spokenHints)
+        val off = LauncherConfig(spokenHints = false)
+        assertEquals(off, ConfigJson.decodeSetupFile(ConfigJson.encode(off)))
     }
 
     @Test

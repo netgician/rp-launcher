@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import com.netgician.rplauncher.model.AimHelp
 import com.netgician.rplauncher.model.AutoNight
 import com.netgician.rplauncher.model.ConfigJson
+import com.netgician.rplauncher.model.Hints
 import com.netgician.rplauncher.model.Landmarks
 import com.netgician.rplauncher.model.Language
 import com.netgician.rplauncher.model.LauncherConfig
@@ -132,8 +133,17 @@ class AppState(
     }
 
     fun go(to: Screen) {
+        val from = screen
         listPage = 0
         screen = to
+        if (to == Screen.Home && from.isHelperScreen) announceMode()
+    }
+
+    /** In a speech mode with hints on, says how the gestures work. */
+    fun announceMode() {
+        if (config.spokenHints && touchToHearOn(config, speaker.screenReaderOn, Screen.Home)) {
+            speaker.speak(Hints.modeAnnouncement(config.visionMode))
+        }
     }
 
     fun say(text: String) = speaker.speak(text)
