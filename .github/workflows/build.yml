@@ -23,7 +23,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests (the testable rules)
-        run: ./gradlew --no-daemon testDebugUnitTest :ocr:test :mms:test
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon testDebugUnitTest :ocr:test :mms:test 2>&1 | tee gradle-test.log
 
       - name: Count tests
         if: always()
@@ -39,7 +41,28 @@ jobs:
           EOF
 
       - name: Build the app
-        run: ./gradlew --no-daemon assembleDebug
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug 2>&1 | tee gradle-build.log
+
+      # Compiler errors as one annotation, readable without downloading logs.
+      - name: Report compile errors
+        if: failure()
+        run: |
+          python3 - <<'EOF'
+          import glob, re
+          lines = []
+          for p in sorted(glob.glob("gradle-*.log")):
+              for l in open(p, errors="replace"):
+                  l = l.rstrip()
+                  if re.match(r"^(e: |w: .*error|.*error: |FAILURE:|\* What went wrong|AAPT: error)", l) or "Execution failed" in l:
+                      lines.append(l.replace("file:///home/runner/work/rp-launcher/rp-launcher/", ""))
+          seen = []
+          for l in lines:
+              if l not in seen: seen.append(l)
+          msg = "%0A".join(x.replace("%", "%25").replace("\r", "") for x in seen[:40]) or "No compiler lines found"
+          print(f"::error title=Build errors::{msg}")
+          EOF
 
       - name: Upload the app
         uses: actions/upload-artifact@v4
