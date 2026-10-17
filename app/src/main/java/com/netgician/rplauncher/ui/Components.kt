@@ -69,6 +69,8 @@ data class TapMode(
     val touchToHear: Boolean = false,
     val heard: String? = null,
     val onHear: (String) -> Unit = {},
+    /** Plain speech, for a long press on a Setup row. */
+    val speak: (String) -> Unit = {},
 )
 
 val LocalTapMode = compositionLocalOf { TapMode() }
@@ -242,14 +244,16 @@ private fun TileIconImage(icon: TileIcon, tint: Color, size: Dp) {
     )
 }
 
-/** A full-width row for helper screens: a tile with "Title: value" text. */
+/** A full-width row for helper screens: a tile with "Title: value" text. A long press speaks it. */
 @Composable
 fun SettingRow(title: String, value: String? = null, onClick: () -> Unit) {
     val lv = LocalLv.current
+    val tap = LocalTapMode.current
     val text = if (value == null) title else "$title: $value"
     Tile(
         label = text,
         modifier = Modifier.fillMaxWidth().heightIn(min = (64f * lv.textScale).dp),
+        onLongPress = { tap.speak(text) },
         onClick = onClick,
     )
 }

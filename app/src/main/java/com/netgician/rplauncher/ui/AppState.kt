@@ -49,6 +49,13 @@ val Screen.isHelperScreen: Boolean
         this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
         this is Screen.WindowCheck
 
+/**
+ * Touch to hear (tap to hear, double tap to open) is for the person's own screens.
+ * Helper screens such as Setup always act on a single tap, so they can never get stuck.
+ */
+fun touchToHearOn(config: LauncherConfig, screenReaderOn: Boolean, screen: Screen): Boolean =
+    config.touchToHear && !screenReaderOn && !screen.isHelperScreen
+
 /** What the camera read: one line per page, the voice to use, and any aiming advice. */
 data class ReadText(val lines: List<String>, val language: String, val hints: List<String>)
 

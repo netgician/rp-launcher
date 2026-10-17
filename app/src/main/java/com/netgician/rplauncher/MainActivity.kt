@@ -137,12 +137,13 @@ fun Root(state: AppState) {
     val style = remember(theme, c.textScale) { LvStyle(theme, AtkinsonFamily, c.textScale) }
     SideEffect { state.speaker.rate = c.speechRate }
     val tapMode = TapMode(
-        touchToHear = c.touchToHear && !state.speaker.screenReaderOn,
+        touchToHear = touchToHearOn(c, state.speaker.screenReaderOn, state.screen),
         heard = state.heard,
         onHear = { label ->
             state.heard = label
             state.say(label)
         },
+        speak = state::say,
     )
     // The dark screen draws black over everything; touches and speech still work underneath.
     val curtain = if (state.darkScreenNow) Modifier.drawWithContent {

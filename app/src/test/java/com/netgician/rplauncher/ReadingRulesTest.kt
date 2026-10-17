@@ -8,6 +8,9 @@ import com.netgician.rplauncher.model.LauncherConfig
 import com.netgician.rplauncher.model.TileSpec
 import com.netgician.rplauncher.model.VisionMode
 import com.netgician.rplauncher.ocr.TextBox
+import com.netgician.rplauncher.ui.PinPurpose
+import com.netgician.rplauncher.ui.Screen
+import com.netgician.rplauncher.ui.touchToHearOn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -70,6 +73,24 @@ class ReadingRulesTest {
         val speech = sight.copy(visionMode = VisionMode.SPEECH)
         assertTrue(speech.touchToHear)
         assertEquals("speech first is one list", 1, speech.homeCols)
+    }
+
+    @Test
+    fun helperScreensAlwaysOpenOnASingleTap() {
+        val speech = LauncherConfig(visionMode = VisionMode.SPEECH)
+        val helperScreens = listOf(
+            Screen.Settings, Screen.Pin(PinPurpose.Unlock), Screen.Pin(PinPurpose.Set), Screen.PinReset,
+            Screen.EditTiles, Screen.AddTile, Screen.PickApp, Screen.WindowCheck(Screen.Home),
+        )
+        for (s in helperScreens) {
+            assertFalse("$s must act on one tap", touchToHearOn(speech, screenReaderOn = false, screen = s))
+        }
+        for (s in listOf(Screen.Home, Screen.Apps, Screen.See, Screen.Alerts, Screen.ReadText)) {
+            assertTrue("$s uses touch to hear", touchToHearOn(speech, screenReaderOn = false, screen = s))
+        }
+        // TalkBack always takes over, and sight-first never uses touch to hear.
+        assertFalse(touchToHearOn(speech, screenReaderOn = true, screen = Screen.Home))
+        assertFalse(touchToHearOn(LauncherConfig(), screenReaderOn = false, screen = Screen.Home))
     }
 
     @Test

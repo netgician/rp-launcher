@@ -75,7 +75,8 @@ fun SettingsScreen(state: AppState) {
             state.update { it.copy(visionMode = next, touchLandmarks = it.touchLandmarks || next != VisionMode.SIGHT) }
             state.heard = null
             val talkBack = if (state.speaker.screenReaderOn) " TalkBack is on, so tiles work the TalkBack way." else ""
-            state.say("${next.label}. ${next.explain}$talkBack")
+            val setup = if (next == VisionMode.SIGHT) "" else " Setup still works with a single tap."
+            state.say("${next.label}. ${next.explain}$setup$talkBack")
         }
         if (c.visionMode == VisionMode.SPEECH) {
             SettingRow("Dark screen", if (c.darkScreen) "On" else "Off") {
