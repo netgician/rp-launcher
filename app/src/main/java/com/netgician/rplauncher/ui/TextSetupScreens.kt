@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
 
 /** A block of words on a helper screen. Tap to hear it. */
 @Composable
-private fun Words(state: AppState, text: String) {
+internal fun Words(state: AppState, text: String) {
     val lv = LocalLv.current
     Box(
         Modifier

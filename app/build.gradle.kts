@@ -13,8 +13,8 @@ android {
         // Android 10: brings the system role picker for home, phone and SMS apps.
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
 
         // ONNX Runtime ships native code; phones only (32- and 64-bit ARM) keeps the app small.
         ndk {

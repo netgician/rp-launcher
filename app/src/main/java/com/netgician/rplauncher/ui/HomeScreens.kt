@@ -57,6 +57,8 @@ fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.Torch -> TileIcon.Drawable(R.drawable.ic_torch)
     TileSpec.See -> TileIcon.Vector(Icons.Filled.Search)
     TileSpec.Alerts -> TileIcon.Vector(Icons.Filled.Notifications)
+    TileSpec.Sos -> TileIcon.Vector(Icons.Filled.Warning)
+    TileSpec.WhereAmI -> TileIcon.Vector(Icons.Filled.LocationOn)
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
     is TileSpec.App -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)
@@ -112,6 +114,7 @@ private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos,
         torchOn -> "Torch is on"
         spec == TileSpec.Alerts -> if (alertCount == 0) "Alerts, none new" else "Alerts, $alertCount new"
         spec == TileSpec.Messages && textCount > 0 -> if (textCount == 1) "Texts, 1 new" else "Texts, $textCount new"
+        spec == TileSpec.Sos -> "SOS, emergency texts"
         else -> spec.label
     }
     Tile(

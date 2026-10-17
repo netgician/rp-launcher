@@ -176,6 +176,9 @@ fun SettingsScreen(state: AppState) {
                 state.say("PIN removed")
             }
         }
+        SettingRow("SOS", if (c.sosContacts.isEmpty()) "not set up" else "${c.sosContacts.size} contacts") {
+            state.go(Screen.SosSetup)
+        }
         SettingRow("Texting app", if (com.netgician.rplauncher.texts.TextRole.isDefault(context)) "RP Launcher" else "Another app") {
             state.go(Screen.TextsSwitch)
         }
@@ -374,6 +377,8 @@ fun AddTileScreen(state: AppState) {
         SettingRow("Torch") { add(TileSpec.Torch) }
         SettingRow("See (camera magnifier)") { add(TileSpec.See) }
         SettingRow("Alerts (notifications read aloud)") { add(TileSpec.Alerts) }
+        SettingRow("SOS (emergency texts)") { add(TileSpec.Sos) }
+        SettingRow("Where am I (your street address)") { add(TileSpec.WhereAmI) }
         SettingRow("All apps") { add(TileSpec.AllApps) }
     }
 }

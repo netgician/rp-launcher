@@ -250,6 +250,8 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     /** What's said when texts change. A failure is always said, wherever the person is. */
     fun onEvent(e: TextsBus.Event) {
         refreshUnread()
+        // Never talk over another app or a phone call; notifications cover that.
+        if (!TextsBus.foreground) return
         val screen = app.screen
         val inThread = (screen as? Screen.Conversation)?.threadId
         val onTexts = screen.isTextsScreen
@@ -268,6 +270,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
                 if (screen != Screen.See && screen != Screen.ReadText) app.speaker.speak(words, flush = false)
             }
             is TextsBus.Event.Sent -> {
+                if (screen is Screen.Sos) return // the SOS screen says each result itself
                 checking?.let { step ->
                     checkLog += if (e.ok) "${step.label.replaceFirstChar { it.uppercase() }} sent. Waiting for it to arrive…"
                     else "${step.label.replaceFirstChar { it.uppercase() }} not sent. ${e.words}"

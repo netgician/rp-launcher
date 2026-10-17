@@ -12,6 +12,8 @@ sealed class TileSpec {
     data object Torch : TileSpec()
     data object See : TileSpec()
     data object Alerts : TileSpec()
+    data object Sos : TileSpec()
+    data object WhereAmI : TileSpec()
     data object AllApps : TileSpec()
     data class App(val packageName: String, val className: String, val appLabel: String) : TileSpec()
     data class Contact(val name: String, val number: String) : TileSpec()
@@ -24,6 +26,8 @@ sealed class TileSpec {
             Torch -> "Torch"
             See -> "See"
             Alerts -> "Alerts"
+            Sos -> "SOS"
+            WhereAmI -> "Where am I"
             AllApps -> "All apps"
             is App -> appLabel
             is Contact -> name
@@ -94,6 +98,10 @@ data class LauncherConfig(
     val darkScreen: Boolean = false,
     /** In speech modes: say how the gestures work, on start-up and after each single tap. */
     val spokenHints: Boolean = true,
+    /** Who the SOS tile texts, in order. The first one gets the big Call button. */
+    val sosContacts: List<TileSpec.Contact> = emptyList(),
+    /** Seconds to cancel an SOS before it sends. */
+    val sosSeconds: Int = 5,
 ) {
     /** Tap to hear, double tap to open. */
     val touchToHear: Boolean get() = visionMode != VisionMode.SIGHT
@@ -133,7 +141,7 @@ fun <T> List<T>.after(current: T): T = this[(indexOf(current) + 1) % size]
 
 /** The setup file: the whole configuration as JSON, so it can move to the next phone. */
 object ConfigJson {
-    private const val VERSION = 3
+    private const val VERSION = 4
 
     fun encode(c: LauncherConfig): String = JSONObject().apply {
         put("version", VERSION)
@@ -160,6 +168,10 @@ object ConfigJson {
         put("visionMode", c.visionMode.id)
         put("darkScreen", c.darkScreen)
         put("spokenHints", c.spokenHints)
+        put("sos", JSONArray().apply {
+            c.sosContacts.forEach { put(JSONObject().apply { put("name", it.name); put("number", it.number) }) }
+        })
+        put("sosSeconds", c.sosSeconds)
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -170,6 +182,8 @@ object ConfigJson {
             TileSpec.Torch -> put("type", "torch")
             TileSpec.See -> put("type", "see")
             TileSpec.Alerts -> put("type", "alerts")
+            TileSpec.Sos -> put("type", "sos")
+            TileSpec.WhereAmI -> put("type", "where_am_i")
             TileSpec.AllApps -> put("type", "all_apps")
             is TileSpec.App -> {
                 put("type", "app"); put("pkg", t.packageName); put("cls", t.className); put("label", t.appLabel)
@@ -227,6 +241,10 @@ object ConfigJson {
             visionMode = VisionMode.byId(o.optString("visionMode", d.visionMode.id)),
             darkScreen = o.optBoolean("darkScreen", d.darkScreen),
             spokenHints = o.optBoolean("spokenHints", d.spokenHints),
+            sosContacts = o.optJSONArray("sos")?.let { a ->
+                (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { decodeTile(it.put("type", "contact")) as? TileSpec.Contact } }
+            } ?: d.sosContacts,
+            sosSeconds = o.optInt("sosSeconds", d.sosSeconds).let { s -> if (s in Sos.COUNTDOWN_CHOICES) s else d.sosSeconds },
         )
     }
 
@@ -237,6 +255,8 @@ object ConfigJson {
         "torch" -> TileSpec.Torch
         "see" -> TileSpec.See
         "alerts" -> TileSpec.Alerts
+        "sos" -> TileSpec.Sos
+        "where_am_i" -> TileSpec.WhereAmI
         "all_apps" -> TileSpec.AllApps
         "app" -> {
             val pkg = o.optString("pkg"); val cls = o.optString("cls")

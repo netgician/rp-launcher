@@ -229,7 +229,8 @@ object TextNotifications {
 
     @Suppress("MissingPermission")
     fun incoming(context: Context, threadId: Long, who: String, words: String) {
-        if (!canPost(context) || TextsBus.openThread == threadId) return
+        // Skipped only when that very conversation is on screen right now.
+        if (!canPost(context) || (TextsBus.foreground && TextsBus.openThread == threadId)) return
         ensureChannels(context)
         val n = NotificationCompat.Builder(context, CHANNEL_TEXTS)
             .setSmallIcon(R.drawable.ic_stat_text)

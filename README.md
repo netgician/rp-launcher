@@ -49,7 +49,32 @@ screen the person can actually see, on a dark, glare-free background.
   to open), and Speech first (one list, tap to hear, optional dark screen). When TalkBack
   is on, tiles work the TalkBack way.
 
-No accounts, no ads, no tracking, and no internet permission.
+## What's new in version 0.4
+
+- **Texts, built in.** RP Launcher can be the phone's texting app: texts, picture texts
+  and group texts, sent and received. Each text is shown large and read aloud, one at a
+  time: who, when, the words in their own voice (English or Spanish), and what's attached.
+- **Reply** by speaking, with a quick reply ("On my way"), or with the keyboard. Add a
+  photo, record a voice message, or add more people to make a group text.
+- **Every kind of attachment:** pictures fill the window with Closer, Wider, Colours and
+  Read text; voice clips play with one tap; videos and other files open in the phone's own
+  apps; contact cards are read aloud with Call, Text and Save; calendar invites are read
+  aloud with Add to calendar.
+- **Nothing fails quietly.** Every send says "Sent" or "Not sent" and why, and stays
+  marked until it goes through. Picture texts that don't download are tried again after
+  1, 5 and 30 minutes, then reported aloud and in a notification, with Try again.
+- **Texts are kept in the phone's shared message store,** so switching back to another
+  texting app loses nothing. Before switching, Setup reminds the helper to turn off RCS
+  chats in the old app, and **Check texts** tests texts, picture texts and group texts
+  with the carrier.
+- **SOS:** a spoken, vibrating countdown that one tap cancels, then a text with the
+  street address and a map link to each SOS contact, then a big button to call the first
+  one. It never calls by itself. Practice SOS runs the whole thing without sending.
+- **Where am I:** the street address, read aloud, from the phone's own location and
+  address lookup. Text it to someone with one more tap.
+
+No accounts, no ads, no tracking, and no internet permission. Texts go through the
+phone's own texting service; addresses come from the phone's own address lookup.
 
 ## Testable rules
 
@@ -86,5 +111,9 @@ SIL Open Font License 1.1 ([licence text](licenses/Atkinson-Hyperlegible-OFL.txt
 
 Text reading uses the **PP-OCRv6 tiny** models from PaddleOCR, as packaged by OnnxOCR, both
 under the Apache License 2.0 ([licence text](licenses/OnnxOCR-and-PaddleOCR-models-Apache-2.0.txt)),
-running on **ONNX Runtime** (MIT licence). Before an F-Droid release, ONNX Runtime will be
+running on **ONNX Runtime** (MIT licence).
+
+Picture texts are read and written with message-format code from the **Android Open Source
+Project**, by way of android-smsmms, under the Apache License 2.0
+([licence text](licenses/AOSP-MMS-format-Apache-2.0.txt)). Before an F-Droid release, ONNX Runtime will be
 built from source, as F-Droid requires.

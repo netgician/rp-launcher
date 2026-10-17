@@ -58,6 +58,11 @@ sealed interface Screen {
     data class Invite(val threadId: Long, val partId: Long) : Screen
     data object TextsSwitch : Screen
     data object TextsCheck : Screen
+
+    // Safety
+    data class Sos(val practice: Boolean) : Screen
+    data object WhereAmI : Screen
+    data object SosSetup : Screen
 }
 
 /** Why the number pad is open: a person to text, or this phone's own number for Check texts. */
@@ -67,15 +72,16 @@ enum class NumberPurpose { TEXT, OWN_NUMBER }
 val Screen.isHelperScreen: Boolean
     get() = this is Screen.Settings || this is Screen.Pin || this is Screen.PinReset ||
         this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
-        this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck ||
+        this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck || this is Screen.SosSetup ||
         (this is Screen.NumberPad && purpose == NumberPurpose.OWN_NUMBER)
 
 /**
  * Touch to hear (tap to hear, double tap to open) is for the person's own screens.
  * Helper screens such as Setup always act on a single tap, so they can never get stuck.
+ * So does SOS: Cancel must never need a double tap.
  */
 fun touchToHearOn(config: LauncherConfig, screenReaderOn: Boolean, screen: Screen): Boolean =
-    config.touchToHear && !screenReaderOn && !screen.isHelperScreen
+    config.touchToHear && !screenReaderOn && !screen.isHelperScreen && screen !is Screen.Sos
 
 /** What the camera read: one line per page, the voice to use, any aiming advice, and where Back goes. */
 data class ReadText(val lines: List<String>, val language: String, val hints: List<String>, val backTo: Screen = Screen.See)
@@ -238,6 +244,9 @@ class AppState(
             is Screen.Invite -> go(Screen.Conversation(s.threadId))
             Screen.TextsSwitch -> go(Screen.Settings)
             Screen.TextsCheck -> go(Screen.TextsSwitch)
+            is Screen.Sos -> go(if (s.practice) Screen.SosSetup else Screen.Home)
+            Screen.WhereAmI -> go(Screen.Home)
+            Screen.SosSetup -> go(Screen.Settings)
         }
     }
 
@@ -265,6 +274,8 @@ class AppState(
             }
             TileSpec.See -> go(Screen.See)
             TileSpec.Alerts -> go(Screen.Alerts)
+            TileSpec.Sos -> go(Screen.Sos(practice = false))
+            TileSpec.WhereAmI -> go(Screen.WhereAmI)
             TileSpec.AllApps -> go(Screen.Apps)
             is TileSpec.App -> start(
                 Apps.launchIntent(spec.packageName, spec.className),
