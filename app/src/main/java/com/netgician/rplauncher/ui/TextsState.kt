@@ -269,7 +269,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
         // Never talk over another app or a phone call; notifications cover that.
         if (!TextsBus.foreground) return
         val screen = app.screen
-        val inThread = (screen as? Screen.Conversation)?.threadId
+        val inThread = (screen as? Screen.Conversation)?.threadId ?: (screen as? Screen.Message)?.threadId
         val onTexts = screen.isTextsScreen
         when (e) {
             is TextsBus.Event.Received -> {
@@ -281,9 +281,9 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
                     checking = null
                     return
                 }
-                val words = if (inThread == e.threadId) "New text from ${e.who}. Double tap Newer to read it."
-                else "New text from ${e.who}."
-                if (screen != Screen.See && screen != Screen.ReadText) app.speaker.speak(words, flush = false)
+                // In that conversation, the new text appears and is read out by the screen itself.
+                if (screen is Screen.Conversation && inThread == e.threadId) return
+                if (screen != Screen.See && screen != Screen.ReadText) app.speaker.speak("New text from ${e.who}.", flush = false)
             }
             is TextsBus.Event.Sent -> {
                 if (screen is Screen.Sos) return // the SOS screen says each result itself
@@ -343,7 +343,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
 
 /** Screens that belong to Texts, where "Sent" is said aloud. */
 val Screen.isTextsScreen: Boolean
-    get() = this is Screen.Texts || this is Screen.Conversation || this is Screen.Compose || this is Screen.QuickReply ||
+    get() = this is Screen.Texts || this is Screen.Conversation || this is Screen.Message || this is Screen.Compose || this is Screen.QuickReply ||
         this is Screen.ComposeMore || this is Screen.Attachments ||
         this is Screen.NewText || this is Screen.NumberPad || this is Screen.Picture || this is Screen.Card ||
         this is Screen.Invite || this is Screen.Record || this is Screen.AddPhoto

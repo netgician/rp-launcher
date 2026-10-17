@@ -23,6 +23,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -189,9 +190,9 @@ fun TextsScreen(state: AppState) {
 
 private class Loaded(val messages: List<TextMessage>, val people: List<String>)
 
-/** One conversation, one text at a time: big words in the top half, big controls below. */
+/** A conversation's texts and people, reloaded whenever texts change. Marks new texts read. */
 @Composable
-fun ConversationScreen(state: AppState, threadId: Long) {
+private fun rememberThread(state: AppState, threadId: Long): Loaded? {
     val context = LocalContext.current
     val t = state.texts
     val version by TextsBus.version.collectAsState()
@@ -212,137 +213,299 @@ fun ConversationScreen(state: AppState, threadId: Long) {
         TextNotifications.cancel(context, threadId)
         onDispose { if (TextsBus.openThread == threadId) TextsBus.openThread = null }
     }
+    return loaded
+}
 
-    val data = loaded
-    var index by remember(threadId) { mutableIntStateOf(-1) }
-    LaunchedEffect(data) {
-        val msgs = data?.messages ?: return@LaunchedEffect
-        if (msgs.isNotEmpty() && index !in msgs.indices) {
-            // Start at the first new text, or the newest one.
-            index = msgs.indexOfFirst { !it.read && !it.outgoing }.takeIf { it >= 0 } ?: msgs.lastIndex
-        }
-    }
-    val title = data?.people?.let { p -> People.join(p.map(t.names::of)) } ?: "Texts"
-    val msgs = data?.messages.orEmpty()
+/** The words shown for a text: what it says, or what it holds, and how sending went. */
+private fun cardWords(m: TextMessage): String = buildString {
+    append(
+        when {
+            m.box == Box.WAITING -> "Picture text " + when (m.download) {
+                DownloadState.FAILED -> "didn't download"
+                DownloadState.RETRYING -> "will try again soon"
+                DownloadState.NOT_STARTED -> "waiting"
+                DownloadState.DOWNLOADING -> "downloading…"
+            }
+            m.body.isNotBlank() -> m.body.trim()
+            else -> TextSpeech.attachments(m.parts).ifBlank { "No words" }
+        },
+    )
+    if (m.body.isNotBlank() && m.parts.isNotEmpty()) append("\n").append(TextSpeech.attachments(m.parts))
+}
 
-    if (data == null || msgs.isEmpty()) {
-        val words = if (data == null) "Loading…" else "No texts here yet."
-        ReaderLayout(
-            state = state, body = words, onBodyTap = { state.say(words) }, header = title, headerSpoken = title,
-            controls = listOf(
-                Control("Reply", icon = SEND_ICON) { t.startReply(threadId) },
-                Control("Texts") { state.go(Screen.Texts) },
-                Control("Home", icon = HOME_ICON) { state.go(Screen.Home) },
-            ),
-        ) { c, m, pos -> ControlTile(state, c, m, pos) }
-        return
-    }
+/** "NOT SENT", "Sending…", "Delivered", or nothing. */
+private fun cardStatus(m: TextMessage): String? = when {
+    m.box == Box.FAILED -> "NOT SENT"
+    m.box == Box.SENDING -> "Sending…"
+    m.outgoing && m.delivered -> "Delivered"
+    else -> null
+}
 
-    val i = if (index in msgs.indices) index else msgs.lastIndex
-    val m = msgs[i]
-    val group = data.people.size > 1
-    val fromName = m.from?.takeIf { it.isNotBlank() }?.let(t.names::of)
+/** Says one text: who and when in the phone's voice, the words in their own language's voice, then the rest. */
+private fun speakText(state: AppState, context: Context, m: TextMessage, group: Boolean, flush: Boolean = true) {
+    val fromName = m.from?.takeIf { it.isNotBlank() }?.let(state.texts.names::of)
     val whenText = TextSpeech.whenSaid(m.date, System.currentTimeMillis()) { DateFormat.getTimeFormat(context).format(Date(it)) }
     val spoken = TextSpeech.spoken(m, fromName, group, whenText)
+    state.speaker.speak(spoken.head, flush = flush)
+    if (spoken.body.isNotBlank()) state.speaker.speak(spoken.body, Language.guess(spoken.body), flush = false)
+    if (spoken.tail.isNotBlank()) state.speaker.speak(spoken.tail, flush = false)
+}
 
-    fun speakMessage() {
-        state.speaker.speak("Text ${i + 1} of ${msgs.size}. ${spoken.head}")
-        if (spoken.body.isNotBlank()) state.speaker.speak(spoken.body, Language.guess(spoken.body), flush = false)
-        if (spoken.tail.isNotBlank()) state.speaker.speak(spoken.tail, flush = false)
-    }
-    LaunchedEffect(m.key) { speakMessage() }
-
-    val shown = buildString {
-        append(if (m.outgoing) "You" else fromName ?: "Unknown")
-        append(": ")
-        append(
-            when {
-                m.box == Box.WAITING -> "Picture text " + when (m.download) {
-                    DownloadState.FAILED -> "didn't download"
-                    DownloadState.RETRYING -> "will try again soon"
-                    DownloadState.NOT_STARTED -> "waiting"
-                    DownloadState.DOWNLOADING -> "downloading…"
-                }
-                m.body.isNotBlank() -> m.body.trim()
-                else -> TextSpeech.attachments(m.parts).ifBlank { "No words" }
+/**
+ * One text in the conversation view: who, when, and the words, large. It responds like a tile:
+ * a tap opens it (or, with touch to hear, a tap reads it and a double tap opens it).
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun MessageCard(
+    state: AppState,
+    m: TextMessage,
+    who: String,
+    time: String,
+    spoken: String,
+    modifier: Modifier,
+    onRead: () -> Unit,
+    onOpen: () -> Unit,
+) {
+    val lv = LocalLv.current
+    val tap = LocalTapMode.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    val shape = RoundedCornerShape(12.dp)
+    val heardNow = tap.touchToHear && tap.heard == spoken
+    val status = cardStatus(m)
+    val press = if (tap.touchToHear) {
+        Modifier.combinedClickable(
+            onClick = {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                state.heard = spoken
+                onRead()
             },
+            onDoubleClick = { onOpen() },
+            onLongClick = { onRead() },
         )
-        when {
-            m.box == Box.FAILED -> append("\nNOT SENT")
-            m.box == Box.SENDING -> append("\nSending…")
-            m.outgoing && m.delivered -> append("\nDelivered")
+    } else {
+        Modifier.combinedClickable(onClick = { onOpen() }, onLongClick = { onRead() })
+    }
+    // Your own texts sit to the right with a thin outline; theirs to the left with a thick one.
+    Row(modifier) {
+        if (m.outgoing) Spacer(Modifier.weight(0.12f))
+        Column(
+            modifier = Modifier
+                .weight(0.88f)
+                .fillMaxHeight()
+                .clip(shape)
+                .background(lv.tile)
+                .border(BorderStroke(if (heardNow || m.box == Box.FAILED) 8.dp else if (m.outgoing) 2.dp else 4.dp, lv.accent), shape)
+                .semantics(mergeDescendants = true) { contentDescription = spoken }
+                .then(press)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            FitText(
+                text = if (status != null) "$who · $time · $status" else "$who · $time",
+                color = lv.fg, maxSp = 18f * lv.textScale, minSp = 12f, maxLines = 1, align = TextAlign.Start,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FitText(
+                text = cardWords(m),
+                color = lv.fg, maxSp = 28f * lv.textScale, minSp = 14f, maxLines = 4, align = TextAlign.Start,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+            )
+        }
+        if (!m.outgoing) Spacer(Modifier.weight(0.12f))
+    }
+}
+
+/**
+ * A conversation: its last few texts, large, newest at the bottom, with Reply, Earlier and
+ * All texts below. A text opens on its own for Try again, pictures, clips and Call.
+ */
+@Composable
+fun ConversationScreen(state: AppState, threadId: Long) {
+    val context = LocalContext.current
+    val lv = LocalLv.current
+    val t = state.texts
+    val data = rememberThread(state, threadId)
+    val msgs = data?.messages.orEmpty()
+    val group = (data?.people?.size ?: 0) > 1
+    val title = data?.people?.let { p -> People.join(p.map(t.names::of)) } ?: "Texts"
+    // How many texts fit: the person's row setting, fewer if they'd be too small.
+    var fits by remember { mutableIntStateOf(state.config.rows.coerceIn(2, 5)) }
+    var back by remember(threadId) { mutableIntStateOf(0) } // pages back from the newest
+    val pageCount = maxOf(1, (msgs.size + fits - 1) / fits)
+    val page = back.coerceIn(0, pageCount - 1)
+    val endIndex = (msgs.size - page * fits).coerceAtLeast(0)
+    val shownMsgs = msgs.subList((endIndex - fits).coerceAtLeast(0), endIndex)
+
+    // On opening: the name, how many are new, then the new texts (or the newest one) read aloud.
+    var greeted by remember(threadId) { mutableStateOf(false) }
+    var newestKey by remember(threadId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(data) {
+        if (data == null) return@LaunchedEffect
+        val newest = msgs.lastOrNull()
+        if (!greeted) {
+            greeted = true
+            newestKey = newest?.key
+            val unread = msgs.filter { !it.read && !it.outgoing }
+            state.speaker.speak(
+                when {
+                    msgs.isEmpty() -> "$title. No texts yet. Double tap Reply to write one."
+                    unread.isEmpty() -> "$title."
+                    unread.size == 1 -> "$title. 1 new."
+                    else -> "$title. ${unread.size} new."
+                },
+            )
+            (unread.ifEmpty { listOfNotNull(newest) }).takeLast(5).forEach { speakText(state, context, it, group, flush = false) }
+        } else if (newest != null && newest.key != newestKey) {
+            // A new text while the conversation is open: show it and read it, if it's theirs.
+            newestKey = newest.key
+            back = 0
+            if (!newest.outgoing) speakText(state, context, newest, group, flush = false)
         }
     }
+
+    InWindow(state.config.window) {
+        Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SpokenText(
+                if (pageCount > 1 && page > 0) "$title · earlier" else title,
+                Modifier.fillMaxWidth().height((40f * lv.textScale).dp), state::say,
+                spoken = "Conversation with $title", maxSp = 24f,
+            )
+            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+                // Each text gets at least 80 dp (more with bigger text); fewer texts show if the window is small.
+                val room = (maxHeight.value / ((80f * state.config.textScale) + 8f)).toInt().coerceIn(1, 5)
+                LaunchedEffect(room) { fits = minOf(room, state.config.rows.coerceIn(2, 5)) }
+                if (data == null) {
+                    FitText("Loading…", lv.fg, maxSp = 26f * lv.textScale, modifier = Modifier.fillMaxWidth())
+                } else if (msgs.isEmpty()) {
+                    SpokenText("No texts yet", Modifier.fillMaxSize(), state::say, spoken = "No texts yet. Double tap Reply to write one.")
+                } else {
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)) {
+                        shownMsgs.forEach { m ->
+                            val who = if (m.outgoing) "You" else m.from?.takeIf { it.isNotBlank() }?.let(t.names::of) ?: "Unknown"
+                            val time = TextSpeech.whenSaid(m.date, System.currentTimeMillis()) {
+                                DateFormat.getTimeFormat(context).format(Date(it))
+                            }.replace(" at ", ", ")
+                            val spoken = TextSpeech.message(m, if (m.outgoing) null else who, group, time)
+                            MessageCard(
+                                state, m, who, time, spoken,
+                                modifier = Modifier.fillMaxWidth().weight(1f, fill = true),
+                                onRead = { speakText(state, context, m, group) },
+                                onOpen = { state.go(Screen.Message(threadId, m.key)) },
+                            )
+                        }
+                        // Keep cards the same size when the last page is short.
+                        repeat(fits - shownMsgs.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth().height((80f * lv.textScale).dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Tile("Reply", Modifier.weight(1.3f).fillMaxHeight(), spoken = "Reply to $title", icon = SEND_ICON, emphasized = true) {
+                    t.startReply(threadId)
+                }
+                if (page > 0) {
+                    Tile("Later", Modifier.weight(1f).fillMaxHeight(), spoken = "Later texts") {
+                        back = page - 1
+                        state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
+                        if (page - 1 == 0) state.say("Newest texts") else state.say("Later texts")
+                    }
+                } else if (page < pageCount - 1) {
+                    Tile("Earlier", Modifier.weight(1f).fillMaxHeight(), spoken = "Earlier texts") {
+                        back = page + 1
+                        state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
+                        state.say("Earlier texts")
+                    }
+                }
+                Tile("All texts", Modifier.weight(1f).fillMaxHeight(), spoken = "Back to all texts") { state.go(Screen.Texts) }
+            }
+            if (page > 0 && page < pageCount - 1) {
+                Tile("Earlier", Modifier.fillMaxWidth().height((56f * lv.textScale).dp), spoken = "Earlier texts") {
+                    back = page + 1
+                    state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
+                    state.say("Earlier texts")
+                }
+            }
+        }
+    }
+}
+
+/** One text on its own, read aloud, with what it needs: Try again, See picture, Play, Call... */
+@Composable
+fun MessageScreen(state: AppState, threadId: Long, key: String) {
+    val context = LocalContext.current
+    val t = state.texts
+    val data = rememberThread(state, threadId)
+    val m = data?.messages?.firstOrNull { it.key == key }
+    if (data == null || m == null) {
+        val words = if (data == null) "Loading…" else "This text is no longer here."
+        ReaderLayout(
+            state = state, body = words, onBodyTap = { state.say(words) }, header = "Text", headerSpoken = "Text",
+            controls = listOf(Control("Back", spoken = "Back to the conversation") { state.go(Screen.Conversation(threadId)) }),
+        ) { c, mod, pos -> ControlTile(state, c, mod, pos) }
+        return
+    }
+    val group = data.people.size > 1
+    val fromName = m.from?.takeIf { it.isNotBlank() }?.let(t.names::of)
+    LaunchedEffect(m.key) { speakText(state, context, m, group) }
 
     val firstImage = m.parts.firstOrNull { it.kind == PartKind.IMAGE }
     val thumb by produceState<Bitmap?>(null, firstImage?.id) {
         value = firstImage?.let { p -> withContext(Dispatchers.IO) { Pictures.load(context, p.id, 900) } }
     }
 
-    // At most six controls, so they fit on one page: Older, Newer, Reply, the one thing this
-    // text needs (Try again, See picture, Play...), Call or Read again, and back to all texts.
-    // Tapping the words reads them again.
     val extras = attachmentControls(state, threadId, m)
-    val action: Control? = when {
-        m.box == Box.FAILED -> Control("Try again", spoken = "Try sending again", emphasized = true) { t.retry(m) }
-        m.box == Box.WAITING -> when (m.download) {
-            DownloadState.DOWNLOADING -> Control("Downloading", spoken = "Still downloading") {
-                state.say("Still downloading. You'll hear when it arrives.")
-            }
-            DownloadState.NOT_STARTED -> Control("Download", spoken = "Download the picture text", emphasized = true) { t.retry(m) }
-            else -> Control("Try again", spoken = "Try downloading again", emphasized = true) { t.retry(m) }
+    val controls = buildList {
+        when {
+            m.box == Box.FAILED -> add(Control("Try again", spoken = "Try sending again", emphasized = true) { t.retry(m) })
+            m.box == Box.WAITING -> add(
+                when (m.download) {
+                    DownloadState.DOWNLOADING -> Control("Downloading", spoken = "Still downloading") {
+                        state.say("Still downloading. You'll hear when it arrives.")
+                    }
+                    DownloadState.NOT_STARTED -> Control("Download", spoken = "Download the picture text", emphasized = true) { t.retry(m) }
+                    else -> Control("Try again", spoken = "Try downloading again", emphasized = true) { t.retry(m) }
+                },
+            )
         }
-        extras.size == 1 -> extras[0]
-        extras.size > 1 -> Control("Attachments (${extras.size})", spoken = "See all ${extras.size} attachments", emphasized = true) {
-            t.attachmentsOf = m
-            state.go(Screen.Attachments(threadId))
+        if (extras.size <= 2) addAll(extras) else add(
+            Control("Attachments (${extras.size})", spoken = "See all ${extras.size} attachments", emphasized = true) {
+                t.attachmentsOf = m
+                state.go(Screen.Attachments(threadId))
+            },
+        )
+        add(Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { speakText(state, context, m, group) })
+        add(Control("Reply", icon = SEND_ICON) { t.startReply(threadId) })
+        val callee = if (!m.outgoing && !m.from.isNullOrBlank()) m.from else data.people.singleOrNull()
+        callee?.let { number ->
+            val name = t.names.of(number)
+            add(Control("Call", spoken = "Call $name", icon = TileIcon.Vector(Icons.Filled.Call)) {
+                state.go(Screen.ConfirmCall(TileSpec.Contact(name, number)))
+            })
         }
-        else -> null
+        add(Control("Back", spoken = "Back to the conversation") { state.go(Screen.Conversation(threadId)) })
     }
-    val readAgain = Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { speakMessage() }
-    val callee = if (!m.outgoing && !m.from.isNullOrBlank()) m.from else data.people.singleOrNull()
-    val call = callee?.let { number ->
-        val name = t.names.of(number)
-        Control("Call", spoken = "Call $name", icon = TileIcon.Vector(Icons.Filled.Call)) {
-            state.go(Screen.ConfirmCall(TileSpec.Contact(name, number)))
-        }
-    }
-    val controls = listOfNotNull(
-        Control("Older", spoken = "Older text") { if (i > 0) index = i - 1 else state.say("This is the first text") },
-        Control("Newer", spoken = "Newer text") { if (i < msgs.lastIndex) index = i + 1 else state.say("This is the newest text") },
-        Control("Reply", icon = SEND_ICON) { t.startReply(threadId) },
-        action ?: readAgain,
-        call ?: (if (action != null) readAgain else Control("Home", icon = HOME_ICON) { state.go(Screen.Home) }),
-        Control("All texts", spoken = "Back to all texts") { state.go(Screen.Texts) },
-    )
 
+    val who = if (m.outgoing) "You" else fromName ?: "Unknown"
+    val shown = "$who: " + cardWords(m) + (cardStatus(m)?.let { "\n$it" } ?: "")
     val lv = LocalLv.current
     ReaderLayout(
         state = state,
         body = shown,
-        onBodyTap = { speakMessage() },
-        header = "${i + 1} of ${msgs.size} · $title",
-        headerSpoken = "Text ${i + 1} of ${msgs.size}, with $title",
+        onBodyTap = { speakText(state, context, m, group) },
+        header = who,
+        headerSpoken = "Text from $who",
         controls = controls,
-        bodyWeight = 0.45f,
         controlsHeader = false,
         bodyContent = {
             val b = thumb
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FitText(
-                    text = shown,
-                    color = lv.fg,
-                    maxSp = 30f * lv.textScale,
-                    minSp = 14f,
-                    maxLines = if (b != null) 3 else 8,
-                    align = TextAlign.Start,
+                    text = shown, color = lv.fg, maxSp = 30f * lv.textScale, minSp = 14f,
+                    maxLines = if (b != null) 3 else 8, align = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth().weight(1f),
                 )
                 if (b != null) {
                     Image(
-                        bitmap = b.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
+                        bitmap = b.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxWidth().weight(1.4f),
                     )
                 }

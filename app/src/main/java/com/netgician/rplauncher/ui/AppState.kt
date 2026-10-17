@@ -48,6 +48,8 @@ sealed interface Screen {
     // Texts
     data object Texts : Screen
     data class Conversation(val threadId: Long) : Screen
+    /** One text on its own, from a conversation. [key] is "sms:12" or "mms:7". */
+    data class Message(val threadId: Long, val key: String) : Screen
     data object Compose : Screen
     /** The less-used writing choices: photo, voice message, another person, read back, clear. */
     data object ComposeMore : Screen
@@ -172,7 +174,7 @@ class AppState(
     fun go(to: Screen) {
         val from = screen
         listPage = 0
-        if (from is Screen.Conversation && to !is Screen.Conversation) texts.stopPlaying()
+        if ((from is Screen.Conversation || from is Screen.Message) && to !is Screen.Message) texts.stopPlaying()
         screen = to
         if (to == Screen.Home && from.isHelperScreen) announceMode()
     }
@@ -237,6 +239,7 @@ class AppState(
             Screen.PickApp -> go(Screen.AddTile)
             Screen.Texts -> go(Screen.Home)
             is Screen.Conversation -> go(Screen.Texts)
+            is Screen.Message -> go(Screen.Conversation(s.threadId))
             Screen.Compose -> {
                 // Back keeps what was written; only Cancel throws it away.
                 val thread = texts.draft?.threadId

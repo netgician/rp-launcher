@@ -227,6 +227,7 @@ fun Root(state: AppState) {
                     Screen.AddTile -> AddTileScreen(state)
                     Screen.Texts -> TextsScreen(state)
                     is Screen.Conversation -> ConversationScreen(state, screen.threadId)
+                    is Screen.Message -> MessageScreen(state, screen.threadId, screen.key)
                     Screen.Compose -> ComposeScreen(state)
                     Screen.ComposeMore -> ComposeMoreScreen(state)
                     is Screen.Attachments -> AttachmentsScreen(state, screen.threadId)
