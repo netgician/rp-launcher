@@ -117,6 +117,12 @@ object SendRecords {
         return state to reason
     }
 
+    /** How long ago the download record last changed. */
+    fun downloadAgeMs(c: Context, mmsId: Long): Long {
+        val t = prefs(c).getString("dl:$mmsId", null)?.split('|')?.getOrNull(2)?.toLongOrNull() ?: return 0L
+        return System.currentTimeMillis() - t
+    }
+
     fun attempts(c: Context, mmsId: Long): Int =
         prefs(c).getString("dl:$mmsId", null)?.split('|')?.getOrNull(1)?.toIntOrNull() ?: 0
 

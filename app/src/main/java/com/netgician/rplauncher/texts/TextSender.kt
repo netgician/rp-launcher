@@ -96,8 +96,10 @@ object TextSender {
                 sent += result(context, ACTION_SMS_SENT, "rp://sms/$id/$i/${parts.size}")
                 delivered += result(context, ACTION_SMS_DELIVERED, "rp://sms/$id/$i/${parts.size}")
             }
-            if (parts.size <= 1) sms.sendTextMessage(to, null, body, sent[0], delivered[0])
-            else sms.sendMultipartTextMessage(to, null, parts, sent, delivered)
+            // Digits only, as the network wants them; names like "AMAZON" are left as they are.
+            val dest = Addresses.forSending(to).ifEmpty { to }
+            if (parts.size <= 1) sms.sendTextMessage(dest, null, body, sent[0], delivered[0])
+            else sms.sendMultipartTextMessage(dest, null, parts, sent, delivered)
         } catch (e: Exception) {
             finishSms(context, id, SmsManager.RESULT_ERROR_GENERIC_FAILURE, threadId)
         }

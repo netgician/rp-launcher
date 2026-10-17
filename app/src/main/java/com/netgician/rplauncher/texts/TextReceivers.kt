@@ -62,8 +62,13 @@ class SmsDeliverReceiver : BroadcastReceiver() {
             val from = parts[0].displayOriginatingAddress ?: parts[0].originatingAddress ?: return@work
             val body = parts.joinToString("") { it.displayMessageBody ?: it.messageBody ?: "" }
             val store = TextStore(context)
-            val uri = store.saveReceivedSms(from, body, parts[0].timestampMillis, subIdOf(intent))
-            val thread = uri?.lastPathSegment?.toLongOrNull()?.let { id -> store.smsRow(id)?.third } ?: store.threadFor(listOf(from))
+            val uri = runCatching { store.saveReceivedSms(from, body, parts[0].timestampMillis, subIdOf(intent)) }.getOrNull()
+            val thread = uri?.lastPathSegment?.toLongOrNull()?.let { id -> runCatching { store.smsRow(id)?.third }.getOrNull() }
+                ?: runCatching { store.threadFor(listOf(from)) }.getOrDefault(-1L)
+            if (uri == null) {
+                // Couldn't be saved: show it anyway, so it's never lost without a word.
+                TextNotifications.problem(context, thread, "Text from ${Names(context).of(from)} (not saved)", body)
+            }
             announceIncoming(context, thread, from, body)
         }
     }
@@ -120,14 +125,26 @@ object MmsDownloads {
         }
     }
 
-    /** Starts any waiting picture texts that were never fetched or whose download was lost. */
+    /**
+     * Upkeep when RP Launcher starts: picture texts never fetched, or whose download was lost,
+     * are started; texts stuck "sending" are marked not sent.
+     */
     fun resume(context: Context) {
+        val stuck = runCatching {
+            TextStore(context).failStuckOutgoing(15 * 60_000L) { key -> SendRecords.setProblem(context, key, "It didn't finish sending.") }
+        }.getOrDefault(0)
+        if (stuck > 0) TextsBus.changed()
         val weekAgo = System.currentTimeMillis() / 1000 - 7 * 24 * 3600
         for (id in TextStore(context).waitingNotices(sinceSeconds = weekAgo)) {
             val (state, why) = SendRecords.download(context, id)
             val neverTried = state == DownloadState.NOT_STARTED && SendRecords.attempts(context, id) == 0
             val lost = state == DownloadState.FAILED && why == STOPPED
-            if (neverTried || lost) start(context, id, attempt = 1)
+            // A retry whose alarm was lost (the phone restarted, say) is started again.
+            val retryLost = state == DownloadState.RETRYING && SendRecords.downloadAgeMs(context, id) > 35 * 60_000L
+            when {
+                neverTried || lost -> start(context, id, attempt = 1)
+                retryLost -> start(context, id, attempt = SendRecords.attempts(context, id) + 1)
+            }
         }
     }
 
@@ -168,7 +185,7 @@ object MmsDownloads {
             else -> {
                 // A message to just one number, with no one copied, was sent to this phone's own number.
                 if (message.to.size == 1 && message.cc.isEmpty()) SendRecords.learnNumber(context, message.to[0])
-                val saved = store.saveReceivedMms(message, MyNumbers.get(context), notice.subId, id) ?: run {
+                val saved = runCatching { store.saveReceivedMms(message, MyNumbers.get(context), notice.subId, id) }.getOrNull() ?: run {
                     giveUp(context, id, notice, attempt, "The phone's message store isn't available.")
                     return
                 }

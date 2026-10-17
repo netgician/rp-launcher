@@ -346,6 +346,8 @@ class TextStore(private val context: Context) {
         val v = ContentValues().apply {
             put("type", type)
             if (errorCode != 0) put("error_code", errorCode)
+            // Sending again counts from now.
+            if (type == Telephony.Sms.MESSAGE_TYPE_OUTBOX) put("date", System.currentTimeMillis())
         }
         runCatching { resolver.update(smsUri(id), v, null, null) }
     }
@@ -507,12 +509,34 @@ class TextStore(private val context: Context) {
         return if (to.isEmpty()) null else to to parts
     }
 
+    /**
+     * Texts still marked "sending" long after they should have finished (the phone restarted
+     * mid-send, say) are marked not sent, so they show Try again instead of waiting forever.
+     */
+    fun failStuckOutgoing(olderThanMs: Long, problem: (String) -> Unit): Int {
+        val cutoff = System.currentTimeMillis() - olderThanMs
+        var n = 0
+        val sms = mutableListOf<Long>()
+        resolver.query(
+            SMS, arrayOf("_id"),
+            "type IN (${Telephony.Sms.MESSAGE_TYPE_OUTBOX}, ${Telephony.Sms.MESSAGE_TYPE_QUEUED}) AND date < $cutoff", null, null,
+        )?.use { c -> while (c.moveToNext()) sms += c.getLong(0) }
+        sms.forEach { id -> setSmsBox(id, Telephony.Sms.MESSAGE_TYPE_FAILED); problem("sms:$id"); n++ }
+        val mms = mutableListOf<Long>()
+        resolver.query(
+            MMS, arrayOf("_id"),
+            "msg_box = ${Telephony.Mms.MESSAGE_BOX_OUTBOX} AND date < ${cutoff / 1000}", null, null,
+        )?.use { c -> while (c.moveToNext()) mms += c.getLong(0) }
+        mms.forEach { id -> setMmsBox(id, Telephony.Mms.MESSAGE_BOX_FAILED); problem("mms:$id"); n++ }
+        return n
+    }
+
     fun setMmsBox(id: Long, box: Int, responseStatus: Int = 0, messageId: String? = null) {
         val v = ContentValues().apply {
             put("msg_box", box)
             if (responseStatus != 0) put("resp_st", responseStatus)
             messageId?.let { put("m_id", it) }
-            if (box == Telephony.Mms.MESSAGE_BOX_SENT) put("date", System.currentTimeMillis() / 1000)
+            if (box == Telephony.Mms.MESSAGE_BOX_SENT || box == Telephony.Mms.MESSAGE_BOX_OUTBOX) put("date", System.currentTimeMillis() / 1000)
         }
         runCatching { resolver.update(mmsUri(id), v, null, null) }
     }
