@@ -28,11 +28,13 @@ Builds:
       - yes
     srclibs:
       - onnxruntime@v1.20.0
+      - eigen@e7248b26a1ed53fa030c5c459f7ea095dfd276ac
     output: build/outputs/apk/release/app-release-unsigned.apk
     # ONNX Runtime (text reading) is compiled from its source; no prebuilt native libraries.
     prebuild:
       - mkdir -p ../build
       - ln -s $$onnxruntime$$ ../build/onnxruntime-src
+      - ln -s $$eigen$$ ../build/eigen
     build:
       - ../scripts/build_onnxruntime_android.sh
     gradleprops:

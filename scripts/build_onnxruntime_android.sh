@@ -19,6 +19,10 @@ NDK="${ANDROID_NDK_HOME:-$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1)}"
 [ -d "$NDK" ] || { echo "No Android NDK found; set ANDROID_NDK_HOME" >&2; exit 1; }
 SRC="$ROOT/build/onnxruntime-src"
 OUT="$ROOT/build/onnxruntime-jni"
+# ONNX Runtime 1.20 downloads Eigen as a GitLab archive, which GitLab often refuses to build
+# servers; the same Eigen commit is fetched with git instead (EIGEN_SRC can point at a copy).
+EIGEN_COMMIT=e7248b26a1ed53fa030c5c459f7ea095dfd276ac
+EIGEN="${EIGEN_SRC:-$ROOT/build/eigen}"
 
 # The same output on every machine.
 export SOURCE_DATE_EPOCH=1700000000 TZ=UTC
@@ -27,6 +31,14 @@ if [ ! -f "$SRC/tools/ci_build/build.py" ]; then
   rm -rf "$SRC"
   git clone --depth 1 --branch "v$ORT_VERSION" --recurse-submodules --shallow-submodules \
     https://github.com/microsoft/onnxruntime.git "$SRC"
+fi
+
+if [ ! -f "$EIGEN/Eigen/Core" ]; then
+  rm -rf "$EIGEN" && git init -q "$EIGEN"
+  if ! git -C "$EIGEN" fetch -q --depth 1 https://gitlab.com/libeigen/eigen.git "$EIGEN_COMMIT"; then
+    git -C "$EIGEN" fetch -q --depth 200 https://gitlab.com/libeigen/eigen.git 3.4
+  fi
+  git -C "$EIGEN" checkout -q "$EIGEN_COMMIT"
 fi
 
 GEN=()
@@ -40,6 +52,7 @@ for ABI in $ABIS; do
     --android --android_sdk_path "$SDK" --android_ndk_path "$NDK" \
     --android_abi "$ABI" --android_api "$API" \
     --build_shared_lib --build_java \
+    --use_preinstalled_eigen --eigen_path "$EIGEN" \
     --parallel --skip_tests --skip_submodule_sync --compile_no_warning_as_error \
     "${GEN[@]}"
   mkdir -p "$OUT/$ABI"
