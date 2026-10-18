@@ -40,4 +40,4 @@ Strongly recommended:
 
 * [x] The upstream app source code repo contains the app metadata (summary, description,
   images, changelog, etc.) in a [Fastlane](https://gitlab.com/snippets/1895688) folder structure
-* [ ] Releases are tagged
+* [x] Releases are tagged
