@@ -58,6 +58,7 @@ object StoreShots {
             "sos" -> state.go(Screen.Sos(practice = true))
             "checklist" -> state.go(Screen.Checklist(firstRun = false))
             "pages" -> state.go(Screen.Pages)
+            "voicemail" -> state.go(Screen.VoicemailMessage(1))
         }
     }
 }
