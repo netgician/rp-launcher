@@ -122,6 +122,29 @@ class ReadingRulesTest {
     }
 
     @Test
+    fun voiceTorchAndReminderSettingsSurviveTheSetupFile() {
+        val c = LauncherConfig(
+            speechPitch = 0.8f, voiceName = "en-us-x-iob-local", torchStrength = 0.5f,
+            windowCheckedAt = 1_790_000_000_000L, windowReminderMonths = 6,
+            tiles = listOf(TileSpec.Wifi, TileSpec.Bluetooth, TileSpec.Volume),
+        )
+        assertEquals(c, ConfigJson.decodeSetupFile(ConfigJson.encode(c)))
+        val old = ConfigJson.decodeSetupFile("""{"version":4,"tiles":[],"windowReminderMonths":5}""")
+        assertEquals(1f, old.speechPitch)
+        assertEquals("unknown reminder periods are off", 0, old.windowReminderMonths)
+    }
+
+    @Test
+    fun theWindowCheckReminderComesDueAndNeverMovesAnything() {
+        val day = 86_400_000L
+        val checked = LauncherConfig(windowCheckedAt = 1_000 * day, windowReminderMonths = 3)
+        assertFalse(checked.windowCheckDue(1_000 * day + 80 * day))
+        assertTrue(checked.windowCheckDue(1_000 * day + 100 * day))
+        assertFalse("off means never", checked.copy(windowReminderMonths = 0).windowCheckDue(5_000 * day))
+        assertFalse("no date yet means not due", checked.copy(windowCheckedAt = 0).windowCheckDue(5_000 * day))
+    }
+
+    @Test
     fun newSettingsSurviveTheSetupFile() {
         val c = LauncherConfig(
             visionMode = VisionMode.SPEECH,

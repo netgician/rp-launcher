@@ -132,6 +132,33 @@ fun SettingsScreen(state: AppState) {
             state.speaker.rate = next.rate
             state.say("${next.name} speech")
         }
+        val pitch = LauncherConfig.VOICE_PITCHES.firstOrNull { it.pitch == c.speechPitch } ?: LauncherConfig.VOICE_PITCHES[0]
+        SettingRow("Voice pitch", pitch.name) {
+            val next = LauncherConfig.VOICE_PITCHES.after(pitch)
+            state.update { it.copy(speechPitch = next.pitch) }
+            state.speaker.pitch = next.pitch
+            state.say("${next.name} voice")
+        }
+        val voices = remember { state.speaker.voices() }
+        if (voices.size > 1) {
+            val current = voices.indexOfFirst { it.name == c.voiceName }
+            SettingRow("Voice", if (current < 0) "Phone default" else "Voice ${current + 1} of ${voices.size}") {
+                // Cycles: phone default, then each installed voice.
+                val next = if (current + 1 >= voices.size) null else voices[current + 1].name
+                state.update { it.copy(voiceName = next) }
+                state.speaker.voiceName = next
+                state.say(if (next == null) "Phone default voice" else "Voice ${current + 2} of ${voices.size}. This is how it sounds.")
+            }
+        }
+        if (state.torch.dimmable) {
+            val level = LauncherConfig.TORCH_LEVELS.firstOrNull { it.strength == c.torchStrength } ?: LauncherConfig.TORCH_LEVELS[0]
+            SettingRow("Torch brightness", level.name) {
+                val next = LauncherConfig.TORCH_LEVELS.after(level)
+                state.update { it.copy(torchStrength = next.strength) }
+                state.torch.setStrength(next.strength)
+                state.say("Torch brightness ${next.name}")
+            }
+        }
         SettingRow("Touch landmarks", if (c.touchLandmarks) "On" else "Off") {
             val on = !c.touchLandmarks
             state.update { it.copy(touchLandmarks = on) }
@@ -165,7 +192,16 @@ fun SettingsScreen(state: AppState) {
             state.update { it.copy(brightness = next) }
             state.say("Launcher brightness: ${brightnessLabel(next)}")
         }
-        SettingRow("Viewing window check") { state.go(Screen.WindowCheck(Screen.Settings)) }
+        SettingRow("Viewing window check", if (c.windowCheckDue(System.currentTimeMillis())) "due" else null) {
+            state.go(Screen.WindowCheck(Screen.Settings))
+        }
+        SettingRow("Window check reminder", if (c.windowReminderMonths == 0) "Off" else "Every ${c.windowReminderMonths} months") {
+            val next = LauncherConfig.WINDOW_REMINDERS.after(c.windowReminderMonths)
+            state.update {
+                it.copy(windowReminderMonths = next, windowCheckedAt = if (it.windowCheckedAt == 0L) System.currentTimeMillis() else it.windowCheckedAt)
+            }
+            state.say(if (next == 0) "Reminder off" else "A reminder to re-check the viewing window every $next months")
+        }
         SettingRow("Edit tiles") { state.go(Screen.EditTiles) }
         SettingRow(if (c.pinHash == null) "Set a helper PIN" else "Change the helper PIN") {
             state.go(Screen.Pin(PinPurpose.Set))
@@ -379,9 +415,26 @@ fun AddTileScreen(state: AppState) {
         SettingRow("Alerts (notifications read aloud)") { add(TileSpec.Alerts) }
         SettingRow("SOS (emergency texts)") { add(TileSpec.Sos) }
         SettingRow("Where am I (your street address)") { add(TileSpec.WhereAmI) }
+        SettingRow("Wi-Fi") { add(TileSpec.Wifi) }
+        SettingRow("Bluetooth") { add(TileSpec.Bluetooth) }
+        SettingRow("Volume") { add(TileSpec.Volume) }
+        // Sighted-help and reading apps, when they're installed.
+        val helpers by produceState(initialValue = emptyList<com.netgician.rplauncher.system.AppEntry>()) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                com.netgician.rplauncher.system.Apps.load(context).filter { a ->
+                    HELPER_APPS.any { a.label.contains(it, ignoreCase = true) }
+                }
+            }
+        }
+        helpers.forEach { app ->
+            SettingRow("${app.label} (helper app)") { add(TileSpec.App(app.packageName, app.className, app.label)) }
+        }
         SettingRow("All apps") { add(TileSpec.AllApps) }
     }
 }
+
+/** Apps that help people with low vision: sighted volunteers, AI descriptions, live agents. */
+private val HELPER_APPS = listOf("Be My Eyes", "Lookout", "Aira", "Seeing AI", "Envision")
 
 /** Reads the picked phone number. The picker grants access to that one row, so no contacts permission. */
 internal fun readPhoneContact(context: Context, uri: Uri): TileSpec.Contact? = runCatching {

@@ -14,6 +14,9 @@ sealed class TileSpec {
     data object Alerts : TileSpec()
     data object Sos : TileSpec()
     data object WhereAmI : TileSpec()
+    data object Wifi : TileSpec()
+    data object Bluetooth : TileSpec()
+    data object Volume : TileSpec()
     data object AllApps : TileSpec()
     data class App(val packageName: String, val className: String, val appLabel: String) : TileSpec()
     data class Contact(val name: String, val number: String) : TileSpec()
@@ -28,6 +31,9 @@ sealed class TileSpec {
             Alerts -> "Alerts"
             Sos -> "SOS"
             WhereAmI -> "Where am I"
+            Wifi -> "Wi-Fi"
+            Bluetooth -> "Bluetooth"
+            Volume -> "Volume"
             AllApps -> "All apps"
             is App -> appLabel
             is Contact -> name
@@ -47,6 +53,8 @@ object Hints {
 }
 
 data class TextSize(val name: String, val scale: Float)
+data class VoicePitch(val name: String, val pitch: Float)
+data class TorchLevel(val name: String, val strength: Float)
 data class SpeechSpeed(val name: String, val rate: Float)
 
 /** When night colours switch on by themselves. */
@@ -104,7 +112,21 @@ data class LauncherConfig(
     val sosSeconds: Int = 5,
     /** The person chose to keep texting in another app: the Texts tile opens it straight away. */
     val textsElsewhere: Boolean = false,
+    /** Voice pitch. Lower voices are easier to hear with high-frequency hearing loss (common with Usher syndrome). */
+    val speechPitch: Float = 1f,
+    /** The phone voice to use, by name, or null for the phone's default. */
+    val voiceName: String? = null,
+    /** Torch brightness, 0..1, on phones that can dim it (Android 13 and later). */
+    val torchStrength: Float = 1f,
+    /** When the viewing window was last checked, in ms; 0 if never recorded. */
+    val windowCheckedAt: Long = 0L,
+    /** Remind a helper to re-check the viewing window after this many months; 0 for never. RP changes over time. */
+    val windowReminderMonths: Int = 0,
 ) {
+    /** True when the viewing window check is due again. It never changes the layout by itself. */
+    fun windowCheckDue(now: Long): Boolean =
+        windowReminderMonths > 0 && windowCheckedAt > 0 && now - windowCheckedAt > windowReminderMonths * 30L * 86_400_000L
+
     /** Tap to hear, double tap to open. */
     val touchToHear: Boolean get() = visionMode != VisionMode.SIGHT
 
@@ -126,6 +148,17 @@ data class LauncherConfig(
             TextSize("Large", 1.25f),
             TextSize("Extra large", 1.5f),
         )
+        val VOICE_PITCHES = listOf(
+            VoicePitch("Normal", 1f),
+            VoicePitch("Lower", 0.8f),
+            VoicePitch("Lowest", 0.65f),
+        )
+        val TORCH_LEVELS = listOf(
+            TorchLevel("Full", 1f),
+            TorchLevel("Medium", 0.5f),
+            TorchLevel("Low", 0.2f),
+        )
+        val WINDOW_REMINDERS = listOf(0, 3, 6)
         val SPEECH_SPEEDS = listOf(
             SpeechSpeed("Slow", 0.8f),
             SpeechSpeed("Normal", 1f),
@@ -143,7 +176,7 @@ fun <T> List<T>.after(current: T): T = this[(indexOf(current) + 1) % size]
 
 /** The setup file: the whole configuration as JSON, so it can move to the next phone. */
 object ConfigJson {
-    private const val VERSION = 4
+    private const val VERSION = 5
 
     fun encode(c: LauncherConfig): String = JSONObject().apply {
         put("version", VERSION)
@@ -175,6 +208,11 @@ object ConfigJson {
         })
         put("sosSeconds", c.sosSeconds)
         put("textsElsewhere", c.textsElsewhere)
+        put("pitch", c.speechPitch.toDouble())
+        if (c.voiceName != null) put("voice", c.voiceName)
+        put("torchStrength", c.torchStrength.toDouble())
+        put("windowCheckedAt", c.windowCheckedAt)
+        put("windowReminderMonths", c.windowReminderMonths)
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -187,6 +225,9 @@ object ConfigJson {
             TileSpec.Alerts -> put("type", "alerts")
             TileSpec.Sos -> put("type", "sos")
             TileSpec.WhereAmI -> put("type", "where_am_i")
+            TileSpec.Wifi -> put("type", "wifi")
+            TileSpec.Bluetooth -> put("type", "bluetooth")
+            TileSpec.Volume -> put("type", "volume")
             TileSpec.AllApps -> put("type", "all_apps")
             is TileSpec.App -> {
                 put("type", "app"); put("pkg", t.packageName); put("cls", t.className); put("label", t.appLabel)
@@ -249,6 +290,12 @@ object ConfigJson {
             } ?: d.sosContacts,
             sosSeconds = o.optInt("sosSeconds", d.sosSeconds).let { s -> if (s in Sos.COUNTDOWN_CHOICES) s else d.sosSeconds },
             textsElsewhere = o.optBoolean("textsElsewhere", d.textsElsewhere),
+            speechPitch = o.optDouble("pitch", d.speechPitch.toDouble()).toFloat().coerceIn(0.5f, 1.5f),
+            voiceName = o.optString("voice", "").ifBlank { null },
+            torchStrength = o.optDouble("torchStrength", d.torchStrength.toDouble()).toFloat().coerceIn(0.05f, 1f),
+            windowCheckedAt = o.optLong("windowCheckedAt", d.windowCheckedAt).coerceAtLeast(0L),
+            windowReminderMonths = o.optInt("windowReminderMonths", d.windowReminderMonths)
+                .let { m -> if (m in LauncherConfig.WINDOW_REMINDERS) m else d.windowReminderMonths },
         )
     }
 
@@ -261,6 +308,9 @@ object ConfigJson {
         "alerts" -> TileSpec.Alerts
         "sos" -> TileSpec.Sos
         "where_am_i" -> TileSpec.WhereAmI
+        "wifi" -> TileSpec.Wifi
+        "bluetooth" -> TileSpec.Bluetooth
+        "volume" -> TileSpec.Volume
         "all_apps" -> TileSpec.AllApps
         "app" -> {
             val pkg = o.optString("pkg"); val cls = o.optString("cls")

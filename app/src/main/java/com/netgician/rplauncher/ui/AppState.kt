@@ -179,6 +179,16 @@ class AppState(
         if (to == Screen.Home && from.isHelperScreen) announceMode()
     }
 
+    /** Once a day at most: says when the viewing window check is due again. A helper runs it. */
+    fun remindWindowCheck() {
+        val now = System.currentTimeMillis()
+        if (!config.windowCheckDue(now)) return
+        val prefs = activity.getSharedPreferences("reminders", android.content.Context.MODE_PRIVATE)
+        if (now - prefs.getLong("window", 0L) < 86_400_000L) return
+        prefs.edit().putLong("window", now).apply()
+        speaker.speak("It's been a few months since the viewing window check. A helper can run it again in Setup.", flush = false)
+    }
+
     /** In a speech mode with hints on, says how the gestures work. */
     fun announceMode() {
         if (config.spokenHints && touchToHearOn(config, speaker.screenReaderOn, Screen.Home)) {
@@ -279,7 +289,7 @@ class AppState(
             TileSpec.Contacts -> start(
                 Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CONTACTS),
             )
-            TileSpec.Torch -> when (torch.toggle()) {
+            TileSpec.Torch -> when (torch.toggle(config.torchStrength)) {
                 true -> say("Torch on")
                 false -> say("Torch off")
                 null -> say("This phone has no torch")
@@ -288,6 +298,9 @@ class AppState(
             TileSpec.Alerts -> go(Screen.Alerts)
             TileSpec.Sos -> go(Screen.Sos(practice = false))
             TileSpec.WhereAmI -> go(Screen.WhereAmI)
+            TileSpec.Wifi -> start(Intent(android.provider.Settings.Panel.ACTION_WIFI), "Could not open Wi-Fi")
+            TileSpec.Volume -> start(Intent(android.provider.Settings.Panel.ACTION_VOLUME), "Could not open volume")
+            TileSpec.Bluetooth -> start(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS), "Could not open Bluetooth")
             TileSpec.AllApps -> go(Screen.Apps)
             is TileSpec.App -> start(
                 Apps.launchIntent(spec.packageName, spec.className),

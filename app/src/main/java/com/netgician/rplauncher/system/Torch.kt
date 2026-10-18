@@ -41,10 +41,35 @@ class Torch(context: Context) {
         runCatching { cameras?.unregisterTorchCallback(callback) }
     }
 
-    /** Switches the torch; returns the state it asked for, or null if it couldn't. */
-    fun toggle(): Boolean? {
+    /** How many brightness steps the torch has: 1 when it can't be dimmed. */
+    val levels: Int = runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            val id = cameraId ?: return@runCatching 1
+            cameras?.getCameraCharacteristics(id)?.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) ?: 1
+        } else 1
+    }.getOrDefault(1)
+
+    val dimmable: Boolean get() = levels > 1
+
+    /** Switches the torch, at [strength] (0..1) where it can be dimmed; returns the state it asked for, or null. */
+    fun toggle(strength: Float = 1f): Boolean? {
         val id = cameraId ?: return null
         val target = !isOn
-        return runCatching { cameras?.setTorchMode(id, target); target }.getOrNull()
+        return runCatching {
+            if (target && dimmable && strength < 1f && android.os.Build.VERSION.SDK_INT >= 33) {
+                val level = (levels * strength).toInt().coerceIn(1, levels)
+                cameras?.turnOnTorchWithStrengthLevel(id, level)
+            } else {
+                cameras?.setTorchMode(id, target)
+            }
+            target
+        }.getOrNull()
+    }
+
+    /** Changes the brightness while the torch is on. */
+    fun setStrength(strength: Float) {
+        val id = cameraId ?: return
+        if (!isOn || !dimmable || android.os.Build.VERSION.SDK_INT < 33) return
+        runCatching { cameras?.turnOnTorchWithStrengthLevel(id, (levels * strength).toInt().coerceIn(1, levels)) }
     }
 }

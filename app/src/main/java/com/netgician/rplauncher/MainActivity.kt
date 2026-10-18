@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(brightness) { applyBrightness(brightness) }
             LaunchedEffect(Unit) {
                 if (s.screen == Screen.Home) s.announceMode()
+                s.remindWindowCheck()
                 delay(3_000)
                 guard.markStarted()
             }
@@ -184,7 +185,11 @@ fun Root(state: AppState) {
     val c = state.config
     val theme = state.theme
     val style = remember(theme, c.textScale) { LvStyle(theme, AtkinsonFamily, c.textScale) }
-    SideEffect { state.speaker.rate = c.speechRate }
+    SideEffect {
+        state.speaker.rate = c.speechRate
+        state.speaker.pitch = c.speechPitch
+        state.speaker.voiceName = c.voiceName
+    }
     val tapMode = TapMode(
         touchToHear = touchToHearOn(c, state.speaker.screenReaderOn, state.screen),
         heard = state.heard,

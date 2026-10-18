@@ -46,7 +46,7 @@ fun longPress(state: AppState, text: String, pos: TilePos? = null): (() -> Unit)
     if (!speak && !feel) return null
     return {
         if (feel && pos != null) state.vibes.play(Landmarks.rowPattern(pos.row))
-        if (speak) state.say(text)
+        if (speak) state.say(if (feel && pos != null) "$text. Row ${pos.row}, column ${pos.col}." else text)
     }
 }
 
@@ -59,6 +59,7 @@ fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.Alerts -> TileIcon.Vector(Icons.Filled.Notifications)
     TileSpec.Sos -> TileIcon.Vector(Icons.Filled.Warning)
     TileSpec.WhereAmI -> TileIcon.Vector(Icons.Filled.LocationOn)
+    TileSpec.Wifi, TileSpec.Bluetooth, TileSpec.Volume -> null
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
     is TileSpec.App -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)
@@ -73,6 +74,25 @@ fun HomeScreen(state: AppState) {
     val textsVersion by com.netgician.rplauncher.texts.TextsBus.version.collectAsState()
     LaunchedEffect(textsVersion) { state.texts.refreshUnread() }
     val newTexts = state.texts.unread
+    // A new alert pops up in the middle of the window with a buzz, instead of at the top edge.
+    val context = LocalContext.current
+    var seen by remember { mutableStateOf(alerts.map { it.key }.toSet()) }
+    var popup by remember { mutableStateOf<com.netgician.rplauncher.model.AlertItem?>(null) }
+    LaunchedEffect(alerts) {
+        val fresh = alerts.firstOrNull { it.key !in seen && !it.key.contains("|${context.packageName}|") }
+        seen = seen + alerts.map { it.key }
+        if (fresh != null) {
+            popup = fresh
+            state.vibes.play(longArrayOf(0, 200, 120, 200))
+            if (c.touchToHear) state.speaker.speak("New alert. ${fresh.speech}", com.netgician.rplauncher.model.Language.guess(fresh.speech), flush = false)
+        }
+    }
+    LaunchedEffect(popup) {
+        if (popup != null) {
+            delay(8_000)
+            popup = null
+        }
+    }
     InWindow(c.window) {
         PagedTiles(
             items = items,
@@ -95,6 +115,19 @@ fun HomeScreen(state: AppState) {
                     onLongPress = longPress(state, "Setup, for helpers", pos),
                 ) { state.openSetup() }
                 is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size, newTexts)
+            }
+        }
+        popup?.let { a ->
+            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                Tile(
+                    label = "${a.app}\n${a.shown}".trim(),
+                    modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.45f),
+                    spoken = "New alert. ${a.speech}",
+                    emphasized = true,
+                ) {
+                    popup = null
+                    state.go(Screen.Alerts)
+                }
             }
         }
     }
@@ -326,7 +359,7 @@ fun WindowCheckScreen(state: AppState, returnTo: Screen) {
                     spoken = "Done, I can see all four corners",
                     emphasized = true,
                 ) {
-                    state.update { it.copy(windowChecked = true) }
+                    state.update { it.copy(windowChecked = true, windowCheckedAt = System.currentTimeMillis()) }
                     state.say("Saved")
                     state.go(returnTo)
                 }

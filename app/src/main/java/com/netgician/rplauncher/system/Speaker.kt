@@ -18,6 +18,22 @@ class Speaker(context: Context) : TextToSpeech.OnInitListener {
     private val home: Locale = Locale.getDefault()
 
     var rate: Float = 1f
+    var pitch: Float = 1f
+
+    /** The chosen voice's name, or null for the phone's default voice. */
+    var voiceName: String? = null
+
+    /** Installed voices for the phone's own language that work without the internet, best first. */
+    fun voices(): List<android.speech.tts.Voice> {
+        val engine = tts ?: return emptyList()
+        if (!ready) return emptyList()
+        return runCatching {
+            engine.voices.orEmpty()
+                .filter { it.locale.language == home.language && !it.isNetworkConnectionRequired }
+                .filter { android.speech.tts.TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in it.features.orEmpty() }
+                .sortedWith(compareBy({ it.locale.country != home.country }, { it.name }))
+        }.getOrDefault(emptyList())
+    }
 
     val screenReaderOn: Boolean
         get() = accessibility?.isTouchExplorationEnabled == true
@@ -45,7 +61,11 @@ class Speaker(context: Context) : TextToSpeech.OnInitListener {
             ?.takeIf { engine.isLanguageAvailable(it) >= TextToSpeech.LANG_AVAILABLE }
             ?: home
         runCatching { engine.setLanguage(locale) }
+        if (locale == home) {
+            voiceName?.let { name -> runCatching { engine.voices?.firstOrNull { it.name == name }?.let { engine.voice = it } } }
+        }
         engine.setSpeechRate(rate)
+        engine.setPitch(pitch)
         engine.speak(text, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, null, "rp-${text.hashCode()}")
     }
 
