@@ -191,6 +191,7 @@ fun Root(state: AppState) {
     val theme = state.theme
     val style = remember(theme, c.textScale) { LvStyle(theme, AtkinsonFamily, c.textScale) }
     SideEffect {
+        NightNow.active = state.nightActive
         state.speaker.rate = c.speechRate
         state.speaker.pitch = c.speechPitch
         state.speaker.voiceName = c.voiceName

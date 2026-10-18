@@ -83,6 +83,11 @@ sealed interface Screen {
 /** Why the number pad is open: a person to text, or this phone's own number for Check texts. */
 enum class NumberPurpose { TEXT, OWN_NUMBER }
 
+/** Whether night colours are on right now, for screens outside the home screen (the call screen). */
+object NightNow {
+    @Volatile var active: Boolean = false
+}
+
 /** Screens for helpers. These are never darkened and never use the person's layout mode. */
 val Screen.isHelperScreen: Boolean
     get() = this is Screen.Settings || this is Screen.Pin || this is Screen.PinReset ||

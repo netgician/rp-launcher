@@ -18,7 +18,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.netgician.rplauncher.model.AutoNight
 import com.netgician.rplauncher.model.Language
+import com.netgician.rplauncher.model.NightMode
+import com.netgician.rplauncher.system.LightSensor
+import com.netgician.rplauncher.ui.NightNow
+import java.util.Calendar
 import com.netgician.rplauncher.system.ConfigStore
 import com.netgician.rplauncher.system.Speaker
 import com.netgician.rplauncher.system.Vibes
@@ -42,6 +47,18 @@ import java.util.Locale
 class CallActivity : ComponentActivity() {
     private lateinit var speaker: Speaker
     private var proximity: PowerManager.WakeLock? = null
+    private var lightSensor: LightSensor? = null
+    private lateinit var config: com.netgician.rplauncher.model.LauncherConfig
+
+    /** Night colours, the same as the home screen: by clock or by room light, as set in Setup. */
+    private var night by mutableStateOf(NightNow.active)
+
+    private fun refreshNightByClock() {
+        if (config.autoNight == AutoNight.CLOCK) {
+            val now = Calendar.getInstance()
+            night = NightMode.byClock(now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), config.nightFromHour, config.nightUntilHour)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.BLACK), navigationBarStyle = SystemBarStyle.dark(Color.BLACK))
@@ -54,7 +71,9 @@ class CallActivity : ComponentActivity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        val config = ConfigStore(this).load()
+        config = ConfigStore(this).load()
+        refreshNightByClock()
+        lightSensor = LightSensor(this) { lux -> if (config.autoNight == AutoNight.LIGHT) night = NightMode.byLight(lux, night) }
         speaker = Speaker(this).apply {
             rate = config.speechRate
             pitch = config.speechPitch
@@ -68,7 +87,14 @@ class CallActivity : ComponentActivity() {
         }.getOrNull()
 
         setContent {
-            val style = remember { LvStyle(config.theme, AtkinsonFamily, config.textScale) }
+            val theme = if (night && config.autoNight != AutoNight.OFF) config.nightTheme else config.theme
+            val style = remember(theme) { LvStyle(theme, AtkinsonFamily, config.textScale) }
+            // Night colours also dim the window, like the home screen.
+            LaunchedEffect(theme) {
+                val attrs = window.attributes
+                attrs.screenBrightness = theme.windowBrightness ?: config.brightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                window.attributes = attrs
+            }
             CompositionLocalProvider(LocalLv provides style) {
                 val calls by Calls.list.collectAsState()
                 val audio by Calls.audio.collectAsState()
@@ -76,9 +102,11 @@ class CallActivity : ComponentActivity() {
                 var lastSeconds by remember { mutableLongStateOf(0L) }
                 var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
                 LaunchedEffect(Unit) {
+                    var ticks = 0
                     while (true) {
                         delay(1_000)
                         now = System.currentTimeMillis()
+                        if (++ticks % 30 == 0) refreshNightByClock()
                     }
                 }
                 val live = calls.filter { it.phase != CallPhase.ENDED }
@@ -260,6 +288,17 @@ class CallActivity : ComponentActivity() {
             if (on && !lock.isHeld) lock.acquire(4 * 60 * 60 * 1000L)
             if (!on && lock.isHeld) lock.release()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        lightSensor?.start()
+        refreshNightByClock()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        lightSensor?.stop()
     }
 
     override fun onDestroy() {
