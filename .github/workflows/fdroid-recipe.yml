@@ -85,6 +85,15 @@ jobs:
             echo "::notice title=Quick check::ONNX Runtime is not built from source in this run"
           fi
 
+      # As in a real merge request, the recipe is committed: F-Droid takes the build date
+      # (SOURCE_DATE_EPOCH) from that commit, and Gradle fails on an empty one.
+      - name: Commit the recipe in the app list
+        run: |
+          git config --global --add safe.directory '*'
+          cd fdroiddata
+          git add metadata/com.netgician.rplauncher.yml srclibs/
+          git -c user.name="RP Launcher check" -c user.email="check@example.invalid" commit -q -m "New app: RP Launcher (check)"
+
       - name: F-Droid lint
         run: |
           cd fdroiddata
