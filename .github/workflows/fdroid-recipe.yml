@@ -118,7 +118,16 @@ jobs:
           export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-home"
           mkdir -p "$GRADLE_USER_HOME"
           echo "::notice title=Gradle home::was ${GRADLE_HOME_BEFORE:-unset}; now $GRADLE_USER_HOME"
+          # F-Droid runs Gradle through this, so its environment and a stack trace land in the log.
+          W=$(command -v gradlew-fdroid)
+          cat > "$RUNNER_TEMP/gradle-traced" <<EOF2
+          #!/bin/sh
+          env | sort | grep -v -i -E 'token|secret|key|password' | sed 's/^/ENV /' >&2
+          exec "$W" --stacktrace "\$@"
+          EOF2
+          chmod +x "$RUNNER_TEMP/gradle-traced"
           cd fdroiddata
+          echo "gradle: $RUNNER_TEMP/gradle-traced" >> config.yml
           set -o pipefail
           fdroid build --verbose --on-server --no-tarball com.netgician.rplauncher:5 2>&1 | tee ../build.log
           echo "env: HOME=$HOME JAVA_HOME=${JAVA_HOME:-} GRADLE_USER_HOME=${GRADLE_USER_HOME:-} GRADLE_OPTS=${GRADLE_OPTS:-}" >> ../build.log
@@ -144,13 +153,13 @@ jobs:
           if not os.path.exists("build.log"):
               print("::warning title=F-Droid build::No build log"); raise SystemExit
           lines = open("build.log", errors="replace").read().splitlines()
-          keep = [l for l in lines if re.search(r"(ERROR|Error|error:|Found |Scanner|scanner|BUILD FAILED|FAILURE|What went wrong|Exception|Caused by|Could not|not found|Unknown|denied|Successfully built|Finished|> Task|gradle |Gradle |JAVA_HOME|GRADLE)", l)]
+          keep = [l for l in lines if re.search(r"(ERROR|Error|error:|Found |Scanner|scanner|BUILD FAILED|FAILURE|What went wrong|Exception|Caused by|Could not|not found|Unknown|denied|Successfully built|Finished|> Task|gradle |Gradle |JAVA_HOME|GRADLE|^ENV |NumberFormat)", l)]
           seen = []
           for l in keep:
               l = l.strip()[:300]
               if l and l not in seen: seen.append(l)
           tail = [l.strip()[:300] for l in lines[-15:]]
-          msg = "%0A".join(x.replace("%", "%25") for x in (seen[-60:] + ["--- last lines ---"] + tail))
+          msg = "%0A".join(x.replace("%", "%25") for x in (seen[-90:] + ["--- last lines ---"] + tail))
           print(f"::notice title=F-Droid build::{msg}")
           PY
           find fdroiddata/unsigned -name '*.apk' -exec ls -l {} \; 2>/dev/null | sed 's/^/::notice title=F-Droid APK::/' || true
