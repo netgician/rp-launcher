@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -46,7 +47,7 @@ fun longPress(state: AppState, text: String, pos: TilePos? = null): (() -> Unit)
     if (!speak && !feel) return null
     return {
         if (feel && pos != null) state.vibes.play(Landmarks.rowPattern(pos.row))
-        if (speak) state.say(if (feel && pos != null) "$text. Row ${pos.row}, column ${pos.col}." else text)
+        if (speak) state.say(if (feel && pos != null) tr("%s. Row %s, column %s.", text, pos.row, pos.col) else text)
     }
 }
 
@@ -93,7 +94,7 @@ fun HomeScreen(state: AppState) {
         if (fresh != null) {
             popup = fresh
             state.vibes.play(longArrayOf(0, 200, 120, 200))
-            if (c.touchToHear) state.speaker.speak("New alert. ${fresh.speech}", com.netgician.rplauncher.model.Language.guess(fresh.speech), flush = false)
+            if (c.touchToHear) state.speaker.speak(tr("New alert. %s", fresh.speech), com.netgician.rplauncher.model.Language.guess(fresh.speech), flush = false)
         }
     }
     LaunchedEffect(popup) {
@@ -115,17 +116,17 @@ fun HomeScreen(state: AppState) {
             onSpeak = state::say,
             header = { m -> StatusHeader(m, state::say) },
             onPaged = { pages ->
-                val labels = pages.map { p -> p.map { if (it is HomeItem.Spec) it.spec.label else "Setup" } }
+                val labels = pages.map { p -> p.map { if (it is HomeItem.Spec) it.spec.label else tr("Setup") } }
                 if (labels != state.homePages) state.homePages = labels
             },
         ) { item, m, pos ->
             when (item) {
                 HomeItem.Setup -> Tile(
-                    label = "Setup",
+                    label = tr("Setup"),
                     modifier = m,
-                    spoken = "Setup, for helpers",
+                    spoken = tr("Setup, for helpers"),
                     icon = TileIcon.Vector(Icons.Filled.Settings),
-                    onLongPress = longPress(state, "Setup, for helpers", pos),
+                    onLongPress = longPress(state, tr("Setup, for helpers"), pos),
                 ) { state.openSetup() }
                 is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size, newTexts, missedCalls)
             }
@@ -135,7 +136,7 @@ fun HomeScreen(state: AppState) {
                 Tile(
                     label = "${a.app}\n${a.shown}".trim(),
                     modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.45f),
-                    spoken = "New alert. ${a.speech}",
+                    spoken = tr("New alert. %s", a.speech),
                     emphasized = true,
                 ) {
                     popup = null
@@ -150,20 +151,20 @@ fun HomeScreen(state: AppState) {
 private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos, alertCount: Int, textCount: Int, missedCalls: Int = 0) {
     val torchOn = spec == TileSpec.Torch && state.torch.isOn
     val label = when {
-        torchOn -> "Torch on"
-        spec == TileSpec.Alerts && alertCount > 0 -> "Alerts ($alertCount)"
-        spec == TileSpec.Messages && textCount > 0 -> "Texts ($textCount)"
-        spec == TileSpec.Phone && missedCalls > 0 -> "Phone ($missedCalls)"
+        torchOn -> tr("Torch on")
+        spec == TileSpec.Alerts && alertCount > 0 -> tr("Alerts (%s)", alertCount)
+        spec == TileSpec.Messages && textCount > 0 -> tr("Texts (%s)", textCount)
+        spec == TileSpec.Phone && missedCalls > 0 -> tr("Phone (%s)", missedCalls)
         else -> spec.label
     }
     val spoken = when {
-        spec is TileSpec.Contact -> "Call ${spec.name}"
-        torchOn -> "Torch is on"
-        spec == TileSpec.Alerts -> if (alertCount == 0) "Alerts, none new" else "Alerts, $alertCount new"
-        spec == TileSpec.Messages && textCount > 0 -> if (textCount == 1) "Texts, 1 new" else "Texts, $textCount new"
-        spec == TileSpec.Sos -> "SOS, emergency texts"
-        spec == TileSpec.Pages -> "Pages, to jump to any page"
-        spec == TileSpec.Phone && missedCalls > 0 -> if (missedCalls == 1) "Phone, 1 missed call" else "Phone, $missedCalls missed calls"
+        spec is TileSpec.Contact -> tr("Call %s", spec.name)
+        torchOn -> tr("Torch is on")
+        spec == TileSpec.Alerts -> if (alertCount == 0) tr("Alerts, none new") else tr("Alerts, %s new", alertCount)
+        spec == TileSpec.Messages && textCount > 0 -> if (textCount == 1) tr("Texts, 1 new") else tr("Texts, %s new", textCount)
+        spec == TileSpec.Sos -> tr("SOS, emergency texts")
+        spec == TileSpec.Pages -> tr("Pages, to jump to any page")
+        spec == TileSpec.Phone && missedCalls > 0 -> if (missedCalls == 1) tr("Phone, 1 missed call") else tr("Phone, %s missed calls", missedCalls)
         else -> spec.label
     }
     Tile(
@@ -191,10 +192,10 @@ fun StatusHeader(modifier: Modifier, onSpeak: (String) -> Unit) {
     val battery = remember(now) { Battery.read(context) }
     val shown = if (battery.percent >= 0) "$time · ${battery.percent}%" else time
     val spoken = buildString {
-        append("It's $time.")
+        append(tr("It's %s.", time))
         if (battery.percent >= 0) {
-            append(" Battery ${battery.percent} percent")
-            if (battery.charging) append(", charging")
+            append(tr(" Battery %s percent", battery.percent))
+            if (battery.charging) append(tr(", charging"))
             append(".")
         }
     }
@@ -269,7 +270,7 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
         if (granted) call() else dial()
     }
     LaunchedEffect(contact) {
-        state.say("Call ${contact.name}? Tap Call to call, Text to send a text, or Cancel.")
+        state.say(tr("Call %s? Tap Call to call, Text to send a text, or Cancel.", contact.name))
     }
     InWindow(state.config.window) {
         PagedTiles(
@@ -279,14 +280,14 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
             cols = 1,
             rows = 3,
             onSpeak = state::say,
-            header = { m -> SpokenText(contact.name, m, state::say, spoken = "Call ${contact.name}?", maxLines = 2) },
+            header = { m -> SpokenText(contact.name, m, state::say, spoken = tr("Call %s?", contact.name), maxLines = 2) },
             minTarget = 0f,
         ) { item, m, _ ->
             when (item) {
                 "call" -> Tile(
-                    label = "Call",
+                    label = tr("Call"),
                     modifier = m,
-                    spoken = "Call ${contact.name}",
+                    spoken = tr("Call %s", contact.name),
                     icon = TileIcon.Vector(Icons.Filled.Call),
                     emphasized = true,
                 ) {
@@ -295,9 +296,9 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
                     if (granted) call() else permission.launch(Manifest.permission.CALL_PHONE)
                 }
                 "message" -> Tile(
-                    label = "Text",
+                    label = tr("Text"),
                     modifier = m,
-                    spoken = "Send ${contact.name} a text",
+                    spoken = tr("Send %s a text", contact.name),
                     icon = TileIcon.Vector(Icons.Filled.Email),
                 ) {
                     if (state.texts.isDefault) {
@@ -308,11 +309,11 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
                     }
                 }
                 else -> Tile(
-                    label = "Cancel",
+                    label = tr("Cancel"),
                     modifier = m,
                     icon = TileIcon.Vector(Icons.Filled.Close),
                 ) {
-                    state.say("Cancelled")
+                    state.say(tr("Cancelled"))
                     state.go(Screen.Home)
                 }
             }
@@ -328,9 +329,7 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
 fun WindowCheckScreen(state: AppState, returnTo: Screen) {
     val lv = LocalLv.current
     val w = state.config.window
-    val instructions = "Viewing window check. Keep your eyes on the middle of the screen. " +
-        "Tap Bigger until you can no longer see all four corners of the frame, then tap Smaller once. " +
-        "Tap Done when you can see all four corners."
+    val instructions = tr("Viewing window check. Keep your eyes on the middle of the screen. Tap Bigger until you can no longer see all four corners of the frame, then tap Smaller once. Tap Done when you can see all four corners.")
     LaunchedEffect(Unit) { state.say(instructions) }
 
     fun change(next: com.netgician.rplauncher.model.ViewingWindow, done: String, limit: String) {
@@ -347,7 +346,7 @@ fun WindowCheckScreen(state: AppState, returnTo: Screen) {
         Box(Modifier.place(r).border(BorderStroke(8.dp, lv.accent)).padding(16.dp)) {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SpokenText(
-                    text = "Can you see all four corners of the frame?",
+                    text = tr("Can you see all four corners of the frame?"),
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     onSpeak = state::say,
                     spoken = instructions,
@@ -355,29 +354,29 @@ fun WindowCheckScreen(state: AppState, returnTo: Screen) {
                     maxLines = 4,
                 )
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Tile("Bigger", Modifier.weight(1f).fillMaxHeight(), spoken = "Make the frame bigger") {
-                        change(w.bigger(), "Bigger", "This is the largest")
+                    Tile(tr("Bigger"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Make the frame bigger")) {
+                        change(w.bigger(), tr("Bigger"), tr("This is the largest"))
                     }
-                    Tile("Smaller", Modifier.weight(1f).fillMaxHeight(), spoken = "Make the frame smaller") {
-                        change(w.smaller(), "Smaller", "This is the smallest")
+                    Tile(tr("Smaller"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Make the frame smaller")) {
+                        change(w.smaller(), tr("Smaller"), tr("This is the smallest"))
                     }
                 }
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Tile("Up", Modifier.weight(1f).fillMaxHeight(), spoken = "Move the frame up") {
-                        change(w.moveUp(), "Up", "This is the top")
+                    Tile(tr("Up"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Move the frame up")) {
+                        change(w.moveUp(), tr("Up"), tr("This is the top"))
                     }
-                    Tile("Down", Modifier.weight(1f).fillMaxHeight(), spoken = "Move the frame down") {
-                        change(w.moveDown(), "Down", "This is the bottom")
+                    Tile(tr("Down"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Move the frame down")) {
+                        change(w.moveDown(), tr("Down"), tr("This is the bottom"))
                     }
                 }
                 Tile(
-                    label = "Done",
+                    label = tr("Done"),
                     modifier = Modifier.fillMaxWidth().weight(1f),
-                    spoken = "Done, I can see all four corners",
+                    spoken = tr("Done, I can see all four corners"),
                     emphasized = true,
                 ) {
                     state.update { it.copy(windowChecked = true, windowCheckedAt = System.currentTimeMillis()) }
-                    state.say("Saved")
+                    state.say(tr("Saved"))
                     state.go(returnTo)
                 }
             }
@@ -390,26 +389,26 @@ fun WindowCheckScreen(state: AppState, returnTo: Screen) {
 fun PagesScreen(state: AppState) {
     val pages = state.homePages
     LaunchedEffect(Unit) {
-        state.say(if (pages.size <= 1) "The home screen has just one page." else "Pages. The home screen has ${pages.size} pages.")
+        state.say(if (pages.size <= 1) tr("The home screen has just one page.") else tr("Pages. The home screen has %s pages.", pages.size))
     }
     val choices = buildList {
-        add(Control("Back", spoken = "Back to the home screen", icon = TileIcon.Vector(Icons.Filled.Home)) { state.go(Screen.Home) })
+        add(Control(tr("Back"), spoken = tr("Back to the home screen"), icon = TileIcon.Vector(Icons.Filled.Home)) { state.go(Screen.Home) })
         pages.forEachIndexed { i, tiles ->
-            val names = tiles.filter { it != "Pages" }
+            val names = tiles.filter { it != tr("Pages") }
             val shown = names.take(4).joinToString(", ") + if (names.size > 4) "…" else ""
             add(
                 Control(
-                    "Page ${i + 1}: $shown",
-                    spoken = "Page ${i + 1}: ${com.netgician.rplauncher.texts.People.join(names, max = 8)}",
+                    tr("Page %s: %s", i + 1, shown),
+                    spoken = tr("Page %s: %s", i + 1, com.netgician.rplauncher.texts.People.join(names, max = 8)),
                     emphasized = i == state.homePage,
                 ) {
                     state.homePage = i
                     state.go(Screen.Home)
                     state.feel(Landmarks.PAGE_TURN)
-                    state.say("Page ${i + 1}")
+                    state.say(tr("Page %s", i + 1))
                 },
             )
         }
     }
-    ChoiceList(state, "Pages", choices = choices)
+    ChoiceList(state, tr("Pages"), choices = choices)
 }

@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -49,7 +50,11 @@ data class Draft(
 class ThreadData(val messages: List<TextMessage>, val people: List<String>)
 
 /** What a "Check texts" step is waiting to hear back about. */
-enum class CheckStep(val label: String) { TEXT("test text"), PICTURE("test picture text"), GROUP("test group text") }
+enum class CheckStep(private val en: String) {
+    TEXT("test text"), PICTURE("test picture text"), GROUP("test group text");
+
+    val label: String get() = tr(en)
+}
 
 /** The texting part of the app: what's being written, played, and checked. */
 class TextsState(private val app: AppState, private val activity: Activity, private val scope: CoroutineScope) {
@@ -161,7 +166,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
         val pkg = android.provider.Telephony.Sms.getDefaultSmsPackage(activity)
         val launch = pkg?.let { activity.packageManager.getLaunchIntentForPackage(it) }
             ?: Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)
-        app.start(launch, "No texting app found")
+        app.start(launch, tr("No texting app found"))
     }
 
     /** Going on to make RP Launcher the texting app: a helper job, behind the PIN if there is one. */
@@ -180,10 +185,10 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
         if (to.isEmpty()) {
             addingPerson = true
             app.go(Screen.NewText)
-            app.say("New text. Pick who to send it to.")
+            app.say(tr("New text. Pick who to send it to."))
         } else {
             app.go(Screen.Compose)
-            app.say("Text to ${People.join(to.map(names::of))}.")
+            app.say(tr("Text to %s.", People.join(to.map(names::of))))
         }
     }
 
@@ -192,13 +197,13 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
             val people = if (Demo.on) Demo.thread(threadId).people
             else withContext(Dispatchers.IO) { runCatching { TextStore(activity).recipients(threadId) }.getOrDefault(emptyList()) }
             if (people.isEmpty()) {
-                app.say("Couldn't find who is in this conversation.")
+                app.say(tr("Couldn't find who is in this conversation."))
                 return@launch
             }
             val keep = draft?.takeIf { it.threadId == threadId }
             draft = keep ?: Draft(to = people, threadId = threadId)
             app.go(Screen.Compose)
-            app.say("Reply to ${People.join(people.map(names::of))}.")
+            app.say(tr("Reply to %s.", People.join(people.map(names::of))))
         }
     }
 
@@ -215,45 +220,45 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
         addingPerson = false
         app.go(Screen.Compose)
         val who = names.of(number)
-        app.say(if (d.to.isEmpty()) "Text to $who." else "$who added. ${People.join(draft!!.to.map(names::of))}.")
+        app.say(if (d.to.isEmpty()) tr("Text to %s.", who) else tr("%s added. %s.", who, People.join(draft!!.to.map(names::of))))
     }
 
     fun cancelDraft() {
         draft?.files?.forEach { runCatching { File(it.path).delete() } }
         val back = draft?.threadId
         draft = null
-        app.say("Cancelled")
+        app.say(tr("Cancelled"))
         app.go(if (back != null) Screen.Conversation(back) else Screen.Texts)
     }
 
     fun send() {
         val d = draft ?: return
         if (d.text.isBlank() && d.files.isEmpty()) {
-            app.say("Nothing to send yet. Double tap Speak to say your message, or Quick replies.")
+            app.say(tr("Nothing to send yet. Double tap Speak to say your message, or Quick replies."))
             return
         }
         if (d.to.isEmpty()) {
-            app.say("Pick who to send it to first.")
+            app.say(tr("Pick who to send it to first."))
             return
         }
         if (Demo.on) {
             d.files.forEach { runCatching { File(it.path).delete() } }
             draft = null
-            app.say("Demo mode, so nothing was sent.")
+            app.say(tr("Demo mode, so nothing was sent."))
             app.go(d.threadId?.let { Screen.Conversation(it) } ?: Screen.Texts)
             return
         }
-        app.say("Sending to ${People.join(d.to.map(names::of))}.")
+        app.say(tr("Sending to %s.", People.join(d.to.map(names::of))))
         scope.launch {
             val started = withContext(Dispatchers.IO) {
                 val attachments = d.files.mapNotNull { f ->
                     runCatching { Attachment(f.contentType, File(f.path).name, File(f.path).readBytes()) }.getOrNull()
                 }
                 runCatching { TextSender.send(activity, d.to, d.text, attachments) }
-                    .getOrElse { TextSender.Started(-1, false, "Something went wrong on the phone.") }
+                    .getOrElse { TextSender.Started(-1, false, tr("Something went wrong on the phone.")) }
             }
             if (!started.ok) {
-                app.say("Not sent. ${started.problem ?: ""}")
+                app.say(tr("Not sent. %s", started.problem ?: ""))
                 return@launch
             }
             d.files.forEach { runCatching { File(it.path).delete() } }
@@ -263,8 +268,8 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     }
 
     fun retry(m: TextMessage) {
-        if (Demo.on) { app.say("Demo mode, so nothing was sent."); return }
-        app.say("Trying again.")
+        if (Demo.on) { app.say(tr("Demo mode, so nothing was sent.")); return }
+        app.say(tr("Trying again."))
         scope.launch(Dispatchers.IO) {
             if (m.box == com.netgician.rplauncher.texts.Box.WAITING) MmsDownloads.start(activity, m.id, attempt = 1)
             else TextSender.retry(activity, m)
@@ -276,7 +281,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     fun play(part: TextPart) {
         if (playingPart == part.id) {
             stopPlaying()
-            app.say("Stopped")
+            app.say(tr("Stopped"))
             return
         }
         stopPlaying()
@@ -288,11 +293,11 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
             p.setOnPreparedListener { it.start() }
             p.setOnCompletionListener {
                 stopPlaying()
-                app.say("End of clip")
+                app.say(tr("End of clip"))
             }
             p.setOnErrorListener { _, _, _ ->
                 stopPlaying()
-                app.say("This clip can't be played here. Double tap Open file to try another app.")
+                app.say(tr("This clip can't be played here. Double tap Open file to try another app."))
                 true
             }
             p.prepareAsync()
@@ -300,7 +305,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
             playingPart = part.id
         }.onFailure {
             p.release()
-            app.say("This clip can't be played here.")
+            app.say(tr("This clip can't be played here."))
         }
     }
 
@@ -323,7 +328,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
                 }.getOrNull()
             }
             if (file == null) {
-                app.say("This file couldn't be read.")
+                app.say(tr("This file couldn't be read."))
                 return@launch
             }
             val uri = FileProvider.getUriForFile(activity, "${activity.packageName}.files", file)
@@ -331,7 +336,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
             try {
                 activity.startActivity(view)
             } catch (e: ActivityNotFoundException) {
-                app.say("No app on this phone can open this kind of file.")
+                app.say(tr("No app on this phone can open this kind of file."))
             }
         }
     }
@@ -351,31 +356,31 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
                 val mine = MyNumbers.get(activity).firstOrNull()
                 val step = checking
                 if (step != null && mine != null && e.who == names.of(mine)) {
-                    checkLog += "${step.label.replaceFirstChar { it.uppercase() }} received. It works."
-                    app.speaker.speak("${step.label.replaceFirstChar { it.uppercase() }} received. It works.", flush = false)
+                    checkLog += tr("%s received. It works.", step.label.replaceFirstChar { it.uppercase() })
+                    app.speaker.speak(tr("%s received. It works.", step.label.replaceFirstChar { it.uppercase() }), flush = false)
                     checking = null
                     return
                 }
                 // In that conversation, the new text appears and is read out by the screen itself.
                 if (screen is Screen.Conversation && inThread == e.threadId) return
-                if (screen != Screen.See && screen != Screen.ReadText) app.speaker.speak("New text from ${e.who}.", flush = false)
+                if (screen != Screen.See && screen != Screen.ReadText) app.speaker.speak(tr("New text from %s.", e.who), flush = false)
             }
             is TextsBus.Event.Sent -> {
                 if (screen is Screen.Sos) return // the SOS screen says each result itself
                 checking?.let { step ->
-                    checkLog += if (e.ok) "${step.label.replaceFirstChar { it.uppercase() }} sent. Waiting for it to arrive…"
-                    else "${step.label.replaceFirstChar { it.uppercase() }} not sent. ${e.words}"
+                    checkLog += if (e.ok) tr("%s sent. Waiting for it to arrive…", step.label.replaceFirstChar { it.uppercase() })
+                    else tr("%s not sent. %s", step.label.replaceFirstChar { it.uppercase() }, e.words)
                     if (!e.ok) checking = null
                 }
                 when {
-                    e.ok && (onTexts || screen.isHelperScreen) -> app.speaker.speak("Sent.", flush = false)
-                    !e.ok && inThread == e.threadId -> app.speaker.speak("Not sent. ${e.words} Double tap Try again.", flush = false)
-                    !e.ok -> app.speaker.speak("A text was not sent. ${e.words} Open Texts to try again.", flush = false)
+                    e.ok && (onTexts || screen.isHelperScreen) -> app.speaker.speak(tr("Sent."), flush = false)
+                    !e.ok && inThread == e.threadId -> app.speaker.speak(tr("Not sent. %s Double tap Try again.", e.words), flush = false)
+                    !e.ok -> app.speaker.speak(tr("A text was not sent. %s Open Texts to try again.", e.words), flush = false)
                 }
             }
             is TextsBus.Event.DownloadFailed -> {
-                checking?.let { step -> checkLog += "${step.label.replaceFirstChar { it.uppercase() }} didn't download. ${e.words}"; checking = null }
-                app.speaker.speak("A picture text from ${e.who} didn't download. ${e.words}", flush = false)
+                checking?.let { step -> checkLog += tr("%s didn't download. %s", step.label.replaceFirstChar { it.uppercase() }, e.words); checking = null }
+                app.speaker.speak(tr("A picture text from %s didn't download. %s", e.who, e.words), flush = false)
             }
         }
     }
@@ -386,30 +391,30 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     fun check(step: CheckStep, other: String? = null) {
         val mine = MyNumbers.get(activity).firstOrNull()
         if (mine == null) {
-            app.say("First, type this phone's own number.")
+            app.say(tr("First, type this phone's own number."))
             return
         }
         checking = step
-        checkLog += "Sending a ${step.label}…"
-        app.say("Sending a ${step.label}.")
+        checkLog += tr("Sending a %s…", step.label)
+        app.say(tr("Sending a %s.", step.label))
         scope.launch {
             val started = withContext(Dispatchers.IO) {
                 runCatching {
                     when (step) {
-                        CheckStep.TEXT -> TextSender.send(activity, listOf(mine), "RP Launcher test text. You can delete this.")
+                        CheckStep.TEXT -> TextSender.send(activity, listOf(mine), tr("RP Launcher test text. You can delete this."))
                         CheckStep.PICTURE -> TextSender.send(
-                            activity, listOf(mine), "RP Launcher test picture text.",
+                            activity, listOf(mine), tr("RP Launcher test picture text."),
                             listOf(Attachment("image/png", "test.png", TestPicture.png())),
                         )
                         CheckStep.GROUP -> TextSender.send(
-                            activity, listOfNotNull(mine, other), "Testing group texts from RP Launcher. You can ignore this.",
+                            activity, listOfNotNull(mine, other), tr("Testing group texts from RP Launcher. You can ignore this."),
                         )
                     }
-                }.getOrElse { TextSender.Started(-1, false, "Something went wrong on the phone.") }
+                }.getOrElse { TextSender.Started(-1, false, tr("Something went wrong on the phone.")) }
             }
             if (!started.ok) {
-                checkLog += "Not sent. ${started.problem}"
-                app.say("Not sent. ${started.problem}")
+                checkLog += tr("Not sent. %s", started.problem)
+                app.say(tr("Not sent. %s", started.problem))
                 checking = null
             }
         }

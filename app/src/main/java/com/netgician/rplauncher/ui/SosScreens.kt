@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -73,7 +74,7 @@ fun SosScreen(state: AppState, practice: Boolean) {
     fun send() {
         if (stage != SosStage.COUNTDOWN) return
         stage = SosStage.LOCATING
-        state.say(if (practice) "Practice. Finding where you are." else "Finding where you are.")
+        state.say(if (practice) tr("Practice. Finding where you are.") else tr("Finding where you are."))
         // The activity's scope, not this screen's: leaving the screen must not stop an SOS that's sending.
         state.scope.launch {
             val place: Place? = withContext(Dispatchers.IO) { runCatching { Where.place(context) }.getOrNull() }
@@ -84,24 +85,23 @@ fun SosScreen(state: AppState, practice: Boolean) {
             lines = listOf(text)
             when {
                 practice -> say(
-                    "Practice done. Nothing was sent. In a real SOS, this text goes to ${People.join(names.ifEmpty { listOf("your SOS contacts") })}, " +
-                        "and then you tap Call.",
+                    tr("Practice done. Nothing was sent. In a real SOS, this text goes to %s, and then you tap Call.", People.join(names.ifEmpty { listOf(tr("your SOS contacts")) })),
                 )
-                contacts.isEmpty() -> say("No SOS contacts are set up, so no texts were sent. Tap Call $emergency for help.")
+                contacts.isEmpty() -> say(tr("No SOS contacts are set up, so no texts were sent. Tap Call %s for help.", emergency))
                 TextRole.isDefault(context) -> {
                     val started = withContext(Dispatchers.IO) {
                         contacts.map { ct -> ct to runCatching { TextSender.send(context, listOf(ct.number), text) }.getOrNull() }
                     }
                     for ((ct, st) in started) {
                         if (st != null && st.ok) waiting[st.threadId] = ct.name
-                        else say("Not sent to ${ct.name}. ${st?.problem ?: ""}")
+                        else say(tr("Not sent to %s. %s", ct.name, st?.problem ?: ""))
                     }
-                    say("Sending to ${People.join(names)}. Tap Call ${names.first()} to call.")
+                    say(tr("Sending to %s. Tap Call %s to call.", People.join(names), names.first()))
                 }
                 else -> {
                     val to = contacts.joinToString(";") { it.number }
                     state.start(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$to")).putExtra("sms_body", text))
-                    say("Your texting app is open with the SOS text ready. Press its Send button, then come back here to call.")
+                    say(tr("Your texting app is open with the SOS text ready. Press its Send button, then come back here to call."))
                 }
             }
         }
@@ -111,7 +111,7 @@ fun SosScreen(state: AppState, practice: Boolean) {
     LaunchedEffect(Unit) {
         TextsBus.events.collect { e ->
             if (e is TextsBus.Event.Sent) {
-                waiting.remove(e.threadId)?.let { name -> say(if (e.ok) "Sent to $name." else "Not sent to $name. ${e.words}") }
+                waiting.remove(e.threadId)?.let { name -> say(if (e.ok) tr("Sent to %s.", name) else tr("Not sent to %s. %s", name, e.words)) }
             }
         }
     }
@@ -120,7 +120,7 @@ fun SosScreen(state: AppState, practice: Boolean) {
     LaunchedEffect(Unit) {
         if (contacts.isEmpty() && !practice) {
             stage = SosStage.DONE
-            say("No SOS contacts are set up yet. A helper can add them in Setup. Tap Call $emergency for help.")
+            say(tr("No SOS contacts are set up yet. A helper can add them in Setup. Tap Call %s for help.", emergency))
             return@LaunchedEffect
         }
         state.say(Sos.countdownWords(c.sosSeconds, names, practice))
@@ -137,7 +137,7 @@ fun SosScreen(state: AppState, practice: Boolean) {
         onDispose {
             if (stage == SosStage.COUNTDOWN) {
                 stage = SosStage.CANCELLED
-                state.speaker.speak("SOS cancelled. Nothing was sent.", flush = false)
+                state.speaker.speak(tr("SOS cancelled. Nothing was sent."), flush = false)
             }
         }
     }
@@ -145,7 +145,7 @@ fun SosScreen(state: AppState, practice: Boolean) {
     val cancel = {
         stage = SosStage.CANCELLED
         state.vibes.play(Landmarks.PAGE_TURN)
-        state.say("SOS cancelled. Nothing was sent.")
+        state.say(tr("SOS cancelled. Nothing was sent."))
     }
 
     InWindow(c.window) {
@@ -153,53 +153,53 @@ fun SosScreen(state: AppState, practice: Boolean) {
             when (stage) {
                 SosStage.COUNTDOWN -> {
                     SpokenText(
-                        if (practice) "Practice SOS in $left" else "SOS in $left",
+                        if (practice) tr("Practice SOS in %s", left) else tr("SOS in %s", left),
                         Modifier.fillMaxWidth().height(56.dp), state::say,
                         spoken = Sos.countdownWords(left, names, practice),
                     )
-                    Tile("Cancel", Modifier.fillMaxWidth().weight(2f), spoken = "Cancel the SOS",
+                    Tile(tr("Cancel"), Modifier.fillMaxWidth().weight(2f), spoken = tr("Cancel the SOS"),
                         icon = TileIcon.Vector(Icons.Filled.Close), emphasized = true) { cancel() }
-                    Tile("Send now", Modifier.fillMaxWidth().weight(1f), spoken = "Send the SOS now") { send() }
+                    Tile(tr("Send now"), Modifier.fillMaxWidth().weight(1f), spoken = tr("Send the SOS now")) { send() }
                 }
                 SosStage.LOCATING -> {
-                    SpokenText("Finding where you are…", Modifier.fillMaxWidth().height(56.dp), state::say, maxLines = 2)
-                    Tile("Cancel", Modifier.fillMaxWidth().weight(1f), spoken = "Cancel the SOS",
+                    SpokenText(tr("Finding where you are…"), Modifier.fillMaxWidth().height(56.dp), state::say, maxLines = 2)
+                    Tile(tr("Cancel"), Modifier.fillMaxWidth().weight(1f), spoken = tr("Cancel the SOS"),
                         icon = TileIcon.Vector(Icons.Filled.Close), emphasized = true) { cancel() }
                 }
                 SosStage.DONE -> {
                     val first = contacts.firstOrNull()
                     if (first != null) {
-                        Tile("Call ${first.name}", Modifier.fillMaxWidth().weight(2f), spoken = "Call ${first.name}",
+                        Tile(tr("Call %s", first.name), Modifier.fillMaxWidth().weight(2f), spoken = tr("Call %s", first.name),
                             icon = TileIcon.Vector(Icons.Filled.Call), emphasized = true) {
-                            if (practice) state.say("In a real SOS, this calls ${first.name}.") else callNow(first.number)
+                            if (practice) state.say(tr("In a real SOS, this calls %s.", first.name)) else callNow(first.number)
                         }
                     }
                     Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Tile("Call $emergency", Modifier.weight(1f).fillMaxHeight(), spoken = "Call $emergency, emergency services",
+                        Tile(tr("Call %s", emergency), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Call %s, emergency services", emergency),
                             icon = TileIcon.Vector(Icons.Filled.Call)) {
-                            if (practice) state.say("In a real SOS, this opens the phone with $emergency ready to call.")
+                            if (practice) state.say(tr("In a real SOS, this opens the phone with %s ready to call.", emergency))
                             else state.start(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", emergency, null)))
                         }
-                        Tile("Read again", Modifier.weight(1f).fillMaxHeight(), spoken = "Read what happened") {
+                        Tile(tr("Read again"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Read what happened")) {
                             state.say(lines.joinToString(" "))
                         }
                     }
                     Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (contacts.isNotEmpty()) {
-                            Tile("Send again", Modifier.weight(1f).fillMaxHeight(), spoken = "Send the SOS again with a new location") {
+                            Tile(tr("Send again"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Send the SOS again with a new location")) {
                                 stage = SosStage.COUNTDOWN
                                 left = 0
                                 send()
                             }
                         }
-                        Tile("Home", Modifier.weight(1f).fillMaxHeight(), icon = TileIcon.Vector(Icons.Filled.Home)) {
+                        Tile(tr("Home"), Modifier.weight(1f).fillMaxHeight(), icon = TileIcon.Vector(Icons.Filled.Home)) {
                             state.go(if (practice) Screen.SosSetup else Screen.Home)
                         }
                     }
                 }
                 SosStage.CANCELLED -> {
-                    SpokenText("SOS cancelled", Modifier.fillMaxWidth().weight(1f), state::say, spoken = "SOS cancelled. Nothing was sent.")
-                    Tile("Home", Modifier.fillMaxWidth().weight(1f), icon = TileIcon.Vector(Icons.Filled.Home), emphasized = true) {
+                    SpokenText(tr("SOS cancelled"), Modifier.fillMaxWidth().weight(1f), state::say, spoken = tr("SOS cancelled. Nothing was sent."))
+                    Tile(tr("Home"), Modifier.fillMaxWidth().weight(1f), icon = TileIcon.Vector(Icons.Filled.Home), emphasized = true) {
                         state.go(if (practice) Screen.SosSetup else Screen.Home)
                     }
                 }
@@ -213,22 +213,22 @@ fun SosScreen(state: AppState, practice: Boolean) {
 fun WhereAmIScreen(state: AppState) {
     val context = LocalContext.current
     var place by remember { mutableStateOf<Place?>(null) }
-    var shown by remember { mutableStateOf("Finding where you are…") }
+    var shown by remember { mutableStateOf(tr("Finding where you are…")) }
     var busy by remember { mutableStateOf(false) }
 
     fun locate() {
         if (busy) return
         busy = true
-        shown = "Finding where you are…"
-        state.say("Finding where you are.")
+        shown = tr("Finding where you are…")
+        state.say(tr("Finding where you are."))
         state.scope.launch {
             val p = withContext(Dispatchers.IO) { runCatching { Where.place(context) }.getOrNull() }
             place = p
             busy = false
             shown = when {
-                p == null -> "Location not available"
+                p == null -> tr("Location not available")
                 p.address != null -> p.address
-                else -> "No street address here"
+                else -> tr("No street address here")
             }
             state.say(Sos.spokenPlace(p))
         }
@@ -236,15 +236,15 @@ fun WhereAmIScreen(state: AppState) {
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (Where.allowed(context)) locate()
         else {
-            shown = "Location not allowed"
-            state.say("Where am I needs location. A helper can allow it in the phone's settings.")
+            shown = tr("Location not allowed")
+            state.say(tr("Where am I needs location. A helper can allow it in the phone's settings."))
         }
     }
     LaunchedEffect(Unit) {
         when {
             !Where.isOn(context) -> {
-                shown = "Location is off"
-                state.say("Location is off on this phone. A helper can turn it on with Location settings.")
+                shown = tr("Location is off")
+                state.say(tr("Location is off on this phone. A helper can turn it on with Location settings."))
             }
             !Where.allowed(context) -> permission.launch(
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
@@ -254,12 +254,12 @@ fun WhereAmIScreen(state: AppState) {
     }
     val p = place
     val controls = buildList {
-        add(Control("Again", spoken = "Find where I am again") {
-            if (!Where.isOn(context)) state.say("Location is off on this phone.") else locate()
+        add(Control(tr("Again"), spoken = tr("Find where I am again")) {
+            if (!Where.isOn(context)) state.say(tr("Location is off on this phone.")) else locate()
         })
-        add(Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { state.say(Sos.spokenPlace(p)) })
+        add(Control(tr("Read again"), icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { state.say(Sos.spokenPlace(p)) })
         if (p != null) {
-            add(Control("Text my location", spoken = "Send my location in a text") {
+            add(Control(tr("Text my location"), spoken = tr("Send my location in a text")) {
                 val words = Sos.shareText(p)
                 if (state.texts.isDefault) {
                     state.texts.draft = Draft(to = emptyList(), text = words)
@@ -271,18 +271,18 @@ fun WhereAmIScreen(state: AppState) {
             })
         }
         if (!Where.isOn(context)) {
-            add(Control("Location settings", spoken = "Open the phone's location settings") {
-                state.start(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), "Could not open the setting")
+            add(Control(tr("Location settings"), spoken = tr("Open the phone's location settings")) {
+                state.start(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), tr("Could not open the setting"))
             })
         }
-        add(Control("Home", icon = TileIcon.Vector(Icons.Filled.Home)) { state.go(Screen.Home) })
+        add(Control(tr("Home"), icon = TileIcon.Vector(Icons.Filled.Home)) { state.go(Screen.Home) })
     }
     ReaderLayout(
         state = state,
         body = shown,
-        onBodyTap = { state.say(if (busy) "Still finding where you are" else Sos.spokenPlace(p)) },
-        header = "Where am I",
-        headerSpoken = "Where am I",
+        onBodyTap = { state.say(if (busy) tr("Still finding where you are") else Sos.spokenPlace(p)) },
+        header = tr("Where am I"),
+        headerSpoken = tr("Where am I"),
         controls = controls,
     ) { ctl, m, pos -> ControlTile(state, ctl, m, pos) }
 }
@@ -296,56 +296,55 @@ fun SosSetupScreen(state: AppState) {
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         val contact = r.data?.data?.let { readPhoneContact(context, it) }
         when {
-            contact == null -> state.say("No one picked")
-            c.sosContacts.any { it.number == contact.number } -> state.say("${contact.name} is already an SOS contact")
+            contact == null -> state.say(tr("No one picked"))
+            c.sosContacts.any { it.number == contact.number } -> state.say(tr("%s is already an SOS contact", contact.name))
             else -> {
                 state.update { it.copy(sosContacts = it.sosContacts + contact) }
-                state.say("${contact.name} added to SOS")
+                state.say(tr("%s added to SOS", contact.name))
             }
         }
     }
     val location = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         locationAllowed = Where.allowed(context)
-        state.say(if (locationAllowed) "Location allowed" else "Location not allowed")
+        state.say(if (locationAllowed) tr("Location allowed") else tr("Location not allowed"))
     }
-    val explain = "SOS texts these people your location after a short countdown, which one tap cancels. " +
-        "Then it shows a big button to call the first person. It never calls by itself." +
-        if (!TextRole.isDefault(context)) " RP Launcher isn't the texting app, so SOS opens your texting app with the message ready, and you press Send." else ""
-    LaunchedEffect(Unit) { state.say("SOS setup. $explain") }
+    val explain = tr("SOS texts these people your location after a short countdown, which one tap cancels. Then it shows a big button to call the first person. It never calls by itself.") +
+        if (!TextRole.isDefault(context)) tr(" RP Launcher isn't the texting app, so SOS opens your texting app with the message ready, and you press Send.") else ""
+    LaunchedEffect(Unit) { state.say(tr("SOS setup. %s", explain)) }
     HelperColumn(state) {
-        SettingRow("Back to setup") { state.go(Screen.Settings) }
+        SettingRow(tr("Back to setup")) { state.go(Screen.Settings) }
         Words(state, explain)
-        SettingRow("Add an SOS contact") {
+        SettingRow(tr("Add an SOS contact")) {
             runCatching {
                 pick.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI))
-            }.onFailure { state.say("No contacts app found") }
+            }.onFailure { state.say(tr("No contacts app found")) }
         }
         c.sosContacts.forEachIndexed { i, ct ->
-            SettingRow("Remove ${ct.name}", if (i == 0) "called first" else null) {
+            SettingRow(tr("Remove %s", ct.name), if (i == 0) tr("called first") else null) {
                 state.update { it.copy(sosContacts = it.sosContacts.filterIndexed { n, _ -> n != i }) }
-                state.say("${ct.name} removed from SOS")
+                state.say(tr("%s removed from SOS", ct.name))
             }
         }
-        SettingRow("Countdown", "${c.sosSeconds} seconds") {
+        SettingRow(tr("Countdown"), tr("%s seconds", c.sosSeconds)) {
             val next = Sos.COUNTDOWN_CHOICES.after(c.sosSeconds)
             state.update { it.copy(sosSeconds = next) }
-            state.say("$next second countdown")
+            state.say(tr("%s second countdown", next))
         }
-        SettingRow("Location", if (locationAllowed) "Allowed" else "Not allowed") {
-            if (locationAllowed) state.say("Location is allowed")
+        SettingRow(tr("Location"), if (locationAllowed) tr("Allowed") else tr("Not allowed")) {
+            if (locationAllowed) state.say(tr("Location is allowed"))
             else location.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
-        SettingRow("Practice SOS (sends nothing)") { state.go(Screen.Sos(practice = true)) }
+        SettingRow(tr("Practice SOS (sends nothing)")) { state.go(Screen.Sos(practice = true)) }
         if (TileSpec.Sos !in c.tiles) {
-            SettingRow("Put SOS on the home screen") {
+            SettingRow(tr("Put SOS on the home screen")) {
                 state.update { it.copy(tiles = it.tiles + TileSpec.Sos) }
-                state.say("SOS added to the home screen")
+                state.say(tr("SOS added to the home screen"))
             }
         }
         if (TileSpec.WhereAmI !in c.tiles) {
-            SettingRow("Put Where am I on the home screen") {
+            SettingRow(tr("Put Where am I on the home screen")) {
                 state.update { it.copy(tiles = it.tiles + TileSpec.WhereAmI) }
-                state.say("Where am I added to the home screen")
+                state.say(tr("Where am I added to the home screen"))
             }
         }
     }

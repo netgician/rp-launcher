@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.system
 
+import com.netgician.rplauncher.i18n.tr
 import android.app.KeyguardManager
 import android.content.Context
 import android.hardware.Sensor
@@ -64,8 +65,8 @@ object ScreenLock {
 
     fun confirm(context: Context, onSuccess: () -> Unit, onFailure: () -> Unit) {
         val builder = BiometricPrompt.Builder(context)
-            .setTitle("Reset the helper PIN")
-            .setSubtitle("Unlock with this phone's screen lock")
+            .setTitle(tr("Reset the helper PIN"))
+            .setSubtitle(tr("Unlock with this phone's screen lock"))
         if (Build.VERSION.SDK_INT >= 30) {
             builder.setAllowedAuthenticators(
                 BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL,

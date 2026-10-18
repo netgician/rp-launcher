@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.model
 
+import com.netgician.rplauncher.i18n.tr
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
@@ -31,21 +32,21 @@ sealed class TileSpec {
 
     val label: String
         get() = when (this) {
-            Phone -> "Phone"
-            Messages -> "Texts"
-            Contacts -> "Contacts"
-            Torch -> "Torch"
-            See -> "See"
-            Alerts -> "Alerts"
-            Sos -> "SOS"
-            WhereAmI -> "Where am I"
-            Wifi -> "Wi-Fi"
-            Bluetooth -> "Bluetooth"
-            Volume -> "Volume"
-            Notifications -> "Notifications"
-            QuickSettings -> "Quick settings"
-            AllApps -> "All apps"
-            Pages -> "Pages"
+            Phone -> tr("Phone")
+            Messages -> tr("Texts")
+            Contacts -> tr("Contacts")
+            Torch -> tr("Torch")
+            See -> tr("See")
+            Alerts -> tr("Alerts")
+            Sos -> tr("SOS")
+            WhereAmI -> tr("Where am I")
+            Wifi -> tr("Wi-Fi")
+            Bluetooth -> tr("Bluetooth")
+            Volume -> tr("Volume")
+            Notifications -> tr("Notifications")
+            QuickSettings -> tr("Quick settings")
+            AllApps -> tr("All apps")
+            Pages -> tr("Pages")
             is App -> appLabel
             is Contact -> name
             is Shortcut -> shortcutLabel
@@ -54,26 +55,28 @@ sealed class TileSpec {
 
 /** What touch to hear says, so nobody has to guess that a double tap opens a tile. */
 object Hints {
-    const val TOUCH = "Single tap to read aloud. Double tap to select."
+    val TOUCH: String get() = tr("Single tap to read aloud. Double tap to select.")
 
     /** Said on start-up and when leaving Setup, in a speech mode. */
-    fun modeAnnouncement(mode: VisionMode): String = "${mode.label} mode. $TOUCH"
+    fun modeAnnouncement(mode: VisionMode): String = tr("%s mode. %s", mode.label, TOUCH)
 
     /** Said on a single tap: the tile, then (with hints on) how to select it. */
     fun heard(label: String, hintsOn: Boolean): String =
-        if (hintsOn) "$label. Double tap to select." else label
+        if (hintsOn) tr("%s. Double tap to select.", label) else label
 }
 
-data class TextSize(val name: String, val scale: Float)
-data class VoicePitch(val name: String, val pitch: Float)
-data class TorchLevel(val name: String, val strength: Float)
-data class SpeechSpeed(val name: String, val rate: Float)
+data class TextSize(private val en: String, val scale: Float) { val name: String get() = tr(en) }
+data class VoicePitch(private val en: String, val pitch: Float) { val name: String get() = tr(en) }
+data class TorchLevel(private val en: String, val strength: Float) { val name: String get() = tr(en) }
+data class SpeechSpeed(private val en: String, val rate: Float) { val name: String get() = tr(en) }
 
 /** When night colours switch on by themselves. */
-enum class AutoNight(val id: String, val label: String) {
+enum class AutoNight(val id: String, private val en: String) {
     OFF("off", "Off"),
     CLOCK("clock", "By clock"),
     LIGHT("light", "By room light");
+
+    val label: String get() = tr(en)
 
     companion object {
         fun byId(id: String?): AutoNight = entries.firstOrNull { it.id == id } ?: OFF
@@ -84,10 +87,19 @@ enum class AutoNight(val id: String, val label: String) {
  * How the person uses the phone, from sight-first to speech-first. Switching modes keeps
  * tiles and settings; it only changes how tiles respond and how they're laid out.
  */
-enum class VisionMode(val id: String, val label: String, val explain: String) {
-    SIGHT("sight", "Sight first", "Tap a tile to open it. Long press to hear it."),
-    SIGHT_SPEECH("sight_speech", "Sight and speech", Hints.TOUCH),
-    SPEECH("speech", "Speech first", "Tiles form one list. ${Hints.TOUCH}");
+enum class VisionMode(val id: String, private val en: String) {
+    SIGHT("sight", "Sight first"),
+    SIGHT_SPEECH("sight_speech", "Sight and speech"),
+    SPEECH("speech", "Speech first");
+
+    val label: String get() = tr(en)
+
+    val explain: String
+        get() = when (this) {
+            SIGHT -> tr("Tap a tile to open it. Long press to hear it.")
+            SIGHT_SPEECH -> Hints.TOUCH
+            SPEECH -> tr("Tiles form one list. %s", Hints.TOUCH)
+        }
 
     companion object {
         fun byId(id: String?): VisionMode = entries.firstOrNull { it.id == id } ?: SIGHT

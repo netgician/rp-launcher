@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.calls
 
+import com.netgician.rplauncher.i18n.tr
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -52,10 +53,10 @@ object Calls {
     private fun info(c: Call, names: Names, voicemail: Set<String>): CallInfo {
         val number = c.details?.handle?.schemeSpecificPart.orEmpty()
         val isVoicemail = c.details?.handle?.scheme == "voicemail" || PhoneRole.lastDigits(number) in voicemail
-        val shownName = if (isVoicemail) "Voicemail" else c.details?.let { d ->
+        val shownName = if (isVoicemail) tr("Voicemail") else c.details?.let { d ->
             (if (Build.VERSION.SDK_INT >= 30) d.contactDisplayName else null)?.takeIf { it.isNotBlank() }
                 ?: d.callerDisplayName?.takeIf { it.isNotBlank() }
-        } ?: if (number.isBlank()) "Private number" else names.of(number)
+        } ?: if (number.isBlank()) tr("Private number") else names.of(number)
         val state = if (Build.VERSION.SDK_INT >= 31) c.details.state else @Suppress("DEPRECATION") c.state
         val phase = when (state) {
             Call.STATE_RINGING -> CallPhase.RINGING
@@ -185,8 +186,8 @@ class RpInCallService : InCallService() {
         val n = if (ringing != null) {
             NotificationCompat.Builder(this, CHANNEL_INCOMING)
                 .setSmallIcon(R.drawable.ic_stat_call)
-                .setContentTitle("Call from ${ringing.name}")
-                .setContentText("Tap to answer")
+                .setContentTitle(tr("Call from %s", ringing.name))
+                .setContentText(tr("Tap to answer"))
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setOngoing(true)
@@ -197,8 +198,8 @@ class RpInCallService : InCallService() {
             val c = list.first()
             NotificationCompat.Builder(this, CHANNEL_ONGOING)
                 .setSmallIcon(R.drawable.ic_stat_call)
-                .setContentTitle("On a call with ${c.name}")
-                .setContentText("Tap to return to the call")
+                .setContentTitle(tr("On a call with %s", c.name))
+                .setContentText(tr("Tap to return to the call"))
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .setUsesChronometer(c.connectedAt > 0)
@@ -218,13 +219,13 @@ class RpInCallService : InCallService() {
         fun channels(context: Context) {
             val nm = context.getSystemService(NotificationManager::class.java) ?: return
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_INCOMING, "Incoming calls", NotificationManager.IMPORTANCE_HIGH).apply {
+                NotificationChannel(CHANNEL_INCOMING, tr("Incoming calls"), NotificationManager.IMPORTANCE_HIGH).apply {
                     // The phone itself plays the ringtone; this one stays quiet so it doesn't ring twice.
                     setSound(null, null)
                     enableVibration(false)
                 },
             )
-            nm.createNotificationChannel(NotificationChannel(CHANNEL_ONGOING, "Ongoing call", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL_ONGOING, tr("Ongoing call"), NotificationManager.IMPORTANCE_LOW))
         }
     }
 }

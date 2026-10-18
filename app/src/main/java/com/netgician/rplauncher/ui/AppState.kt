@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -239,7 +240,7 @@ class AppState(
         val prefs = activity.getSharedPreferences("reminders", android.content.Context.MODE_PRIVATE)
         if (now - prefs.getLong("window", 0L) < 86_400_000L) return
         prefs.edit().putLong("window", now).apply()
-        speaker.speak("It's been a few months since the viewing window check. A helper can run it again in Setup.", flush = false)
+        speaker.speak(tr("It's been a few months since the viewing window check. A helper can run it again in Setup."), flush = false)
     }
 
     /** In a speech mode with hints on, says how the gestures work. */
@@ -258,7 +259,7 @@ class AppState(
 
     fun onPageTurned(page: Int, count: Int) {
         feel(Landmarks.PAGE_TURN)
-        say("Page ${page + 1} of $count")
+        say(tr("Page %s of %s", page + 1, count))
     }
 
     /** Called every minute and whenever the setup changes. */
@@ -310,7 +311,7 @@ class AppState(
             Screen.Compose -> {
                 // Back keeps what was written; only Cancel throws it away.
                 val thread = texts.draft?.threadId
-                if (texts.draft?.let { it.text.isNotBlank() || it.files.isNotEmpty() } == true) say("Your text is kept for now.")
+                if (texts.draft?.let { it.text.isNotBlank() || it.files.isNotEmpty() } == true) say(tr("Your text is kept for now."))
                 go(if (thread != null) Screen.Conversation(thread) else Screen.Texts)
             }
             Screen.QuickReply, Screen.AddPhoto, Screen.Record, Screen.ComposeMore -> go(Screen.Compose)
@@ -340,7 +341,7 @@ class AppState(
         }
     }
 
-    fun start(intent: Intent, failMessage: String = "That app isn't available") {
+    fun start(intent: Intent, failMessage: String = tr("That app isn't available")) {
         try {
             activity.startActivity(intent)
         } catch (e: ActivityNotFoundException) {
@@ -358,23 +359,23 @@ class AppState(
                 Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CONTACTS),
             )
             TileSpec.Torch -> when (torch.toggle(config.torchStrength)) {
-                true -> say("Torch on")
-                false -> say("Torch off")
-                null -> say("This phone has no torch")
+                true -> say(tr("Torch on"))
+                false -> say(tr("Torch off"))
+                null -> say(tr("This phone has no torch"))
             }
             TileSpec.See -> go(Screen.See)
             TileSpec.Alerts -> go(Screen.Alerts)
             TileSpec.Sos -> go(Screen.Sos(practice = false))
             TileSpec.WhereAmI -> go(Screen.WhereAmI)
-            TileSpec.Wifi -> start(Intent(android.provider.Settings.Panel.ACTION_WIFI), "Could not open Wi-Fi")
-            TileSpec.Volume -> start(Intent(android.provider.Settings.Panel.ACTION_VOLUME), "Could not open volume")
-            TileSpec.Bluetooth -> start(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS), "Could not open Bluetooth")
+            TileSpec.Wifi -> start(Intent(android.provider.Settings.Panel.ACTION_WIFI), tr("Could not open Wi-Fi"))
+            TileSpec.Volume -> start(Intent(android.provider.Settings.Panel.ACTION_VOLUME), tr("Could not open volume"))
+            TileSpec.Bluetooth -> start(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS), tr("Could not open Bluetooth"))
             TileSpec.Notifications -> if (!com.netgician.rplauncher.system.StatusBar.notifications(activity)) {
-                say("This phone won't open the drop-down from here. Showing your alerts instead.")
+                say(tr("This phone won't open the drop-down from here. Showing your alerts instead."))
                 go(Screen.Alerts)
             }
             TileSpec.QuickSettings -> if (!com.netgician.rplauncher.system.StatusBar.quickSettings(activity)) {
-                say("This phone won't open quick settings from here. Opening settings instead.")
+                say(tr("This phone won't open quick settings from here. Opening settings instead."))
                 start(Intent(android.provider.Settings.ACTION_SETTINGS))
             }
             TileSpec.AllApps -> go(Screen.Apps)
@@ -382,7 +383,7 @@ class AppState(
             is TileSpec.Shortcut -> com.netgician.rplauncher.system.Shortcuts.start(activity, spec)?.let { say(it) }
             is TileSpec.App -> start(
                 Apps.launchIntent(spec.packageName, spec.className),
-                "${spec.appLabel} isn't installed",
+                tr("%s isn't installed", spec.appLabel),
             )
             is TileSpec.Contact -> go(Screen.ConfirmCall(spec))
         }
@@ -415,7 +416,7 @@ class AppState(
     /** Clears a forgotten PIN and opens Setup so a new one can be chosen. */
     fun resetPin() {
         update { it.copy(pinHash = null) }
-        say("The helper PIN is removed. You can set a new one in Setup.")
+        say(tr("The helper PIN is removed. You can set a new one in Setup."))
         go(Screen.Settings)
     }
 
@@ -425,7 +426,7 @@ class AppState(
                 it.write(ConfigJson.encode(config).toByteArray())
             } != null
         }.getOrDefault(false)
-        say(if (ok) "Setup saved" else "Could not save the setup")
+        say(if (ok) tr("Setup saved") else tr("Could not save the setup"))
     }
 
     fun importFrom(uri: Uri) {
@@ -434,11 +435,11 @@ class AppState(
                 ?.let { ConfigJson.decodeSetupFile(it) }
         }.getOrNull()
         if (loaded == null) {
-            say("That file is not an RP Launcher setup")
+            say(tr("That file is not an RP Launcher setup"))
         } else {
             update { loaded }
             homePage = 0
-            say("Setup loaded")
+            say(tr("Setup loaded"))
         }
     }
 }

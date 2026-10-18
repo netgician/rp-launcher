@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -150,7 +151,7 @@ fun TextsScreen(state: AppState) {
     LaunchedEffect(Unit) {
         if (!t.names.canRead && !t.askedContacts) {
             t.askedContacts = true
-            state.say("To show names instead of numbers, allow contacts.")
+            state.say(tr("To show names instead of numbers, allow contacts."))
             runCatching { contacts.launch(Manifest.permission.READ_CONTACTS) }
         }
     }
@@ -162,18 +163,18 @@ fun TextsScreen(state: AppState) {
             val n = loaded.sumOf { it.unread }
             state.speaker.speak(
                 when {
-                    loaded.isEmpty() -> "Texts. No conversations yet. Double tap New text to start one."
-                    n == 0 -> "Texts"
-                    n == 1 -> "Texts, 1 new"
-                    else -> "Texts, $n new"
+                    loaded.isEmpty() -> tr("Texts. No conversations yet. Double tap New text to start one.")
+                    n == 0 -> tr("Texts")
+                    n == 1 -> tr("Texts, 1 new")
+                    else -> tr("Texts, %s new", n)
                 },
                 flush = false,
             )
         }
     }
     val choices = buildList {
-        add(Control("Home", icon = HOME_ICON) { state.go(Screen.Home) })
-        add(Control("New text", spoken = "Start a new text", icon = TileIcon.Vector(Icons.Filled.Add)) { t.startNew() })
+        add(Control(tr("Home"), icon = HOME_ICON) { state.go(Screen.Home) })
+        add(Control(tr("New text"), spoken = tr("Start a new text"), icon = TileIcon.Vector(Icons.Filled.Add)) { t.startNew() })
         loaded.orEmpty().forEach { c ->
             val label = if (c.unread > 0) "${c.title} (${c.unread})" else c.title
             add(Control(label, spoken = TextSpeech.conversation(c), emphasized = c.unread > 0 || c.hasProblem) {
@@ -181,7 +182,7 @@ fun TextsScreen(state: AppState) {
             })
         }
     }
-    ChoiceList(state, if (loaded == null) "Texts…" else "Texts", choices = choices)
+    ChoiceList(state, if (loaded == null) tr("Texts…") else tr("Texts"), choices = choices)
 }
 
 /** A conversation's texts and people: from memory at once if seen before, then fresh. Marks new texts read. */
@@ -207,14 +208,14 @@ private fun rememberThread(state: AppState, threadId: Long, limit: Int = 60): Th
 private fun cardWords(m: TextMessage): String = buildString {
     append(
         when {
-            m.box == Box.WAITING -> "Picture text " + when (m.download) {
-                DownloadState.FAILED -> "didn't download"
-                DownloadState.RETRYING -> "will try again soon"
-                DownloadState.NOT_STARTED -> "waiting"
-                DownloadState.DOWNLOADING -> "downloading…"
+            m.box == Box.WAITING -> tr("Picture text ") + when (m.download) {
+                DownloadState.FAILED -> tr("didn't download")
+                DownloadState.RETRYING -> tr("will try again soon")
+                DownloadState.NOT_STARTED -> tr("waiting")
+                DownloadState.DOWNLOADING -> tr("downloading…")
             }
             m.body.isNotBlank() -> m.body.trim()
-            else -> TextSpeech.attachments(m.parts).ifBlank { "No words" }
+            else -> TextSpeech.attachments(m.parts).ifBlank { tr("No words") }
         },
     )
     if (m.body.isNotBlank() && m.parts.isNotEmpty()) append("\n").append(TextSpeech.attachments(m.parts))
@@ -222,9 +223,9 @@ private fun cardWords(m: TextMessage): String = buildString {
 
 /** "NOT SENT", "Sending…", "Delivered", or nothing. */
 private fun cardStatus(m: TextMessage): String? = when {
-    m.box == Box.FAILED -> "NOT SENT"
-    m.box == Box.SENDING -> "Sending…"
-    m.outgoing && m.delivered -> "Delivered"
+    m.box == Box.FAILED -> tr("NOT SENT")
+    m.box == Box.SENDING -> tr("Sending…")
+    m.outgoing && m.delivered -> tr("Delivered")
     else -> null
 }
 
@@ -315,7 +316,7 @@ fun ConversationScreen(state: AppState, threadId: Long) {
     val data = rememberThread(state, threadId, limit)
     val msgs = data?.messages.orEmpty()
     val group = (data?.people?.size ?: 0) > 1
-    val title = data?.people?.let { p -> People.join(p.map(t.names::of)) } ?: "Texts"
+    val title = data?.people?.let { p -> People.join(p.map(t.names::of)) } ?: tr("Texts")
     // How many texts fit: the person's row setting, fewer if they'd be too small.
     var fits by remember { mutableIntStateOf(state.config.rows.coerceIn(2, 5)) }
     var back by remember(threadId) { mutableIntStateOf(0) } // pages back from the newest
@@ -336,10 +337,10 @@ fun ConversationScreen(state: AppState, threadId: Long) {
             val unread = msgs.filter { !it.read && !it.outgoing }
             state.speaker.speak(
                 when {
-                    msgs.isEmpty() -> "$title. No texts yet. Double tap Reply to write one."
+                    msgs.isEmpty() -> tr("%s. No texts yet. Double tap Reply to write one.", title)
                     unread.isEmpty() -> "$title."
-                    unread.size == 1 -> "$title. 1 new."
-                    else -> "$title. ${unread.size} new."
+                    unread.size == 1 -> tr("%s. 1 new.", title)
+                    else -> tr("%s. %s new.", title, unread.size)
                 },
             )
             (unread.ifEmpty { listOfNotNull(newest) }).takeLast(5).forEach { speakText(state, context, it, group, flush = false) }
@@ -354,25 +355,25 @@ fun ConversationScreen(state: AppState, threadId: Long) {
     InWindow(state.config.window) {
         Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SpokenText(
-                if (pageCount > 1 && page > 0) "$title · earlier" else title,
+                if (pageCount > 1 && page > 0) tr("%s · earlier", title) else title,
                 Modifier.fillMaxWidth().height((40f * lv.textScale).dp), state::say,
-                spoken = "Conversation with $title", maxSp = 24f,
+                spoken = tr("Conversation with %s", title), maxSp = 24f,
             )
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                 // Each text gets at least 80 dp (more with bigger text); fewer texts show if the window is small.
                 val room = (maxHeight.value / ((80f * state.config.textScale) + 8f)).toInt().coerceIn(1, 5)
                 LaunchedEffect(room) { fits = minOf(room, state.config.rows.coerceIn(2, 5)) }
                 if (data == null) {
-                    FitText("Loading…", lv.fg, maxSp = 26f * lv.textScale, modifier = Modifier.fillMaxWidth())
+                    FitText(tr("Loading…"), lv.fg, maxSp = 26f * lv.textScale, modifier = Modifier.fillMaxWidth())
                 } else if (msgs.isEmpty()) {
-                    SpokenText("No texts yet", Modifier.fillMaxSize(), state::say, spoken = "No texts yet. Double tap Reply to write one.")
+                    SpokenText(tr("No texts yet"), Modifier.fillMaxSize(), state::say, spoken = tr("No texts yet. Double tap Reply to write one."))
                 } else {
                     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)) {
                         shownMsgs.forEach { m ->
-                            val who = if (m.outgoing) "You" else m.from?.takeIf { it.isNotBlank() }?.let(t.names::of) ?: "Unknown"
+                            val who = if (m.outgoing) tr("You") else m.from?.takeIf { it.isNotBlank() }?.let(t.names::of) ?: tr("Unknown")
                             val time = TextSpeech.whenSaid(m.date, System.currentTimeMillis()) {
                                 DateFormat.getTimeFormat(context).format(Date(it))
-                            }.replace(" at ", ", ")
+                            }.replace(tr(" at "), ", ")
                             val spoken = TextSpeech.message(m, if (m.outgoing) null else who, group, time)
                             MessageCard(
                                 state, m, who, time, spoken,
@@ -387,32 +388,32 @@ fun ConversationScreen(state: AppState, threadId: Long) {
                 }
             }
             Row(Modifier.fillMaxWidth().height((80f * lv.textScale).dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Tile("Reply", Modifier.weight(1.3f).fillMaxHeight(), spoken = "Reply to $title", icon = SEND_ICON, emphasized = true) {
+                Tile(tr("Reply"), Modifier.weight(1.3f).fillMaxHeight(), spoken = tr("Reply to %s", title), icon = SEND_ICON, emphasized = true) {
                     t.startReply(threadId)
                 }
                 if (page > 0) {
-                    Tile("Later", Modifier.weight(1f).fillMaxHeight(), spoken = "Later texts") {
+                    Tile(tr("Later"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Later texts")) {
                         back = page - 1
                         state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
-                        if (page - 1 == 0) state.say("Newest texts") else state.say("Later texts")
+                        if (page - 1 == 0) state.say(tr("Newest texts")) else state.say(tr("Later texts"))
                     }
                 } else if (page < pageCount - 1 || msgs.size >= limit) {
-                    Tile("Earlier", Modifier.weight(1f).fillMaxHeight(), spoken = "Earlier texts") {
+                    Tile(tr("Earlier"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Earlier texts")) {
                         // The oldest loaded page: fetch more before going back.
                         if (page + 1 >= pageCount - 1 && msgs.size >= limit) limit += 60
                         back = page + 1
                         state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
-                        state.say("Earlier texts")
+                        state.say(tr("Earlier texts"))
                     }
                 }
-                Tile("All texts", Modifier.weight(1f).fillMaxHeight(), spoken = "Back to all texts") { state.go(Screen.Texts) }
+                Tile(tr("All texts"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Back to all texts")) { state.go(Screen.Texts) }
             }
             if (page > 0 && (page < pageCount - 1 || msgs.size >= limit)) {
-                Tile("Earlier", Modifier.fillMaxWidth().height((56f * lv.textScale).dp), spoken = "Earlier texts") {
+                Tile(tr("Earlier"), Modifier.fillMaxWidth().height((56f * lv.textScale).dp), spoken = tr("Earlier texts")) {
                     if (page + 1 >= pageCount - 1 && msgs.size >= limit) limit += 60
                     back = page + 1
                     state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
-                    state.say("Earlier texts")
+                    state.say(tr("Earlier texts"))
                 }
             }
         }
@@ -427,10 +428,10 @@ fun MessageScreen(state: AppState, threadId: Long, key: String) {
     val data = rememberThread(state, threadId, limit = maxOf(60, state.texts.cachedThread(threadId)?.messages?.size ?: 0))
     val m = data?.messages?.firstOrNull { it.key == key }
     if (data == null || m == null) {
-        val words = if (data == null) "Loading…" else "This text is no longer here."
+        val words = if (data == null) tr("Loading…") else tr("This text is no longer here.")
         ReaderLayout(
-            state = state, body = words, onBodyTap = { state.say(words) }, header = "Text", headerSpoken = "Text",
-            controls = listOf(Control("Back", spoken = "Back to the conversation") { state.go(Screen.Conversation(threadId)) }),
+            state = state, body = words, onBodyTap = { state.say(words) }, header = tr("Text"), headerSpoken = tr("Text"),
+            controls = listOf(Control(tr("Back"), spoken = tr("Back to the conversation")) { state.go(Screen.Conversation(threadId)) }),
         ) { c, mod, pos -> ControlTile(state, c, mod, pos) }
         return
     }
@@ -446,36 +447,36 @@ fun MessageScreen(state: AppState, threadId: Long, key: String) {
     val extras = attachmentControls(state, threadId, m)
     val controls = buildList {
         when {
-            m.box == Box.FAILED -> add(Control("Try again", spoken = "Try sending again", emphasized = true) { t.retry(m) })
+            m.box == Box.FAILED -> add(Control(tr("Try again"), spoken = tr("Try sending again"), emphasized = true) { t.retry(m) })
             m.box == Box.WAITING -> add(
                 when (m.download) {
-                    DownloadState.DOWNLOADING -> Control("Downloading", spoken = "Still downloading") {
-                        state.say("Still downloading. You'll hear when it arrives.")
+                    DownloadState.DOWNLOADING -> Control(tr("Downloading"), spoken = tr("Still downloading")) {
+                        state.say(tr("Still downloading. You'll hear when it arrives."))
                     }
-                    DownloadState.NOT_STARTED -> Control("Download", spoken = "Download the picture text", emphasized = true) { t.retry(m) }
-                    else -> Control("Try again", spoken = "Try downloading again", emphasized = true) { t.retry(m) }
+                    DownloadState.NOT_STARTED -> Control(tr("Download"), spoken = tr("Download the picture text"), emphasized = true) { t.retry(m) }
+                    else -> Control(tr("Try again"), spoken = tr("Try downloading again"), emphasized = true) { t.retry(m) }
                 },
             )
         }
         if (extras.size <= 2) addAll(extras) else add(
-            Control("Attachments (${extras.size})", spoken = "See all ${extras.size} attachments", emphasized = true) {
+            Control(tr("Attachments (%s)", extras.size), spoken = tr("See all %s attachments", extras.size), emphasized = true) {
                 t.attachmentsOf = m
                 state.go(Screen.Attachments(threadId))
             },
         )
-        add(Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { speakText(state, context, m, group) })
-        add(Control("Reply", icon = SEND_ICON) { t.startReply(threadId) })
+        add(Control(tr("Read again"), icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { speakText(state, context, m, group) })
+        add(Control(tr("Reply"), icon = SEND_ICON) { t.startReply(threadId) })
         val callee = if (!m.outgoing && !m.from.isNullOrBlank()) m.from else data.people.singleOrNull()
         callee?.let { number ->
             val name = t.names.of(number)
-            add(Control("Call", spoken = "Call $name", icon = TileIcon.Vector(Icons.Filled.Call)) {
+            add(Control(tr("Call"), spoken = tr("Call %s", name), icon = TileIcon.Vector(Icons.Filled.Call)) {
                 state.go(Screen.ConfirmCall(TileSpec.Contact(name, number)))
             })
         }
-        add(Control("Back", spoken = "Back to the conversation") { state.go(Screen.Conversation(threadId)) })
+        add(Control(tr("Back"), spoken = tr("Back to the conversation")) { state.go(Screen.Conversation(threadId)) })
     }
 
-    val who = if (m.outgoing) "You" else fromName ?: "Unknown"
+    val who = if (m.outgoing) tr("You") else fromName ?: tr("Unknown")
     val shown = "$who: " + cardWords(m) + (cardStatus(m)?.let { "\n$it" } ?: "")
     val lv = LocalLv.current
     ReaderLayout(
@@ -483,7 +484,7 @@ fun MessageScreen(state: AppState, threadId: Long, key: String) {
         body = shown,
         onBodyTap = { speakText(state, context, m, group) },
         header = who,
-        headerSpoken = "Text from $who",
+        headerSpoken = tr("Text from %s", who),
         controls = controls,
         controlsHeader = false,
         bodyContent = {
@@ -512,28 +513,28 @@ private fun attachmentControls(state: AppState, threadId: Long, m: TextMessage):
     return buildList {
         val images = m.parts.filter { it.kind == PartKind.IMAGE }
         if (images.isNotEmpty()) {
-            add(Control(if (images.size == 1) "See picture" else "See pictures", spoken = "See the picture bigger", emphasized = true) {
+            add(Control(if (images.size == 1) tr("See picture") else tr("See pictures"), spoken = tr("See the picture bigger"), emphasized = true) {
                 state.go(Screen.Picture(threadId, images.map { it.id }, 0))
             })
         }
         m.parts.filter { it.kind == PartKind.AUDIO }.forEach { a ->
             val playing = t.playingPart == a.id
-            add(Control(if (playing) "Stop" else "Play", spoken = if (playing) "Stop the clip" else "Play the clip",
+            add(Control(if (playing) tr("Stop") else tr("Play"), spoken = if (playing) tr("Stop the clip") else tr("Play the clip"),
                 icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) { t.play(a) })
         }
         m.parts.filter { it.kind == PartKind.VIDEO }.forEach { v ->
-            add(Control("Play video", spoken = "Play the video", icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) {
+            add(Control(tr("Play video"), spoken = tr("Play the video"), icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) {
                 t.openElsewhere(v)
             })
         }
         m.parts.filter { it.kind == PartKind.CONTACT }.forEach { c ->
-            add(Control("Contact card", spoken = "Open the contact card", emphasized = true) { state.go(Screen.Card(threadId, c.id)) })
+            add(Control(tr("Contact card"), spoken = tr("Open the contact card"), emphasized = true) { state.go(Screen.Card(threadId, c.id)) })
         }
         m.parts.filter { it.kind == PartKind.EVENT }.forEach { e ->
-            add(Control("Invite", spoken = "Open the calendar invite", emphasized = true) { state.go(Screen.Invite(threadId, e.id)) })
+            add(Control(tr("Invite"), spoken = tr("Open the calendar invite"), emphasized = true) { state.go(Screen.Invite(threadId, e.id)) })
         }
         m.parts.filter { it.kind == PartKind.OTHER }.forEach { o ->
-            add(Control("Open file", spoken = "Open the file in another app") { t.openElsewhere(o) })
+            add(Control(tr("Open file"), spoken = tr("Open the file in another app")) { t.openElsewhere(o) })
         }
     }
 }
@@ -546,10 +547,10 @@ fun AttachmentsScreen(state: AppState, threadId: Long) {
         LaunchedEffect(Unit) { state.go(Screen.Conversation(threadId)) }
         return
     }
-    LaunchedEffect(Unit) { state.say("Attachments. ${TextSpeech.attachments(m.parts)}") }
+    LaunchedEffect(Unit) { state.say(tr("Attachments. %s", TextSpeech.attachments(m.parts))) }
     ChoiceList(
-        state, "Attachments",
-        choices = listOf(Control("Back", spoken = "Back to the text") { state.go(Screen.Conversation(threadId)) }) +
+        state, tr("Attachments"),
+        choices = listOf(Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Conversation(threadId)) }) +
             attachmentControls(state, threadId, m),
     )
 }
@@ -571,18 +572,18 @@ fun ComposeScreen(state: AppState) {
         if (r.resultCode == Activity.RESULT_OK && !words.isNullOrBlank() && cur != null) {
             val text = if (cur.text.isBlank()) words.replaceFirstChar { it.uppercase() } else cur.text.trimEnd() + " " + words
             t.draft = cur.copy(text = text)
-            state.say("Your text: $text. Double tap Send to send it, or Speak to add more.")
+            state.say(tr("Your text: %s. Double tap Send to send it, or Speak to add more.", text))
         } else {
-            state.say("Nothing heard. Double tap Speak to try again.")
+            state.say(tr("Nothing heard. Double tap Speak to try again."))
         }
     }
     val who = People.join(d.to.map(t.names::of))
     val attached = TextSpeech.attachments(d.files.map { TextPart(0, it.kind, it.contentType, null, "") })
-    val shown = d.text.ifBlank { "Nothing written yet." } + if (attached.isNotEmpty()) "\nWith: ${attached.removeSuffix(".").lowercase()}" else ""
+    val shown = d.text.ifBlank { tr("Nothing written yet.") } + if (attached.isNotEmpty()) tr("\nWith: %s", attached.removeSuffix(".").lowercase()) else ""
     val readBack = {
         state.say(
-            if (d.text.isBlank() && d.files.isEmpty()) "Nothing written yet. Double tap Speak to say your message."
-            else "Text to $who. ${d.text} ${attached}".trim(),
+            if (d.text.isBlank() && d.files.isEmpty()) tr("Nothing written yet. Double tap Speak to say your message.")
+            else tr("Text to %s. %s %s", who, d.text, attached).trim(),
         )
     }
 
@@ -590,35 +591,35 @@ fun ComposeScreen(state: AppState) {
         TypingBox(state, d.text) { typed ->
             t.draft = t.draft?.copy(text = typed)
             typing = false
-            state.say(if (typed.isBlank()) "Nothing typed." else "Your text: $typed. Double tap Send to send it.")
+            state.say(if (typed.isBlank()) tr("Nothing typed.") else tr("Your text: %s. Double tap Send to send it.", typed))
         }
         return
     }
 
     val controls = buildList {
-        add(Control("Speak", spoken = "Speak your message") {
+        add(Control(tr("Speak"), spoken = tr("Speak your message")) {
             val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(RecognizerIntent.EXTRA_PROMPT, "Say your message")
+                .putExtra(RecognizerIntent.EXTRA_PROMPT, tr("Say your message"))
             state.speaker.stop()
             try {
                 dictate.launch(i)
             } catch (e: ActivityNotFoundException) {
-                state.say("Speech typing isn't available on this phone. Use Keyboard or Quick replies.")
+                state.say(tr("Speech typing isn't available on this phone. Use Keyboard or Quick replies."))
             }
         })
-        add(Control("Send", spoken = "Send to $who", icon = SEND_ICON, emphasized = true) { t.send() })
-        add(Control("Quick replies", spoken = "Choose a quick reply") { state.go(Screen.QuickReply) })
-        add(Control("Keyboard", spoken = "Type with the keyboard") { typing = true })
-        add(Control("More", spoken = "More: add a photo, a voice message or a person") { state.go(Screen.ComposeMore) })
-        add(Control("Cancel", spoken = "Cancel this text", icon = TileIcon.Vector(Icons.Filled.Close)) { t.cancelDraft() })
+        add(Control(tr("Send"), spoken = tr("Send to %s", who), icon = SEND_ICON, emphasized = true) { t.send() })
+        add(Control(tr("Quick replies"), spoken = tr("Choose a quick reply")) { state.go(Screen.QuickReply) })
+        add(Control(tr("Keyboard"), spoken = tr("Type with the keyboard")) { typing = true })
+        add(Control(tr("More"), spoken = tr("More: add a photo, a voice message or a person")) { state.go(Screen.ComposeMore) })
+        add(Control(tr("Cancel"), spoken = tr("Cancel this text"), icon = TileIcon.Vector(Icons.Filled.Close)) { t.cancelDraft() })
     }
     ReaderLayout(
         state = state,
         body = shown,
         onBodyTap = readBack,
-        header = "To $who",
-        headerSpoken = "Text to $who",
+        header = tr("To %s", who),
+        headerSpoken = tr("Text to %s", who),
         controls = controls,
         bodyWeight = 0.45f,
         controlsHeader = false,
@@ -634,29 +635,29 @@ fun ComposeMoreScreen(state: AppState) {
         LaunchedEffect(Unit) { state.go(Screen.Texts) }
         return
     }
-    LaunchedEffect(Unit) { state.say("More") }
+    LaunchedEffect(Unit) { state.say(tr("More")) }
     val who = People.join(d.to.map(t.names::of))
     val attached = TextSpeech.attachments(d.files.map { TextPart(0, it.kind, it.contentType, null, "") })
     ChoiceList(
-        state, "More",
+        state, tr("More"),
         choices = buildList {
-            add(Control("Back", spoken = "Back to the text") { state.go(Screen.Compose) })
-            add(Control("Add photo", spoken = "Add a photo or video") { state.go(Screen.AddPhoto) })
-            add(Control("Voice message", spoken = "Record a voice message") { state.go(Screen.Record) })
-            add(Control("Add a person", spoken = "Add a person to this text") {
+            add(Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Compose) })
+            add(Control(tr("Add photo"), spoken = tr("Add a photo or video")) { state.go(Screen.AddPhoto) })
+            add(Control(tr("Voice message"), spoken = tr("Record a voice message")) { state.go(Screen.Record) })
+            add(Control(tr("Add a person"), spoken = tr("Add a person to this text")) {
                 t.addingPerson = true
                 state.go(Screen.NewText)
             })
-            add(Control("Read it back", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) {
+            add(Control(tr("Read it back"), icon = TileIcon.Vector(Icons.Filled.PlayArrow)) {
                 state.say(
-                    if (d.text.isBlank() && d.files.isEmpty()) "Nothing written yet."
-                    else "Text to $who. ${d.text} $attached".trim(),
+                    if (d.text.isBlank() && d.files.isEmpty()) tr("Nothing written yet.")
+                    else tr("Text to %s. %s %s", who, d.text, attached).trim(),
                 )
             })
             if (d.text.isNotBlank() || d.files.isNotEmpty()) {
-                add(Control("Clear", spoken = "Clear what's written") {
+                add(Control(tr("Clear"), spoken = tr("Clear what's written")) {
                     t.draft = d.copy(text = "", files = emptyList())
-                    state.say("Cleared")
+                    state.say(tr("Cleared"))
                     state.go(Screen.Compose)
                 })
             }
@@ -672,7 +673,7 @@ private fun TypingBox(state: AppState, initial: String, onDone: (String) -> Unit
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) {
-        state.say("Type your message. Press Done on the keyboard when you're finished.")
+        state.say(tr("Type your message. Press Done on the keyboard when you're finished."))
         runCatching { focus.requestFocus() }
         keyboard?.show()
     }
@@ -702,7 +703,7 @@ private fun TypingBox(state: AppState, initial: String, onDone: (String) -> Unit
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { finish() }),
             )
-            Tile("Done typing", Modifier.fillMaxWidth().height((64f * lv.textScale).dp), emphasized = true) { finish() }
+            Tile(tr("Done typing"), Modifier.fillMaxWidth().height((64f * lv.textScale).dp), emphasized = true) { finish() }
         }
     }
 }
@@ -710,17 +711,17 @@ private fun TypingBox(state: AppState, initial: String, onDone: (String) -> Unit
 @Composable
 fun QuickReplyScreen(state: AppState) {
     val t = state.texts
-    LaunchedEffect(Unit) { state.say("Quick replies") }
+    LaunchedEffect(Unit) { state.say(tr("Quick replies")) }
     val replies = QuickReplies.forLanguage(Locale.getDefault().language)
-    val choices = listOf(Control("Back", spoken = "Back to the text") { state.go(Screen.Compose) }) +
+    val choices = listOf(Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Compose) }) +
         replies.map { r ->
             Control(r) {
                 t.draft = t.draft?.copy(text = r)
                 state.go(Screen.Compose)
-                state.say("$r. Double tap Send to send it.")
+                state.say(tr("%s. Double tap Send to send it.", r))
             }
         }
-    ChoiceList(state, "Quick replies", choices = choices)
+    ChoiceList(state, tr("Quick replies"), choices = choices)
 }
 
 @Composable
@@ -730,22 +731,22 @@ fun NewTextScreen(state: AppState) {
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         val uri = r.data?.data ?: return@rememberLauncherForActivityResult
         val c = readPhoneContact(context, uri)
-        if (c == null) state.say("Couldn't read that contact") else t.addPerson(c.number)
+        if (c == null) state.say(tr("Couldn't read that contact")) else t.addPerson(c.number)
     }
     val first = t.draft?.to.isNullOrEmpty()
     LaunchedEffect(Unit) {
-        state.say(if (first) "New text. Who is it to? Pick a contact, or type a number." else "Add a person. Pick a contact, or type a number.")
+        state.say(if (first) tr("New text. Who is it to? Pick a contact, or type a number.") else tr("Add a person. Pick a contact, or type a number."))
     }
     ChoiceList(
-        state, if (first) "Who to?" else "Add a person",
+        state, if (first) tr("Who to?") else tr("Add a person"),
         choices = listOf(
-            Control("Back") { state.back() },
-            Control("Pick a contact", icon = TileIcon.Vector(Icons.Filled.Person)) {
+            Control(tr("Back")) { state.back() },
+            Control(tr("Pick a contact"), icon = TileIcon.Vector(Icons.Filled.Person)) {
                 runCatching {
                     pick.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI))
-                }.onFailure { state.say("No contacts app found") }
+                }.onFailure { state.say(tr("No contacts app found")) }
             },
-            Control("Type a number", spoken = "Type a phone number") { state.go(Screen.NumberPad(NumberPurpose.TEXT)) },
+            Control(tr("Type a number"), spoken = tr("Type a phone number")) { state.go(Screen.NumberPad(NumberPurpose.TEXT)) },
         ),
     )
 }
@@ -758,9 +759,9 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
     LaunchedEffect(purpose) {
         state.say(
             when (purpose) {
-                NumberPurpose.OWN_NUMBER -> "Type this phone's own number"
-                NumberPurpose.VOICEMAIL -> "Type the voicemail number. Your carrier can tell you what it is."
-                NumberPurpose.TEXT -> "Type the phone number"
+                NumberPurpose.OWN_NUMBER -> tr("Type this phone's own number")
+                NumberPurpose.VOICEMAIL -> tr("Type the voicemail number. Your carrier can tell you what it is.")
+                NumberPurpose.TEXT -> tr("Type the phone number")
             },
         )
     }
@@ -780,31 +781,31 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
             onSpeak = state::say,
             header = { m ->
                 SpokenText(
-                    number.ifEmpty { "Type the number" }, m, state::say,
-                    spoken = if (number.isEmpty()) "Nothing typed yet" else People.spoken(number),
+                    number.ifEmpty { tr("Type the number") }, m, state::say,
+                    spoken = if (number.isEmpty()) tr("Nothing typed yet") else People.spoken(number),
                 )
             },
             minTarget = 0f,
         ) { key, m, _ ->
             when (key) {
                 "delete" -> if (number.isEmpty()) {
-                    Tile("Back", m) { state.back() }
+                    Tile(tr("Back"), m) { state.back() }
                 } else {
-                    Tile("Delete", m, spoken = "Delete the last digit") {
+                    Tile(tr("Delete"), m, spoken = tr("Delete the last digit")) {
                         number = number.dropLast(1)
-                        state.say("Deleted")
+                        state.say(tr("Deleted"))
                     }
                 }
-                "done" -> Tile("Done", m, emphasized = true) {
+                "done" -> Tile(tr("Done"), m, emphasized = true) {
                     if (number.length < 3) {
-                        state.say("Type the whole number first")
+                        state.say(tr("Type the whole number first"))
                     } else if (purpose == NumberPurpose.OWN_NUMBER) {
                         SendRecords.learnNumber(context, number)
-                        state.say("Saved. This phone's number is ${People.spoken(number)}.")
+                        state.say(tr("Saved. This phone's number is %s.", People.spoken(number)))
                         state.go(Screen.TextsCheck)
                     } else if (purpose == NumberPurpose.VOICEMAIL) {
                         state.update { it.copy(voicemailNumber = number) }
-                        state.say("Saved. Voicemail now calls ${voicemailSpoken(number)}.")
+                        state.say(tr("Saved. Voicemail now calls %s.", voicemailSpoken(number)))
                         state.go(Screen.VoicemailSetup)
                     } else {
                         state.texts.addPerson(number)
@@ -827,15 +828,15 @@ private fun prepareAttachment(context: Context, uri: Uri, typeHint: String?, use
     val budget = PhotoFit.budget(TextSender.maxMmsBytes(context), usedBytes)
     val dir = File(context.cacheDir, "shared").apply { mkdirs() }
     if (type.startsWith("image/")) {
-        val bytes = Photos.fit(context, uri, budget) ?: return null to "That picture couldn't be read."
+        val bytes = Photos.fit(context, uri, budget) ?: return null to tr("That picture couldn't be read.")
         val f = File(dir, "photo-${System.currentTimeMillis()}.jpg").apply { writeBytes(bytes) }
-        return DraftFile(f.absolutePath, "image/jpeg") to "Picture added."
+        return DraftFile(f.absolutePath, "image/jpeg") to tr("Picture added.")
     }
     val bytes = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-        ?: return null to "That file couldn't be read."
+        ?: return null to tr("That file couldn't be read.")
     if (bytes.size > budget) {
         val what = if (type.startsWith("video/")) "video" else "file"
-        return null to "That $what is too big to send as a picture text. Try a shorter one."
+        return null to tr("That %s is too big to send as a picture text. Try a shorter one.", what)
     }
     val ext = when {
         type == "video/mp4" -> "mp4"
@@ -844,7 +845,7 @@ private fun prepareAttachment(context: Context, uri: Uri, typeHint: String?, use
         else -> "bin"
     }
     val f = File(dir, "file-${System.currentTimeMillis()}.$ext").apply { writeBytes(bytes) }
-    return DraftFile(f.absolutePath, type) to (if (type.startsWith("video/")) "Video added." else "File added.")
+    return DraftFile(f.absolutePath, type) to (if (type.startsWith("video/")) tr("Video added.") else tr("File added."))
 }
 
 @Composable
@@ -855,14 +856,14 @@ fun AddPhotoScreen(state: AppState) {
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
 
     fun attach(uri: Uri, typeHint: String?) {
-        state.say("Getting it ready.")
+        state.say(tr("Getting it ready."))
         scope.launch {
             val used = t.draft?.files?.sumOf { File(it.path).length().toInt() } ?: 0
             val (file, words) = withContext(Dispatchers.IO) { prepareAttachment(context, uri, typeHint, used) }
             if (file != null) {
                 t.draft = t.draft?.let { it.copy(files = it.files + file) }
                 state.go(Screen.Compose)
-                state.say("$words Double tap Send to send it.")
+                state.say(tr("%s Double tap Send to send it.", words))
             } else {
                 state.say(words)
             }
@@ -871,33 +872,33 @@ fun AddPhotoScreen(state: AppState) {
 
     val take = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val u = cameraUri
-        if (ok && u != null) attach(u, "image/jpeg") else state.say("No photo taken")
+        if (ok && u != null) attach(u, "image/jpeg") else state.say(tr("No photo taken"))
     }
     fun openCamera() {
         val f = File(context.cacheDir, "camera/photo-${System.currentTimeMillis()}.jpg").apply { parentFile?.mkdirs() }
         val u = FileProvider.getUriForFile(context, "${context.packageName}.files", f)
         cameraUri = u
-        runCatching { take.launch(u) }.onFailure { state.say("No camera app found") }
+        runCatching { take.launch(u) }.onFailure { state.say(tr("No camera app found")) }
     }
     val cameraAllowed = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) openCamera() else state.say("The camera is not allowed. You can allow it in the phone's settings.")
+        if (ok) openCamera() else state.say(tr("The camera is not allowed. You can allow it in the phone's settings."))
     }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) attach(uri, null) else state.say("Nothing chosen")
+        if (uri != null) attach(uri, null) else state.say(tr("Nothing chosen"))
     }
-    LaunchedEffect(Unit) { state.say("Add a photo. Take one now, or choose one you have.") }
+    LaunchedEffect(Unit) { state.say(tr("Add a photo. Take one now, or choose one you have.")) }
     ChoiceList(
-        state, "Add a photo",
+        state, tr("Add a photo"),
         choices = listOf(
-            Control("Back", spoken = "Back to the text") { state.go(Screen.Compose) },
-            Control("Take a photo", spoken = "Take a photo with the camera") {
+            Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Compose) },
+            Control(tr("Take a photo"), spoken = tr("Take a photo with the camera")) {
                 val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
                 if (granted) openCamera() else cameraAllowed.launch(Manifest.permission.CAMERA)
             },
-            Control("Choose a photo", spoken = "Choose a photo or video you already have") {
+            Control(tr("Choose a photo"), spoken = tr("Choose a photo or video you already have")) {
                 runCatching {
                     pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
-                }.onFailure { state.say("No photo picker found") }
+                }.onFailure { state.say(tr("No photo picker found")) }
             },
         ),
     )
@@ -918,7 +919,7 @@ fun RecordScreen(state: AppState) {
         runCatching { r.stop() }.onFailure { file?.delete(); file = null }
         r.release()
         recorder = null
-        state.say(said ?: if (file != null) "Recorded $seconds seconds. Double tap Send it, or Play it back to listen." else "Nothing was recorded. Try again.")
+        state.say(said ?: if (file != null) tr("Recorded %s seconds. Double tap Send it, or Play it back to listen.", seconds) else tr("Nothing was recorded. Try again."))
     }
 
     fun startRecording() {
@@ -936,7 +937,7 @@ fun RecordScreen(state: AppState) {
             r.setMaxDuration(120_000)
             r.setOutputFile(f.absolutePath)
             r.setOnInfoListener { _, what, _ ->
-                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) stopRecording("Two minutes reached. Recording stopped. Double tap Send it, or Play it back.")
+                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) stopRecording(tr("Two minutes reached. Recording stopped. Double tap Send it, or Play it back."))
             }
             r.prepare()
             r.start()
@@ -947,12 +948,12 @@ fun RecordScreen(state: AppState) {
             state.vibes.play(longArrayOf(0, 150))
         } catch (e: Exception) {
             r.release()
-            state.say("The microphone couldn't start.")
+            state.say(tr("The microphone couldn't start."))
         }
     }
 
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) startRecording() else state.say("The microphone is not allowed. You can allow it in the phone's settings.")
+        if (ok) startRecording() else state.say(tr("The microphone is not allowed. You can allow it in the phone's settings."))
     }
     val recording = recorder != null
     LaunchedEffect(recording) {
@@ -967,55 +968,55 @@ fun RecordScreen(state: AppState) {
             player?.release()
         }
     }
-    LaunchedEffect(Unit) { state.say("Voice message. Double tap Start recording, then speak. A buzz means it's recording.") }
+    LaunchedEffect(Unit) { state.say(tr("Voice message. Double tap Start recording, then speak. A buzz means it's recording.")) }
 
     val f = file
     val controls = when {
-        recording -> listOf(Control("Stop recording", spoken = "Stop recording", emphasized = true) { stopRecording() })
+        recording -> listOf(Control(tr("Stop recording"), spoken = tr("Stop recording"), emphasized = true) { stopRecording() })
         f == null -> listOf(
-            Control("Start recording", spoken = "Start recording", emphasized = true) {
+            Control(tr("Start recording"), spoken = tr("Start recording"), emphasized = true) {
                 val ok = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                 if (ok) startRecording() else mic.launch(Manifest.permission.RECORD_AUDIO)
             },
-            Control("Back", spoken = "Back to the text") { state.go(Screen.Compose) },
+            Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Compose) },
         )
         else -> listOf(
-            Control("Send it", spoken = "Send the voice message", icon = SEND_ICON, emphasized = true) {
+            Control(tr("Send it"), spoken = tr("Send the voice message"), icon = SEND_ICON, emphasized = true) {
                 t.draft = t.draft?.let { it.copy(files = it.files + DraftFile(f.absolutePath, "audio/mp4")) }
                 file = null
                 t.send()
             },
-            Control("Play it back", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) {
+            Control(tr("Play it back"), icon = TileIcon.Vector(Icons.Filled.PlayArrow)) {
                 player?.release()
                 player = runCatching {
                     MediaPlayer().apply {
                         setDataSource(f.absolutePath)
-                        setOnCompletionListener { state.say("End of recording") }
+                        setOnCompletionListener { state.say(tr("End of recording")) }
                         prepare()
                         start()
                     }
                 }.getOrNull()
             },
-            Control("Record again") {
+            Control(tr("Record again")) {
                 val ok = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                 if (ok) startRecording() else mic.launch(Manifest.permission.RECORD_AUDIO)
             },
-            Control("Cancel", spoken = "Throw this recording away", icon = TileIcon.Vector(Icons.Filled.Close)) {
+            Control(tr("Cancel"), spoken = tr("Throw this recording away"), icon = TileIcon.Vector(Icons.Filled.Close)) {
                 f.delete()
                 file = null
                 state.go(Screen.Compose)
-                state.say("Recording thrown away")
+                state.say(tr("Recording thrown away"))
             },
         )
     }
     val shown = when {
-        recording -> "Recording… $seconds s"
-        f != null -> "Recorded $seconds seconds"
-        else -> "Ready to record"
+        recording -> tr("Recording… %s s", seconds)
+        f != null -> tr("Recorded %s seconds", seconds)
+        else -> tr("Ready to record")
     }
     ReaderLayout(
         state = state, body = shown, onBodyTap = { if (!recording) state.say(shown) },
-        header = "Voice message", headerSpoken = "Voice message", controls = controls,
+        header = tr("Voice message"), headerSpoken = tr("Voice message"), controls = controls,
     ) { c, m, pos -> ControlTile(state, c, m, pos) }
 }
 
@@ -1051,40 +1052,40 @@ fun PictureScreen(state: AppState, screen: Screen.Picture) {
     var page by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(partId) {
-        val which = if (count > 1) "Picture ${screen.index + 1} of $count." else "Picture."
-        state.say("$which Closer and Wider zoom. Read text reads any words in it.")
+        val which = if (count > 1) tr("Picture %s of %s.", screen.index + 1, count) else tr("Picture.")
+        state.say(tr("%s Closer and Wider zoom. Read text reads any words in it.", which))
     }
     val controls = buildList {
-        add(Control("Closer", spoken = "Zoom closer") {
+        add(Control(tr("Closer"), spoken = tr("Zoom closer")) {
             scale = CameraMath.closer(scale, CameraMath.FROZEN_MAX_ZOOM)
             state.say(CameraMath.describeZoom(scale))
         })
-        add(Control("Wider", spoken = "Zoom wider") {
+        add(Control(tr("Wider"), spoken = tr("Zoom wider")) {
             scale = CameraMath.wider(scale, 1f)
             if (scale <= 1f) offset = Offset.Zero
             state.say(CameraMath.describeZoom(scale))
         })
-        add(Control(if (reading) "Reading…" else "Read text", spoken = "Read any words in the picture", emphasized = true) {
+        add(Control(if (reading) tr("Reading…") else tr("Read text"), spoken = tr("Read any words in the picture"), emphasized = true) {
             val b = bitmap
             if (b == null || reading) return@Control
             reading = true
-            state.say("Reading")
+            state.say(tr("Reading"))
             scope.launch {
                 val result = withContext(Dispatchers.Default) { runCatching { state.ocr().read(b.toRgbImage()) }.getOrNull() }
                 reading = false
-                if (result == null) state.say("The words couldn't be read.") else state.showRead(result, backTo = screen)
+                if (result == null) state.say(tr("The words couldn't be read.")) else state.showRead(result, backTo = screen)
             }
         })
-        add(Control(filter.label, spoken = "Colours: ${filter.label}") {
+        add(Control(filter.label, spoken = tr("Colours: %s", filter.label)) {
             filter = CameraMath.Filter.entries.after(filter)
             state.say(filter.label)
         })
         if (count > 1) {
-            add(Control("Next picture") {
+            add(Control(tr("Next picture")) {
                 state.go(screen.copy(index = (screen.index + 1) % count))
             })
         }
-        add(Control("Back", spoken = "Back to the text") { state.go(Screen.Conversation(screen.threadId)) })
+        add(Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Conversation(screen.threadId)) })
     }
     InWindow(state.config.window) {
         Column(Modifier.fillMaxSize()) {
@@ -1095,12 +1096,12 @@ fun PictureScreen(state: AppState, screen: Screen.Picture) {
                     .padding(8.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black)
-                    .semantics { contentDescription = "Picture, ${CameraMath.describeZoom(scale)}" },
+                    .semantics { contentDescription = tr("Picture, %s", CameraMath.describeZoom(scale)) },
                 contentAlignment = Alignment.Center,
             ) {
                 val b = bitmap
                 if (b == null) {
-                    FitText("Loading…", lv.fg, maxSp = 24f * lv.textScale)
+                    FitText(tr("Loading…"), lv.fg, maxSp = 24f * lv.textScale)
                 } else {
                     val matrix = CameraMath.matrix(filter)
                     Image(
@@ -1137,7 +1138,7 @@ fun PictureScreen(state: AppState, screen: Screen.Picture) {
                     rows = 2,
                     onSpeak = state::say,
                     header = { m ->
-                        val status = (if (count > 1) "${screen.index + 1} of $count · " else "") + CameraMath.shortZoom(scale)
+                        val status = (if (count > 1) tr("%s of %s · ", screen.index + 1, count) else "") + CameraMath.shortZoom(scale)
                         SpokenText(status, m, state::say, spoken = CameraMath.describeZoom(scale), maxSp = 22f)
                     },
                 ) { c, m, pos -> ControlTile(state, c, m, pos) }
@@ -1158,17 +1159,17 @@ fun CardScreen(state: AppState, screen: Screen.Card) {
     }
     var index by remember { mutableIntStateOf(0) }
     val list = cards
-    val back = Control("Back", spoken = "Back to the text") { state.go(Screen.Conversation(screen.threadId)) }
+    val back = Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Conversation(screen.threadId)) }
     if (list == null || list.isEmpty()) {
-        val words = if (list == null) "Loading…" else "This contact card is empty or damaged."
+        val words = if (list == null) tr("Loading…") else tr("This contact card is empty or damaged.")
         LaunchedEffect(list) { if (list != null) state.say(words) }
-        ReaderLayout(state, words, { state.say(words) }, "Contact card", "Contact card", listOf(back)) { c, m, pos -> ControlTile(state, c, m, pos) }
+        ReaderLayout(state, words, { state.say(words) }, tr("Contact card"), tr("Contact card"), listOf(back)) { c, m, pos -> ControlTile(state, c, m, pos) }
         return
     }
     val card = list[index.coerceIn(0, list.lastIndex)]
     LaunchedEffect(card) { state.say(card.speech) }
     val shown = buildString {
-        append(card.name.ifBlank { "No name" })
+        append(card.name.ifBlank { tr("No name") })
         card.organization?.let { append("\n").append(it) }
         card.phones.forEach { append("\n${it.kind}: ${it.number}") }
         card.emails.forEach { append("\n").append(it) }
@@ -1176,19 +1177,19 @@ fun CardScreen(state: AppState, screen: Screen.Card) {
     }
     val controls = buildList {
         card.phones.forEachIndexed { n, p ->
-            val label = if (card.phones.size == 1) "Call" else "Call ${p.kind.lowercase()}"
-            add(Control(label, spoken = "Call ${card.name} ${p.kind.lowercase()}", icon = TileIcon.Vector(Icons.Filled.Call), emphasized = n == 0) {
+            val label = if (card.phones.size == 1) tr("Call") else tr("Call %s", p.kind.lowercase())
+            add(Control(label, spoken = tr("Call %s %s", card.name, p.kind.lowercase()), icon = TileIcon.Vector(Icons.Filled.Call), emphasized = n == 0) {
                 state.go(Screen.ConfirmCall(TileSpec.Contact(card.name.ifBlank { p.number }, p.number)))
             })
         }
         card.phones.firstOrNull()?.let { p ->
-            add(Control("Text", spoken = "Send ${card.name} a text", icon = SEND_ICON) {
+            add(Control(tr("Text"), spoken = tr("Send %s a text", card.name), icon = SEND_ICON) {
                 state.texts.draft = Draft(to = listOf(p.number))
                 state.go(Screen.Compose)
-                state.say("Text to ${card.name}.")
+                state.say(tr("Text to %s.", card.name))
             })
         }
-        add(Control("Save to contacts", spoken = "Save ${card.name} to contacts") {
+        add(Control(tr("Save to contacts"), spoken = tr("Save %s to contacts", card.name)) {
             val i = Intent(ContactsContract.Intents.Insert.ACTION).setType(ContactsContract.RawContacts.CONTENT_TYPE)
                 .putExtra(ContactsContract.Intents.Insert.NAME, card.name)
             card.phones.firstOrNull()?.let { i.putExtra(ContactsContract.Intents.Insert.PHONE, it.number) }
@@ -1196,16 +1197,16 @@ fun CardScreen(state: AppState, screen: Screen.Card) {
             card.emails.firstOrNull()?.let { i.putExtra(ContactsContract.Intents.Insert.EMAIL, it) }
             card.organization?.let { i.putExtra(ContactsContract.Intents.Insert.COMPANY, it) }
             card.address?.let { i.putExtra(ContactsContract.Intents.Insert.POSTAL, it) }
-            state.start(i, "No contacts app found")
+            state.start(i, tr("No contacts app found"))
         })
-        add(Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { state.say(card.speech) })
-        if (list.size > 1) add(Control("Next card") { index = (index + 1) % list.size })
+        add(Control(tr("Read again"), icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { state.say(card.speech) })
+        if (list.size > 1) add(Control(tr("Next card")) { index = (index + 1) % list.size })
         add(back)
     }
     ReaderLayout(
         state, shown, { state.say(card.speech) },
-        header = if (list.size > 1) "Card ${index + 1} of ${list.size}" else "Contact card",
-        headerSpoken = "Contact card for ${card.name}",
+        header = if (list.size > 1) tr("Card %s of %s", index + 1, list.size) else tr("Contact card"),
+        headerSpoken = tr("Contact card for %s", card.name),
         controls = controls,
     ) { c, m, pos -> ControlTile(state, c, m, pos) }
 }
@@ -1222,24 +1223,24 @@ fun InviteScreen(state: AppState, screen: Screen.Invite) {
     }
     var index by remember { mutableIntStateOf(0) }
     val list = events
-    val back = Control("Back", spoken = "Back to the text") { state.go(Screen.Conversation(screen.threadId)) }
+    val back = Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Conversation(screen.threadId)) }
     if (list == null || list.isEmpty()) {
-        val words = if (list == null) "Loading…" else "This invite is empty or damaged."
+        val words = if (list == null) tr("Loading…") else tr("This invite is empty or damaged.")
         LaunchedEffect(list) { if (list != null) state.say(words) }
-        ReaderLayout(state, words, { state.say(words) }, "Invite", "Calendar invite", listOf(back)) { c, m, pos -> ControlTile(state, c, m, pos) }
+        ReaderLayout(state, words, { state.say(words) }, tr("Invite"), tr("Calendar invite"), listOf(back)) { c, m, pos -> ControlTile(state, c, m, pos) }
         return
     }
     val e = list[index.coerceIn(0, list.lastIndex)]
     val speech = e.speech()
     LaunchedEffect(e) { state.say(speech) }
     val shown = buildString {
-        append(e.title.ifBlank { "No title" })
+        append(e.title.ifBlank { tr("No title") })
         e.startMillis?.let { append("\n").append(e.whenText(it)) }
         e.location?.let { append("\n").append(it) }
         e.description?.let { append("\n").append(it) }
     }
     val controls = buildList {
-        add(Control("Add to calendar", spoken = "Add ${e.title} to the calendar", emphasized = true) {
+        add(Control(tr("Add to calendar"), spoken = tr("Add %s to the calendar", e.title), emphasized = true) {
             val i = Intent(Intent.ACTION_INSERT).setData(CalendarContract.Events.CONTENT_URI)
                 .putExtra(CalendarContract.Events.TITLE, e.title)
                 .putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, e.allDay)
@@ -1247,16 +1248,16 @@ fun InviteScreen(state: AppState, screen: Screen.Invite) {
             e.endMillis?.let { i.putExtra(CalendarContract.EXTRA_EVENT_END_TIME, it) }
             e.location?.let { i.putExtra(CalendarContract.Events.EVENT_LOCATION, it) }
             e.description?.let { i.putExtra(CalendarContract.Events.DESCRIPTION, it) }
-            state.start(i, "No calendar app found")
+            state.start(i, tr("No calendar app found"))
         })
-        add(Control("Read again", icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { state.say(speech) })
-        if (list.size > 1) add(Control("Next event") { index = (index + 1) % list.size })
+        add(Control(tr("Read again"), icon = TileIcon.Vector(Icons.Filled.PlayArrow)) { state.say(speech) })
+        if (list.size > 1) add(Control(tr("Next event")) { index = (index + 1) % list.size })
         add(back)
     }
     ReaderLayout(
         state, shown, { state.say(speech) },
-        header = if (list.size > 1) "Invite ${index + 1} of ${list.size}" else "Invite",
-        headerSpoken = "Calendar invite",
+        header = if (list.size > 1) tr("Invite %s of %s", index + 1, list.size) else tr("Invite"),
+        headerSpoken = tr("Calendar invite"),
         controls = controls,
     ) { c, m, pos -> ControlTile(state, c, m, pos) }
 }
@@ -1271,31 +1272,29 @@ fun TextsNotSetScreen(state: AppState) {
     val t = state.texts
     val current = remember { com.netgician.rplauncher.texts.TextRole.currentAppName(context) }
     val words = if (current == null) {
-        "RP Launcher isn't the texting app yet, and no texting app is set on this phone right now. " +
-            "Choose Use RP Launcher for texts to set it up."
+        tr("RP Launcher isn't the texting app yet, and no texting app is set on this phone right now. Choose Use RP Launcher for texts to set it up.")
     } else {
-        "RP Launcher isn't the texting app yet. Right now, texts go to $current. " +
-            "Choose Use RP Launcher for texts to have them here instead, or keep using $current."
+        tr("RP Launcher isn't the texting app yet. Right now, texts go to %s. Choose Use RP Launcher for texts to have them here instead, or keep using %s.", current, current)
     }
     LaunchedEffect(Unit) { state.say(words) }
     val controls = buildList {
-        add(Control("Use RP Launcher for texts", spoken = "Use RP Launcher for texts. A helper sets this up once.", emphasized = true) { t.setUp() })
+        add(Control(tr("Use RP Launcher for texts"), spoken = tr("Use RP Launcher for texts. A helper sets this up once."), emphasized = true) { t.setUp() })
         if (current != null) {
-            add(Control("Open $current") { t.openOtherApp() })
-            add(Control("Keep using $current", spoken = "Always open $current from the Texts tile") {
+            add(Control(tr("Open %s", current)) { t.openOtherApp() })
+            add(Control(tr("Keep using %s", current), spoken = tr("Always open %s from the Texts tile", current)) {
                 state.update { it.copy(textsElsewhere = true) }
-                state.say("The Texts tile will open $current. You can change this in Setup, Texting app.")
+                state.say(tr("The Texts tile will open %s. You can change this in Setup, Texting app.", current))
                 t.openOtherApp()
             })
         } else {
-            add(Control("Phone settings", spoken = "Open the phone's default apps setting") {
-                state.start(com.netgician.rplauncher.texts.TextRole.defaultAppsSettings(), "Could not open the setting")
+            add(Control(tr("Phone settings"), spoken = tr("Open the phone's default apps setting")) {
+                state.start(com.netgician.rplauncher.texts.TextRole.defaultAppsSettings(), tr("Could not open the setting"))
             })
         }
-        add(Control("Home", icon = HOME_ICON) { state.go(Screen.Home) })
+        add(Control(tr("Home"), icon = HOME_ICON) { state.go(Screen.Home) })
     }
     ReaderLayout(
         state = state, body = words, onBodyTap = { state.say(words) },
-        header = "Texts", headerSpoken = "Texts", controls = controls,
+        header = tr("Texts"), headerSpoken = tr("Texts"), controls = controls,
     ) { c, m, pos -> ControlTile(state, c, m, pos) }
 }

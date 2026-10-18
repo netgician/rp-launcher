@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.texts
 
+import com.netgician.rplauncher.i18n.tr
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.Context
@@ -66,9 +67,9 @@ object TextSender {
     fun send(context: Context, recipients: List<String>, text: String, attachments: List<Attachment> = emptyList()): Started {
         val to = Addresses.distinct(recipients).filter { it.isNotBlank() }
         val store = TextStore(context)
-        if (to.isEmpty()) return Started(-1, false, "There's no one to send it to.")
-        if (text.isBlank() && attachments.isEmpty()) return Started(-1, false, "There's nothing to send.")
-        val thread = runCatching { store.threadFor(to) }.getOrElse { return Started(-1, false, "The phone's message store isn't available.") }
+        if (to.isEmpty()) return Started(-1, false, tr("There's no one to send it to."))
+        if (text.isBlank() && attachments.isEmpty()) return Started(-1, false, tr("There's nothing to send."))
+        val thread = runCatching { store.threadFor(to) }.getOrElse { return Started(-1, false, tr("The phone's message store isn't available.")) }
         val plain = to.size == 1 && attachments.isEmpty() && !to[0].contains('@')
         return if (plain) sendSms(context, to[0], text.trim(), thread) else sendMms(context, to, text.trim(), attachments, thread)
     }
@@ -78,8 +79,8 @@ object TextSender {
     private fun sendSms(context: Context, to: String, body: String, threadId: Long): Started {
         val subId = subId()
         val uri = TextStore(context).saveOutgoingSms(to, body, threadId, subId)
-            ?: return Started(threadId, false, "The phone's message store isn't available.")
-        val id = uri.lastPathSegment?.toLongOrNull() ?: return Started(threadId, false, "The phone's message store isn't available.")
+            ?: return Started(threadId, false, tr("The phone's message store isn't available."))
+        val id = uri.lastPathSegment?.toLongOrNull() ?: return Started(threadId, false, tr("The phone's message store isn't available."))
         TextsBus.changed()
         dispatchSms(context, id, to, body, subId, threadId)
         return Started(threadId, true)
@@ -125,7 +126,7 @@ object TextSender {
         if (resultCode == Activity.RESULT_OK) {
             store.setSmsBox(id, Telephony.Sms.MESSAGE_TYPE_SENT)
             SendRecords.clearProblem(context, "sms:$id")
-            report(context, threadId, ok = true, words = "Sent")
+            report(context, threadId, ok = true, words = tr("Sent"))
         } else {
             val words = Problems.sms(resultCode)
             store.setSmsBox(id, Telephony.Sms.MESSAGE_TYPE_FAILED, resultCode)
@@ -157,7 +158,7 @@ object TextSender {
             TextStore.OutPart(a.contentType, a.fileName ?: "part$i", null, a.data)
         } + listOfNotNull(text.takeIf { it.isNotBlank() }?.let { TextStore.OutPart("text/plain", "text.txt", it, null) })
         val id = TextStore(context).saveOutgoingMms(to, parts, threadId, subId, null)
-            ?: return Started(threadId, false, "The phone's message store isn't available.")
+            ?: return Started(threadId, false, tr("The phone's message store isn't available."))
         TextsBus.changed()
         dispatchMms(context, id, to, text, attachments, subId, threadId)
         return Started(threadId, true)
@@ -166,7 +167,7 @@ object TextSender {
     private fun dispatchMms(context: Context, id: Long, to: List<String>, text: String, attachments: List<Attachment>, subId: Int, threadId: Long) {
         val bytes = MmsCodec.buildSend(to, text, attachments)
         if (bytes == null) {
-            failMms(context, id, threadId, "It couldn't be put together.", 0)
+            failMms(context, id, threadId, tr("It couldn't be put together."), 0)
             return
         }
         if (bytes.size > maxMmsBytes(context)) {
@@ -191,7 +192,7 @@ object TextSender {
         if (resultCode == Activity.RESULT_OK && (conf == null || conf.ok)) {
             store.setMmsBox(id, Telephony.Mms.MESSAGE_BOX_SENT, conf?.status ?: 0, conf?.messageId)
             SendRecords.clearProblem(context, "mms:$id")
-            report(context, thread, ok = true, words = "Sent")
+            report(context, thread, ok = true, words = tr("Sent"))
         } else {
             val words = if (resultCode != Activity.RESULT_OK) Problems.mms(resultCode) else conf?.reason ?: Problems.mms(0)
             failMms(context, id, thread, words, conf?.status ?: 0)
@@ -255,7 +256,7 @@ object TextSender {
         TextsBus.post(TextsBus.Event.Sent(threadId, ok, words))
         if (!ok && !(TextsBus.foreground && TextsBus.openThread == threadId)) {
             val who = TextStore(context).recipients(threadId).let { list -> Names(context).let { n -> People.join(list.map(n::of)) } }
-            TextNotifications.problem(context, threadId, "Text to $who not sent", "$words Open Texts and double tap Try again.")
+            TextNotifications.problem(context, threadId, tr("Text to %s not sent", who), tr("%s Open Texts and double tap Try again.", words))
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.model
 
+import com.netgician.rplauncher.i18n.tr
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -37,25 +38,25 @@ object Sos {
 
     /** What's said for "Where am I". */
     fun spokenPlace(place: Place?): String {
-        if (place == null) return "Your location isn't available right now."
-        val near = place.address?.let { "You're near $it." } ?: "There's no street address for this spot."
-        val sure = meters(place)?.let { m -> if (m >= 500) " This is only a rough area." else " Accurate to about $m meters." } ?: ""
+        if (place == null) return tr("Your location isn't available right now.")
+        val near = place.address?.let { tr("You're near %s.", it) } ?: tr("There's no street address for this spot.")
+        val sure = meters(place)?.let { m -> if (m >= 500) tr(" This is only a rough area.") else tr(" Accurate to about %s meters.", m) } ?: ""
         return near + sure
     }
 
     /** Text for "Text my location". */
     fun shareText(place: Place): String =
-        (place.address?.let { "I'm near $it. " } ?: "") + "Map: ${mapLink(place.lat, place.lng)}"
+        (place.address?.let { tr("I'm near %s. ", it) } ?: "") + tr("Map: %s", mapLink(place.lat, place.lng))
 
     /** "SOS. Texting Mary and Bob in 5 seconds. Tap Cancel to stop." */
     fun countdownWords(seconds: Int, names: List<String>, practice: Boolean): String {
         val who = when (names.size) {
-            0 -> "no one"
+            0 -> tr("no one")
             1 -> names[0]
-            else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
+            else -> names.dropLast(1).joinToString(", ") + tr(" and ") + names.last()
         }
-        val start = if (practice) "Practice SOS. Nothing will really be sent." else "SOS."
-        return "$start Texting $who with your location in $seconds seconds. Tap Cancel to stop."
+        val start = if (practice) tr("Practice SOS. Nothing will really be sent.") else tr("SOS.")
+        return tr("%s Texting %s with your location in %s seconds. Tap Cancel to stop.", start, who, seconds)
     }
 
     /** The local emergency number, by the phone's country. 112 works on most mobile networks. */

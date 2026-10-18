@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
@@ -351,15 +352,15 @@ fun <T> PagedTiles(
             when (slot) {
                 is Slot.Item -> tile(slot.value, m, pos)
                 Slot.Next -> Tile(
-                    label = "Next",
+                    label = tr("Next"),
                     modifier = m,
-                    spoken = "Next page",
+                    spoken = tr("Next page"),
                     icon = TileIcon.Vector(Icons.AutoMirrored.Filled.ArrowForward),
                 ) { onPage(current + 1, pages.size) }
                 Slot.Back -> Tile(
-                    label = "Back",
+                    label = tr("Back"),
                     modifier = m,
-                    spoken = "Previous page",
+                    spoken = tr("Previous page"),
                     icon = TileIcon.Vector(Icons.AutoMirrored.Filled.ArrowBack),
                 ) { onPage(current - 1, pages.size) }
             }
@@ -367,7 +368,7 @@ fun <T> PagedTiles(
 
         grid.footer?.let { f ->
             SpokenText(
-                text = "Page ${current + 1} of ${pages.size}",
+                text = tr("Page %s of %s", current + 1, pages.size),
                 modifier = Modifier.place(f),
                 onSpeak = onSpeak,
                 maxSp = 22f,
