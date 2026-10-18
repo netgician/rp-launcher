@@ -59,7 +59,7 @@ object Demo {
     private val names = mapOf(MARY to "Mary", OFFICE to tr("Dr. Patel's office"), BOB to "Bob", ANA to "Ana")
 
     /** The made-up name for a made-up number, while demo mode is on. */
-    fun name(number: String): String? = if (on) names[number] else null
+    fun name(number: String): String? = if (on) names[number]?.let { tr(it) } else null
 
     /** RP Launcher's own phone screens: when it's the phone app, or in demo mode. */
     fun phoneIsOurs(context: Context): Boolean = on || PhoneRole.isDefault(context)
