@@ -37,7 +37,10 @@ jobs:
           echo "$FS" >> "$GITHUB_PATH"
           echo "PYTHONPATH=$FS:$FS/examples" >> "$GITHUB_ENV"
           echo "PYTHONUNBUFFERED=true" >> "$GITHUB_ENV"
-          [ -n "$ANDROID_HOME" ] || echo "ANDROID_HOME=/opt/android-sdk" >> "$GITHUB_ENV"
+          # Later steps need the build server's settings too (bsenv.sh only sets them for this shell).
+          export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/opt/android-sdk}}"
+          env | grep -E '^(ANDROID_[A-Z_]*|fdroidserver|GRADLE_USER_HOME|JAVA_HOME)=' >> "$GITHUB_ENV" || true
+          echo "::notice title=Android SDK::ANDROID_HOME=$ANDROID_HOME: $(ls "$ANDROID_HOME" 2>&1 | tr '\n' ' ')"
           export PATH="$FS:$PATH" PYTHONPATH="$FS:$FS/examples"
           if ! fdroid --version; then
             pip3 install --break-system-packages -e "$FS" || pip3 install -e "$FS"
