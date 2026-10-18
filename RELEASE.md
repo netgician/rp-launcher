@@ -62,13 +62,18 @@ direct downloads it can't be replaced: a new key means people must uninstall and
 
 ## 3. F-Droid
 
-1. Make the GitHub repository public (F-Droid builds only from public source).
+1. The GitHub repository is public, which F-Droid needs. ✓
 2. Tag the release: `git tag v0.5.0 && git push --tags`.
 3. Run **F-Droid check** in the Actions tab and make sure it passes. Then install the
    **F-Droid style test build** and check that Read text in See still works.
-4. Open a merge request at https://gitlab.com/fdroid/fdroiddata adding
-   `fdroid/com.netgician.rplauncher.yml` as `metadata/com.netgician.rplauncher.yml`.
-   F-Droid reads the descriptions from `fastlane/metadata`.
+4. With a free GitLab account: fork https://gitlab.com/fdroid/fdroiddata, add
+   `fdroid/com.netgician.rplauncher.yml` as `metadata/com.netgician.rplauncher.yml`, and open
+   a merge request titled "New app: RP Launcher". F-Droid reads the descriptions from
+   `fastlane/metadata`. Their reviewers usually reply within a few weeks.
+
+**About the test key:** `app/debug.keystore` is Android's standard test key, now public with
+the repository. Anyone could sign an app with it that installs over a test build, so only
+install test builds from this repository's own Releases page. Release builds use your own key.
 
 F-Droid signs its own builds with its own key, so its version and the Play version can't
 update each other. People should pick one source and stay with it.

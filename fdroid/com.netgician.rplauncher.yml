@@ -1,5 +1,5 @@
 # Draft F-Droid build recipe, for a merge request to https://gitlab.com/fdroid/fdroiddata
-# (as metadata/com.netgician.rplauncher.yml). The repository must be public first.
+# (as metadata/com.netgician.rplauncher.yml).
 # Check it locally with:  fdroid build -v -l com.netgician.rplauncher
 Categories:
   - Phone & SMS
@@ -30,6 +30,9 @@ Builds:
       - onnxruntime@v1.20.0
       - eigen@e7248b26a1ed53fa030c5c459f7ea095dfd276ac
     output: build/outputs/apk/release/app-release-unsigned.apk
+    # The shared test-build key isn't needed for a release.
+    rm:
+      - app/debug.keystore
     # ONNX Runtime (text reading) is compiled from its source; no prebuilt native libraries.
     prebuild:
       - mkdir -p ../build
