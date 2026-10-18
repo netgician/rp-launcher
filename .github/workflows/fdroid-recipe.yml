@@ -1,0 +1,96 @@
+name: F-Droid recipe
+
+# Run by hand from the Actions tab. Checks fdroid/com.netgician.rplauncher.yml the way F-Droid's
+# own reviewers will: in F-Droid's build server image, with their lint, then a real
+# `fdroid build` of this commit (scanner included). Takes about an hour with the build.
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: "Also run the full F-Droid build"
+        type: boolean
+        default: true
+
+jobs:
+  recipe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    container:
+      image: registry.gitlab.com/fdroid/fdroidserver:buildserver
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rp-launcher
+
+      - name: Get F-Droid's app list and add RP Launcher's recipe
+        run: |
+          git clone --depth 1 https://gitlab.com/fdroid/fdroiddata.git
+          cp rp-launcher/fdroid/com.netgician.rplauncher.yml fdroiddata/metadata/
+          for f in rp-launcher/fdroid/srclibs/*.yml; do
+            n=$(basename "$f")
+            if [ -e "fdroiddata/srclibs/$n" ]; then
+              echo "::notice title=Source library $n::Already in fdroiddata: $(tr '\n' ' ' < "fdroiddata/srclibs/$n")"
+            else
+              cp "$f" fdroiddata/srclibs/
+              echo "::notice title=Source library $n::Not in fdroiddata yet: add fdroid/srclibs/$n to the merge request"
+            fi
+          done
+          # Until the version is tagged, build the commit being checked.
+          TAG=$(grep -m1 'commit:' fdroiddata/metadata/com.netgician.rplauncher.yml | awk '{print $2}')
+          if ! git -C rp-launcher ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
+            sed -i "s/commit: $TAG/commit: $GITHUB_SHA/" fdroiddata/metadata/com.netgician.rplauncher.yml
+            echo "::notice title=Version tag::$TAG isn't tagged yet, so this checks commit ${GITHUB_SHA}"
+          fi
+          cp fdroiddata/metadata/com.netgician.rplauncher.yml recipe-before.yml
+
+      - name: F-Droid lint
+        run: |
+          [ -f /etc/profile.d/bsenv.sh ] && . /etc/profile.d/bsenv.sh
+          [ -n "$fdroidserver" ] && export PATH="$fdroidserver:$PATH" PYTHONPATH="$fdroidserver:$fdroidserver/examples"
+          cd fdroiddata
+          [ -f config.yml ] || echo "sdk_path: ${ANDROID_HOME:-/opt/android-sdk}" > config.yml
+          fdroid readmeta > ../lint.log 2>&1 || true
+          fdroid rewritemeta com.netgician.rplauncher >> ../lint.log 2>&1 || true
+          diff -u ../recipe-before.yml metadata/com.netgician.rplauncher.yml > ../rewritemeta.diff || true
+          fdroid lint com.netgician.rplauncher >> ../lint.log 2>&1 || echo "LINT FAILED" >> ../lint.log
+          cd ..
+          python3 - <<'PY'
+          import re
+          log = open("lint.log", errors="replace").read().strip().splitlines()
+          diff = open("rewritemeta.diff", errors="replace").read().strip().splitlines()
+          esc = lambda xs: "%0A".join(x.replace("%", "%25") for x in xs[:40])
+          print(f"::notice title=F-Droid lint::{esc(log) if log else 'No problems found'}")
+          if diff:
+              print(f"::warning title=F-Droid rewritemeta::{esc(diff)}")
+          else:
+              print("::notice title=F-Droid rewritemeta::Recipe is already in F-Droid's format")
+          PY
+
+      - name: F-Droid build
+        if: inputs.build
+        run: |
+          [ -f /etc/profile.d/bsenv.sh ] && . /etc/profile.d/bsenv.sh
+          [ -n "$fdroidserver" ] && export PATH="$fdroidserver:$PATH" PYTHONPATH="$fdroidserver:$fdroidserver/examples"
+          command -v sudo >/dev/null || (apt-get update -q && apt-get install -y -q sudo)
+          cd fdroiddata
+          set -o pipefail
+          fdroid build --verbose --on-server --no-tarball com.netgician.rplauncher:5 2>&1 | tee ../build.log
+
+      - name: Report the build
+        if: always() && inputs.build
+        run: |
+          python3 - <<'PY'
+          import os, re
+          if not os.path.exists("build.log"):
+              print("::warning title=F-Droid build::No build log"); raise SystemExit
+          lines = open("build.log", errors="replace").read().splitlines()
+          keep = [l for l in lines if re.search(r"(ERROR|Error|error:|Found |Scanner|scanner|BUILD FAILED|FAILURE|What went wrong|Exception|Could not|not found|Unknown|denied|Successfully built|Finished)", l)]
+          seen = []
+          for l in keep:
+              l = l.strip()[:300]
+              if l and l not in seen: seen.append(l)
+          tail = [l.strip()[:300] for l in lines[-15:]]
+          msg = "%0A".join(x.replace("%", "%25") for x in (seen[-45:] + ["--- last lines ---"] + tail))
+          print(f"::notice title=F-Droid build::{msg}")
+          PY
+          find fdroiddata/unsigned -name '*.apk' -exec ls -l {} \; 2>/dev/null | sed 's/^/::notice title=F-Droid APK::/' || true
