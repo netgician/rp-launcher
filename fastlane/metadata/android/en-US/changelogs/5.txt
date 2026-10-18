@@ -1,5 +1,5 @@
-• Texts: RP Launcher can be your texting app, with picture and group texts, replies by voice, and every send reported.
-• Phone: RP Launcher can be your phone app, with a big call screen and a keypad that speaks.
+• Texts and Phone built in: picture and group texts, replies by voice, a big call screen, every send reported.
 • SOS and Where am I.
-• Voice pitch and voice choice, torch brightness, and new tiles for Wi-Fi, Bluetooth, Volume, notifications and helper apps.
-• Pages tile to jump to any home page, and tiles for app shortcuts and web pages.
+• All in Spanish too, following the phone or chosen in Setup.
+• A setup checklist on first start, a frame around the viewing window, a Pages tile, and app shortcut tiles.
+• Voicemail shows the number it will call first.
