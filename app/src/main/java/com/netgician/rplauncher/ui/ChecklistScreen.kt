@@ -153,6 +153,9 @@ fun ChecklistScreen(state: AppState, firstRun: Boolean) {
         }
         SettingRow("Phone app", now.phoneApp ?: "none set") { state.go(Screen.PhoneSwitch) }
         SettingRow("Texting app", now.textApp ?: "none set") { state.go(Screen.TextsSwitch) }
+        SettingRow("Voicemail number", c.voicemailNumber?.let { com.netgician.rplauncher.calls.CallWords.grouped(it) } ?: "the phone's own") {
+            state.go(Screen.VoicemailSetup)
+        }
         now.fullScreen?.let { canFullScreen ->
             SettingRow("Call screen over the lock screen", if (canFullScreen) "allowed" else "not allowed") {
                 if (canFullScreen || Build.VERSION.SDK_INT < 34) state.say("Allowed")

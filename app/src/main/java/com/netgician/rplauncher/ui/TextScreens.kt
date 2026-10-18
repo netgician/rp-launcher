@@ -756,16 +756,27 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
     val context = LocalContext.current
     var number by remember(purpose) { mutableStateOf("") }
     LaunchedEffect(purpose) {
-        state.say(if (purpose == NumberPurpose.OWN_NUMBER) "Type this phone's own number" else "Type the phone number")
+        state.say(
+            when (purpose) {
+                NumberPurpose.OWN_NUMBER -> "Type this phone's own number"
+                NumberPurpose.VOICEMAIL -> "Type the voicemail number. Your carrier can tell you what it is."
+                NumberPurpose.TEXT -> "Type the phone number"
+            },
+        )
     }
-    val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "delete", "0", "done")
+    // Voicemail numbers can need star, hash or plus (*86, say).
+    val keys = if (purpose == NumberPurpose.VOICEMAIL) {
+        listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#", "delete", "+", "done")
+    } else {
+        listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "delete", "0", "done")
+    }
     InWindow(state.config.window) {
         PagedTiles(
             items = keys,
             page = 0,
             onPage = { _, _ -> },
             cols = 3,
-            rows = 4,
+            rows = keys.size / 3,
             onSpeak = state::say,
             header = { m ->
                 SpokenText(
@@ -791,14 +802,18 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
                         SendRecords.learnNumber(context, number)
                         state.say("Saved. This phone's number is ${People.spoken(number)}.")
                         state.go(Screen.TextsCheck)
+                    } else if (purpose == NumberPurpose.VOICEMAIL) {
+                        state.update { it.copy(voicemailNumber = number) }
+                        state.say("Saved. Voicemail now calls ${voicemailSpoken(number)}.")
+                        state.go(Screen.VoicemailSetup)
                     } else {
                         state.texts.addPerson(number)
                     }
                 }
-                else -> Tile(key, m) {
+                else -> Tile(key, m, spoken = com.netgician.rplauncher.calls.CallWords.key(key)) {
                     if (number.length < 15) {
                         number += key
-                        state.say(key)
+                        state.say(com.netgician.rplauncher.calls.CallWords.key(key))
                     }
                 }
             }

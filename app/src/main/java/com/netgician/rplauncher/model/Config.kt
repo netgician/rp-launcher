@@ -136,6 +136,8 @@ data class LauncherConfig(
     val windowReminderMonths: Int = 0,
     /** A bright frame around the viewing window, like the window check's, so its edges are easy to find. */
     val windowFrame: Boolean = true,
+    /** The number Voicemail calls, set by a helper; null to use the one the phone has. */
+    val voicemailNumber: String? = null,
 ) {
     /** True when the viewing window check is due again. It never changes the layout by itself. */
     fun windowCheckDue(now: Long): Boolean =
@@ -228,6 +230,7 @@ object ConfigJson {
         put("windowCheckedAt", c.windowCheckedAt)
         put("windowReminderMonths", c.windowReminderMonths)
         put("windowFrame", c.windowFrame)
+        c.voicemailNumber?.let { put("voicemail", it) }
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -318,6 +321,7 @@ object ConfigJson {
             windowReminderMonths = o.optInt("windowReminderMonths", d.windowReminderMonths)
                 .let { m -> if (m in LauncherConfig.WINDOW_REMINDERS) m else d.windowReminderMonths },
             windowFrame = o.optBoolean("windowFrame", d.windowFrame),
+            voicemailNumber = o.optString("voicemail", "").filter { it.isDigit() || it in "+*#" }.ifBlank { null },
         )
     }
 

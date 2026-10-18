@@ -81,6 +81,10 @@ sealed interface Screen {
     data class Dial(val number: String) : Screen
     data object Recents : Screen
     data object PhoneSwitch : Screen
+    /** Voicemail: shows the number it will call before calling. */
+    data object Voicemail : Screen
+    /** Setup: which number Voicemail calls. */
+    data object VoicemailSetup : Screen
 
     // Safety
     data class Sos(val practice: Boolean) : Screen
@@ -89,7 +93,7 @@ sealed interface Screen {
 }
 
 /** Why the number pad is open: a person to text, or this phone's own number for Check texts. */
-enum class NumberPurpose { TEXT, OWN_NUMBER }
+enum class NumberPurpose { TEXT, OWN_NUMBER, VOICEMAIL }
 
 /** Whether night colours are on right now, for screens outside the home screen (the call screen). */
 object NightNow {
@@ -102,6 +106,7 @@ val Screen.isHelperScreen: Boolean
         this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
         this is Screen.PickShortcutApp || this is Screen.PickShortcut ||
         this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck || this is Screen.SosSetup || this is Screen.PhoneSwitch ||
+        this is Screen.VoicemailSetup || (this is Screen.NumberPad && purpose == NumberPurpose.VOICEMAIL) ||
         (this is Screen.NumberPad && purpose == NumberPurpose.OWN_NUMBER)
 
 /**
@@ -311,7 +316,13 @@ class AppState(
             Screen.QuickReply, Screen.AddPhoto, Screen.Record, Screen.ComposeMore -> go(Screen.Compose)
             is Screen.Attachments -> go(Screen.Conversation(s.threadId))
             Screen.NewText -> if (texts.draft?.to.isNullOrEmpty()) { texts.draft = null; go(Screen.Texts) } else go(Screen.Compose)
-            is Screen.NumberPad -> go(if (s.purpose == NumberPurpose.OWN_NUMBER) Screen.TextsCheck else Screen.NewText)
+            is Screen.NumberPad -> go(
+                when (s.purpose) {
+                    NumberPurpose.OWN_NUMBER -> Screen.TextsCheck
+                    NumberPurpose.VOICEMAIL -> Screen.VoicemailSetup
+                    NumberPurpose.TEXT -> Screen.NewText
+                },
+            )
             is Screen.Picture -> go(Screen.Conversation(s.threadId))
             is Screen.Card -> go(Screen.Conversation(s.threadId))
             is Screen.Invite -> go(Screen.Conversation(s.threadId))
@@ -324,6 +335,8 @@ class AppState(
             Screen.PhoneHome -> go(Screen.Home)
             is Screen.Dial, Screen.Recents -> go(if (Demo.phoneIsOurs(activity)) Screen.PhoneHome else Screen.Home)
             Screen.PhoneSwitch -> go(Screen.Settings)
+            Screen.Voicemail -> go(Screen.PhoneHome)
+            Screen.VoicemailSetup -> go(Screen.Settings)
         }
     }
 

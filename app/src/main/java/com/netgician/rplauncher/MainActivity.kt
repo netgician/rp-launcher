@@ -276,6 +276,8 @@ fun Root(state: AppState) {
                     is Screen.Dial -> DialScreen(state, screen.number)
                     Screen.Recents -> RecentsScreen(state)
                     Screen.PhoneSwitch -> PhoneSwitchScreen(state)
+                    Screen.Voicemail -> VoicemailScreen(state)
+                    Screen.VoicemailSetup -> VoicemailSetupScreen(state)
                     Screen.WhereAmI -> WhereAmIScreen(state)
                     Screen.SosSetup -> SosSetupScreen(state)
                     Screen.Pages -> PagesScreen(state)

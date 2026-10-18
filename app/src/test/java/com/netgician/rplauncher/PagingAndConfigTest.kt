@@ -76,6 +76,7 @@ class PagingAndConfigTest {
             brightness = 0.5f,
             touchLandmarks = true,
             windowFrame = false,
+            voicemailNumber = "*86",
         )
         assertEquals(c, ConfigJson.decode(ConfigJson.encode(c)))
         assertEquals(c, ConfigJson.decodeSetupFile(ConfigJson.encode(c)))

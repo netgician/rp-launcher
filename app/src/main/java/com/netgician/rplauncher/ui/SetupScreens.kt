@@ -236,6 +236,9 @@ fun SettingsScreen(state: AppState) {
         SettingRow("Texting app", com.netgician.rplauncher.texts.TextRole.currentAppName(context) ?: "none set") {
             state.go(Screen.TextsSwitch)
         }
+        SettingRow("Voicemail number", c.voicemailNumber?.let { com.netgician.rplauncher.calls.CallWords.grouped(it) } ?: "the phone's own") {
+            state.go(Screen.VoicemailSetup)
+        }
         SettingRow("Make RP Launcher the home screen") {
             requestHomeRole(context, state) { homeRole.launch(it) }
         }

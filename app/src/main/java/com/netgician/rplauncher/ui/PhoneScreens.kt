@@ -82,10 +82,7 @@ fun PhoneHomeScreen(state: AppState) {
                 runCatching { pick.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) }
                     .onFailure { state.say("No contacts app found") }
             },
-            Control("Voicemail", spoken = "Call your voicemail") {
-                if (Demo.on) state.say("Demo mode, so no call is made.")
-                else if (!PhoneRole.voicemail(context)) state.say("Voicemail couldn't be called. A helper can allow phone calls in Setup, Phone app.")
-            },
+            Control("Voicemail", spoken = "Voicemail") { state.go(Screen.Voicemail) },
         ),
     )
 }
@@ -236,6 +233,103 @@ fun PhoneSwitchScreen(state: AppState) {
             SettingRow("Switch back to another phone app") {
                 state.start(PhoneRole.defaultAppsSettings(), "Could not open the setting")
             }
+        }
+    }
+}
+
+/** A voicemail number read out key by key: "star 8 6", "plus 1 6 5 0 …". */
+internal fun voicemailSpoken(number: String): String =
+    number.filter { it.isDigit() || it in "+*#" }.map { CallWords.key(it.toString()) }.joinToString(" ")
+
+/**
+ * Voicemail: says and shows the number it will call before calling, so a wrong number in the
+ * phone's settings (a scam number, say) is caught instead of called.
+ */
+@Composable
+fun VoicemailScreen(state: AppState) {
+    val context = LocalContext.current
+    val custom = state.config.voicemailNumber
+    val phoneNumber = remember { PhoneRole.phoneVoicemailNumber(context) }
+    val number = custom ?: phoneNumber
+    var pending by remember { mutableStateOf(false) }
+    val place = {
+        if (!PhoneRole.voicemail(context, custom)) state.say("Voicemail couldn't be called. A helper can check the voicemail number in Setup.")
+    }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (pending && ok) place() else if (pending) state.say("Calls need the phone permission. A helper can allow it in Setup.")
+        pending = false
+    }
+    val where = if (custom != null) "the number set in Setup" else "your phone's voicemail setting"
+    val about = when {
+        number == null -> "The phone didn't say which number it uses for voicemail."
+        else -> "Voicemail calls ${CallWords.grouped(number)}, from $where."
+    }
+    LaunchedEffect(Unit) {
+        state.say(
+            if (number == null) "Voicemail. $about Tap Call voicemail to try, or Back."
+            else "Voicemail. It calls ${voicemailSpoken(number)}. If that isn't your voicemail, tap Back, and ask a helper to set the right number in Setup.",
+        )
+    }
+    ChoiceList(
+        state, "Voicemail",
+        choices = listOf(
+            Control("Call voicemail", spoken = "Call voicemail", icon = TileIcon.Vector(Icons.Filled.Call), emphasized = true) {
+                when {
+                    Demo.on -> state.say("Demo mode, so no call is made.")
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED -> {
+                        state.say("Calling voicemail")
+                        place()
+                    }
+                    else -> {
+                        pending = true
+                        ask.launch(Manifest.permission.CALL_PHONE)
+                    }
+                }
+            },
+            Control(if (number == null) "Number not known" else "Calls ${CallWords.grouped(number)}", spoken = about) { state.say(about) },
+            Control("Back", spoken = "Back to Phone") { state.go(Screen.PhoneHome) },
+        ),
+    )
+}
+
+/** Setup: which number Voicemail calls. The phone's own, or one a helper types in. */
+@Composable
+fun VoicemailSetupScreen(state: AppState) {
+    val context = LocalContext.current
+    val custom = state.config.voicemailNumber
+    var phoneNumber by remember { mutableStateOf(PhoneRole.phoneVoicemailNumber(context)) }
+    LifecycleResumeEffect(Unit) {
+        phoneNumber = PhoneRole.phoneVoicemailNumber(context)
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(Unit) { state.say("Voicemail number") }
+    HelperColumn(state) {
+        SettingRow("Back") { state.go(Screen.Settings) }
+        Words(
+            state,
+            buildString {
+                append(
+                    when {
+                        custom != null -> "Voicemail calls ${CallWords.grouped(custom)}, the number set here."
+                        phoneNumber != null -> "Voicemail calls ${CallWords.grouped(phoneNumber!!)}, the number in the phone's own voicemail setting."
+                        else -> "The phone doesn't say which number it uses for voicemail."
+                    },
+                )
+                if (custom != null && phoneNumber != null && PhoneRole.lastDigits(phoneNumber!!) != PhoneRole.lastDigits(custom)) {
+                    append(" The phone's own setting has ${CallWords.grouped(phoneNumber!!)}.")
+                }
+                append(" If it isn't your carrier's voicemail number, type the right one. Your carrier's website or support line can tell you what it is.")
+            },
+        )
+        SettingRow("Type the voicemail number") { state.go(Screen.NumberPad(NumberPurpose.VOICEMAIL)) }
+        if (custom != null) {
+            SettingRow("Use the phone's own voicemail number") {
+                state.update { it.copy(voicemailNumber = null) }
+                state.say(if (phoneNumber != null) "Voicemail calls ${voicemailSpoken(phoneNumber!!)} again" else "Using the phone's own voicemail number")
+            }
+        }
+        SettingRow("Open the phone's voicemail settings") {
+            state.start(PhoneRole.voicemailSettings(), "This phone doesn't have voicemail settings to open")
         }
     }
 }

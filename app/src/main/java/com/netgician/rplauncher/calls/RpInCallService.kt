@@ -43,14 +43,16 @@ object Calls {
 
     internal fun refresh(context: Context) {
         val names = Names(context)
-        _list.value = calls.toList().map { info(it, names) }
+        val voicemail = PhoneRole.voicemailNumbers(context)
+        _list.value = calls.toList().map { info(it, names, voicemail) }
     }
 
     internal fun setAudio(state: CallAudioState?) { _audio.value = state }
 
-    private fun info(c: Call, names: Names): CallInfo {
+    private fun info(c: Call, names: Names, voicemail: Set<String>): CallInfo {
         val number = c.details?.handle?.schemeSpecificPart.orEmpty()
-        val shownName = c.details?.let { d ->
+        val isVoicemail = c.details?.handle?.scheme == "voicemail" || PhoneRole.lastDigits(number) in voicemail
+        val shownName = if (isVoicemail) "Voicemail" else c.details?.let { d ->
             (if (Build.VERSION.SDK_INT >= 30) d.contactDisplayName else null)?.takeIf { it.isNotBlank() }
                 ?: d.callerDisplayName?.takeIf { it.isNotBlank() }
         } ?: if (number.isBlank()) "Private number" else names.of(number)
@@ -250,13 +252,35 @@ object PhoneRole {
         return runCatching { tm.placeCall(Uri.fromParts("tel", number, null), null); true }.getOrDefault(false)
     }
 
+    /**
+     * Calls voicemail: the number a helper set in Setup, or else the one the phone has (from the
+     * SIM or carrier).
+     */
     @android.annotation.SuppressLint("MissingPermission")
-    fun voicemail(context: Context): Boolean {
+    fun voicemail(context: Context, custom: String?): Boolean {
+        if (!custom.isNullOrBlank()) return call(context, custom)
         val tm = context.getSystemService(TelecomManager::class.java) ?: return false
         val allowed = ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
         if (!allowed) return false
         return runCatching { tm.placeCall(Uri.fromParts("voicemail", "", null), null); true }.getOrDefault(false)
     }
+
+    /** The voicemail number the phone itself has, when it will say. */
+    @android.annotation.SuppressLint("MissingPermission")
+    fun phoneVoicemailNumber(context: Context): String? = runCatching {
+        context.getSystemService(android.telephony.TelephonyManager::class.java)?.voiceMailNumber
+    }.getOrNull()?.filter { it.isDigit() || it in "+*#" }?.takeIf { it.isNotBlank() }
+
+    /** Both voicemail numbers, by their last ten digits, so the call screen can say "Voicemail". */
+    fun voicemailNumbers(context: Context): Set<String> {
+        val custom = runCatching { com.netgician.rplauncher.system.ConfigStore(context).load().voicemailNumber }.getOrNull()
+        return listOfNotNull(custom, phoneVoicemailNumber(context)).map(::lastDigits).filter { it.length >= 3 }.toSet()
+    }
+
+    fun lastDigits(number: String): String = number.filter { it.isDigit() }.takeLast(10)
+
+    /** The phone's own voicemail settings, where the stored voicemail number can be checked. */
+    fun voicemailSettings(): Intent = Intent(android.telephony.TelephonyManager.ACTION_CONFIGURE_VOICEMAIL)
 
     fun defaultAppsSettings(): Intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
 }
