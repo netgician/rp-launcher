@@ -17,6 +17,7 @@ camera on the phone itself.
 * License: GPL-3.0-only (bundled AOSP MMS code: Apache-2.0; PP-OCR models: Apache-2.0;
   Atkinson Hyperlegible font: OFL-1.1)
 * No internet permission, no ads, no tracking, no proprietary libraries.
+* Store text, screenshots and changelogs in English and Spanish, in the repo's `fastlane/metadata`.
 
 Build notes:
 
@@ -25,6 +26,8 @@ Build notes:
   `onnxFromSource=true` makes the app use it instead of the Maven AAR.
 * The repository's `app/debug.keystore` (Android's public test key, for test builds) is removed
   by `rm`.
+* Two new srclibs are included in this merge request: `srclibs/onnxruntime.yml` and
+  `srclibs/eigen.yml`.
 
 Required:
 
