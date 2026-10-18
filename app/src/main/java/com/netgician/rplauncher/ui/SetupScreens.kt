@@ -415,6 +415,8 @@ fun AddTileScreen(state: AppState) {
         SettingRow("Alerts (notifications read aloud)") { add(TileSpec.Alerts) }
         SettingRow("SOS (emergency texts)") { add(TileSpec.Sos) }
         SettingRow("Where am I (your street address)") { add(TileSpec.WhereAmI) }
+        SettingRow("Notifications (the drop-down)") { add(TileSpec.Notifications) }
+        SettingRow("Quick settings (the drop-down)") { add(TileSpec.QuickSettings) }
         SettingRow("Wi-Fi") { add(TileSpec.Wifi) }
         SettingRow("Bluetooth") { add(TileSpec.Bluetooth) }
         SettingRow("Volume") { add(TileSpec.Volume) }

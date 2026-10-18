@@ -17,6 +17,10 @@ sealed class TileSpec {
     data object Wifi : TileSpec()
     data object Bluetooth : TileSpec()
     data object Volume : TileSpec()
+    /** Pulls down the phone's notification drop-down. */
+    data object Notifications : TileSpec()
+    /** Pulls down the quick settings (Wi-Fi, Bluetooth, torch, brightness...). */
+    data object QuickSettings : TileSpec()
     data object AllApps : TileSpec()
     data class App(val packageName: String, val className: String, val appLabel: String) : TileSpec()
     data class Contact(val name: String, val number: String) : TileSpec()
@@ -34,6 +38,8 @@ sealed class TileSpec {
             Wifi -> "Wi-Fi"
             Bluetooth -> "Bluetooth"
             Volume -> "Volume"
+            Notifications -> "Notifications"
+            QuickSettings -> "Quick settings"
             AllApps -> "All apps"
             is App -> appLabel
             is Contact -> name
@@ -228,6 +234,8 @@ object ConfigJson {
             TileSpec.Wifi -> put("type", "wifi")
             TileSpec.Bluetooth -> put("type", "bluetooth")
             TileSpec.Volume -> put("type", "volume")
+            TileSpec.Notifications -> put("type", "notifications")
+            TileSpec.QuickSettings -> put("type", "quick_settings")
             TileSpec.AllApps -> put("type", "all_apps")
             is TileSpec.App -> {
                 put("type", "app"); put("pkg", t.packageName); put("cls", t.className); put("label", t.appLabel)
@@ -311,6 +319,8 @@ object ConfigJson {
         "wifi" -> TileSpec.Wifi
         "bluetooth" -> TileSpec.Bluetooth
         "volume" -> TileSpec.Volume
+        "notifications" -> TileSpec.Notifications
+        "quick_settings" -> TileSpec.QuickSettings
         "all_apps" -> TileSpec.AllApps
         "app" -> {
             val pkg = o.optString("pkg"); val cls = o.optString("cls")

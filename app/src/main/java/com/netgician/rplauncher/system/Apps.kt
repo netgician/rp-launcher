@@ -43,3 +43,19 @@ object Battery {
         return BatteryState(percent = percent, charging = bm?.isCharging == true)
     }
 }
+
+/**
+ * The phone's drop-down panels. Android has no public way for an app to open them, so this
+ * uses the same call other launchers use; if a phone refuses it, the caller falls back.
+ */
+object StatusBar {
+    @android.annotation.SuppressLint("WrongConstant")
+    private fun call(context: android.content.Context, method: String): Boolean = runCatching {
+        val sb = context.getSystemService("statusbar") ?: return false
+        sb.javaClass.getMethod(method).invoke(sb)
+        true
+    }.getOrDefault(false)
+
+    fun notifications(context: android.content.Context): Boolean = call(context, "expandNotificationsPanel")
+    fun quickSettings(context: android.content.Context): Boolean = call(context, "expandSettingsPanel")
+}

@@ -59,7 +59,8 @@ fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.Alerts -> TileIcon.Vector(Icons.Filled.Notifications)
     TileSpec.Sos -> TileIcon.Vector(Icons.Filled.Warning)
     TileSpec.WhereAmI -> TileIcon.Vector(Icons.Filled.LocationOn)
-    TileSpec.Wifi, TileSpec.Bluetooth, TileSpec.Volume -> null
+    TileSpec.Notifications -> TileIcon.Vector(Icons.Filled.Notifications)
+    TileSpec.Wifi, TileSpec.Bluetooth, TileSpec.Volume, TileSpec.QuickSettings -> null
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
     is TileSpec.App -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)

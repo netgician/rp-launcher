@@ -301,6 +301,14 @@ class AppState(
             TileSpec.Wifi -> start(Intent(android.provider.Settings.Panel.ACTION_WIFI), "Could not open Wi-Fi")
             TileSpec.Volume -> start(Intent(android.provider.Settings.Panel.ACTION_VOLUME), "Could not open volume")
             TileSpec.Bluetooth -> start(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS), "Could not open Bluetooth")
+            TileSpec.Notifications -> if (!com.netgician.rplauncher.system.StatusBar.notifications(activity)) {
+                say("This phone won't open the drop-down from here. Showing your alerts instead.")
+                go(Screen.Alerts)
+            }
+            TileSpec.QuickSettings -> if (!com.netgician.rplauncher.system.StatusBar.quickSettings(activity)) {
+                say("This phone won't open quick settings from here. Opening settings instead.")
+                start(Intent(android.provider.Settings.ACTION_SETTINGS))
+            }
             TileSpec.AllApps -> go(Screen.Apps)
             is TileSpec.App -> start(
                 Apps.launchIntent(spec.packageName, spec.className),

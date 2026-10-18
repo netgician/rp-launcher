@@ -31,6 +31,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- The Notifications and Quick settings tiles pull down the phone's drop-down. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
     <!-- A launcher sees other apps through <queries>, not QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>
