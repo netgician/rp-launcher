@@ -27,6 +27,14 @@
     <!-- Voice messages. Asked for only when the person records one. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Phone. Android grants call history only to the phone app, once the person makes
+         RP Launcher that app in Setup. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
+    <!-- The call screen over the lock screen, and the screen off at the ear during calls. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- SOS and Where am I: the phone's location, only while those screens are open. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -172,6 +180,50 @@
                 <data android:mimeType="video/*" />
                 <data android:mimeType="text/x-vcard" />
                 <data android:mimeType="text/vcard" />
+            </intent-filter>
+        </activity>
+
+        <!-- ===== Phone: what Android requires of the phone app ===== -->
+
+        <!-- The call screen. Android binds this for every call while RP Launcher is the phone app. -->
+        <service
+            android:name=".calls.RpInCallService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <meta-data android:name="android.telecom.IN_CALL_SERVICE_UI" android:value="true" />
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name=".calls.CallActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.netgician.rplauncher.call"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.RpLauncher"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale" />
+
+        <!-- The keypad, for "call this number" from other apps. -->
+        <activity
+            android:name=".calls.DialActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tel" />
             </intent-filter>
         </activity>
 

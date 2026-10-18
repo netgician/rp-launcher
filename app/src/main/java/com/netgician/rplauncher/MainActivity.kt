@@ -134,6 +134,9 @@ class MainActivity : ComponentActivity() {
                 val thread = intent.getLongExtra(TextNotifications.EXTRA_THREAD, -1L)
                 if (thread >= 0 && s.config.windowChecked) s.texts.openThread(thread)
             }
+            com.netgician.rplauncher.calls.DialActivity.ACTION_DIAL_NUMBER -> {
+                if (s.config.windowChecked) s.go(Screen.Dial(intent.getStringExtra(com.netgician.rplauncher.calls.DialActivity.EXTRA_NUMBER).orEmpty()))
+            }
             ComposeActivity.ACTION_COMPOSE -> {
                 if (!s.config.windowChecked) return
                 val to = intent.getStringArrayListExtra(ComposeActivity.EXTRA_TO).orEmpty()
@@ -147,7 +150,9 @@ class MainActivity : ComponentActivity() {
             }
         }
         // Handled once; a later restart shouldn't open it again.
-        if (intent != null && (intent.action == TextNotifications.ACTION_OPEN_THREAD || intent.action == ComposeActivity.ACTION_COMPOSE)) {
+        if (intent != null && (intent.action == TextNotifications.ACTION_OPEN_THREAD || intent.action == ComposeActivity.ACTION_COMPOSE ||
+                intent.action == com.netgician.rplauncher.calls.DialActivity.ACTION_DIAL_NUMBER)
+        ) {
             intent.action = null
         }
     }
@@ -248,6 +253,10 @@ fun Root(state: AppState) {
                     Screen.TextsCheck -> TextsCheckScreen(state)
                     Screen.TextsNotSet -> TextsNotSetScreen(state)
                     is Screen.Sos -> SosScreen(state, screen.practice)
+                    Screen.PhoneHome -> PhoneHomeScreen(state)
+                    is Screen.Dial -> DialScreen(state, screen.number)
+                    Screen.Recents -> RecentsScreen(state)
+                    Screen.PhoneSwitch -> PhoneSwitchScreen(state)
                     Screen.WhereAmI -> WhereAmIScreen(state)
                     Screen.SosSetup -> SosSetupScreen(state)
                     Screen.PickApp -> AppListScreen(

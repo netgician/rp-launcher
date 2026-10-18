@@ -112,7 +112,7 @@ internal fun ControlTile(state: AppState, c: Control, m: Modifier, pos: TilePos)
 
 /** A plain list of choices, one big row each, like the app list. */
 @Composable
-private fun ChoiceList(state: AppState, title: String, spokenTitle: String = title, choices: List<Control>) {
+internal fun ChoiceList(state: AppState, title: String, spokenTitle: String = title, choices: List<Control>) {
     InWindow(state.config.window) {
         PagedTiles(
             items = choices,

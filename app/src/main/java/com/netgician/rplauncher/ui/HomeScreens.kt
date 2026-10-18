@@ -75,6 +75,13 @@ fun HomeScreen(state: AppState) {
     val textsVersion by com.netgician.rplauncher.texts.TextsBus.version.collectAsState()
     LaunchedEffect(textsVersion) { state.texts.refreshUnread() }
     val newTexts = state.texts.unread
+    var missedCalls by remember { mutableIntStateOf(0) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(textsVersion) {
+        missedCalls = if (com.netgician.rplauncher.calls.PhoneRole.isDefault(state.activityContext)) {
+            com.netgician.rplauncher.calls.CallLogStore.missedCount(state.activityContext)
+        } else 0
+        onPauseOrDispose { }
+    }
     // A new alert pops up in the middle of the window with a buzz, instead of at the top edge.
     val context = LocalContext.current
     var seen by remember { mutableStateOf(alerts.map { it.key }.toSet()) }
@@ -115,7 +122,7 @@ fun HomeScreen(state: AppState) {
                     icon = TileIcon.Vector(Icons.Filled.Settings),
                     onLongPress = longPress(state, "Setup, for helpers", pos),
                 ) { state.openSetup() }
-                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size, newTexts)
+                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size, newTexts, missedCalls)
             }
         }
         popup?.let { a ->
@@ -135,12 +142,13 @@ fun HomeScreen(state: AppState) {
 }
 
 @Composable
-private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos, alertCount: Int, textCount: Int) {
+private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos, alertCount: Int, textCount: Int, missedCalls: Int = 0) {
     val torchOn = spec == TileSpec.Torch && state.torch.isOn
     val label = when {
         torchOn -> "Torch on"
         spec == TileSpec.Alerts && alertCount > 0 -> "Alerts ($alertCount)"
         spec == TileSpec.Messages && textCount > 0 -> "Texts ($textCount)"
+        spec == TileSpec.Phone && missedCalls > 0 -> "Phone ($missedCalls)"
         else -> spec.label
     }
     val spoken = when {
@@ -149,6 +157,7 @@ private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos,
         spec == TileSpec.Alerts -> if (alertCount == 0) "Alerts, none new" else "Alerts, $alertCount new"
         spec == TileSpec.Messages && textCount > 0 -> if (textCount == 1) "Texts, 1 new" else "Texts, $textCount new"
         spec == TileSpec.Sos -> "SOS, emergency texts"
+        spec == TileSpec.Phone && missedCalls > 0 -> if (missedCalls == 1) "Phone, 1 missed call" else "Phone, $missedCalls missed calls"
         else -> spec.label
     }
     Tile(
@@ -156,7 +165,7 @@ private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos,
         modifier = m,
         spoken = spoken,
         icon = iconFor(spec),
-        emphasized = torchOn || (spec == TileSpec.Messages && textCount > 0),
+        emphasized = torchOn || (spec == TileSpec.Messages && textCount > 0) || (spec == TileSpec.Phone && missedCalls > 0),
         onLongPress = longPress(state, spoken, pos),
     ) { state.open(spec) }
 }

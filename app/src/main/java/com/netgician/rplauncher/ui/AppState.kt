@@ -68,6 +68,12 @@ sealed interface Screen {
     /** The Texts tile, before RP Launcher is the texting app: choose what Texts does. */
     data object TextsNotSet : Screen
 
+    // Phone
+    data object PhoneHome : Screen
+    data class Dial(val number: String) : Screen
+    data object Recents : Screen
+    data object PhoneSwitch : Screen
+
     // Safety
     data class Sos(val practice: Boolean) : Screen
     data object WhereAmI : Screen
@@ -81,7 +87,7 @@ enum class NumberPurpose { TEXT, OWN_NUMBER }
 val Screen.isHelperScreen: Boolean
     get() = this is Screen.Settings || this is Screen.Pin || this is Screen.PinReset ||
         this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
-        this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck || this is Screen.SosSetup ||
+        this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck || this is Screen.SosSetup || this is Screen.PhoneSwitch ||
         (this is Screen.NumberPad && purpose == NumberPurpose.OWN_NUMBER)
 
 /**
@@ -134,6 +140,9 @@ class AppState(
         engine?.close()
         engine = null
     }
+
+    /** For reading phone state from screens. */
+    val activityContext: android.content.Context get() = activity
 
     /** Texts: what's being written, played and checked. */
     val texts = TextsState(this, activity, scope)
@@ -269,6 +278,9 @@ class AppState(
             is Screen.Sos -> go(if (s.practice) Screen.SosSetup else Screen.Home)
             Screen.WhereAmI -> go(Screen.Home)
             Screen.SosSetup -> go(Screen.Settings)
+            Screen.PhoneHome -> go(Screen.Home)
+            is Screen.Dial, Screen.Recents -> go(if (com.netgician.rplauncher.calls.PhoneRole.isDefault(activity)) Screen.PhoneHome else Screen.Home)
+            Screen.PhoneSwitch -> go(Screen.Settings)
         }
     }
 
@@ -284,7 +296,7 @@ class AppState(
 
     fun open(spec: TileSpec) {
         when (spec) {
-            TileSpec.Phone -> start(Intent(Intent.ACTION_DIAL))
+            TileSpec.Phone -> if (com.netgician.rplauncher.calls.PhoneRole.isDefault(activity)) go(Screen.PhoneHome) else start(Intent(Intent.ACTION_DIAL))
             TileSpec.Messages -> texts.openTile()
             TileSpec.Contacts -> start(
                 Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CONTACTS),

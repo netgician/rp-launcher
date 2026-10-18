@@ -215,6 +215,9 @@ fun SettingsScreen(state: AppState) {
         SettingRow("SOS", if (c.sosContacts.isEmpty()) "not set up" else "${c.sosContacts.size} contacts") {
             state.go(Screen.SosSetup)
         }
+        SettingRow("Phone app", com.netgician.rplauncher.calls.PhoneRole.currentAppName(context) ?: "none set") {
+            state.go(Screen.PhoneSwitch)
+        }
         SettingRow("Texting app", com.netgician.rplauncher.texts.TextRole.currentAppName(context) ?: "none set") {
             state.go(Screen.TextsSwitch)
         }
