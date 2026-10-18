@@ -15,7 +15,7 @@ ORT_VERSION="${ORT_VERSION:-1.20.0}"
 ABIS="${ABIS:-arm64-v8a armeabi-v7a}"
 API=29
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Set ANDROID_HOME to the Android SDK}}"
-NDK="${ANDROID_NDK_HOME:-$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1)}"
+NDK="${ANDROID_NDK_HOME:-${ANDROID_NDK:-${ANDROID_NDK_ROOT:-$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1)}}}"
 [ -d "$NDK" ] || { echo "No Android NDK found; set ANDROID_NDK_HOME" >&2; exit 1; }
 SRC="$ROOT/build/onnxruntime-src"
 OUT="$ROOT/build/onnxruntime-jni"

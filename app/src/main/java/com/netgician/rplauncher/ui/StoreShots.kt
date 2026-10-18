@@ -3,6 +3,7 @@ package com.netgician.rplauncher.ui
 import android.content.Context
 import com.netgician.rplauncher.model.AutoNight
 import com.netgician.rplauncher.model.TileSpec
+import com.netgician.rplauncher.model.ViewingWindow
 
 /**
  * Test builds only: the build machine opens each screen in Demo mode and photographs it for the
@@ -30,6 +31,8 @@ object StoreShots {
         state.update {
             it.copy(
                 windowChecked = true,
+                // A roomy window, so the store pictures are easy to read at thumbnail size.
+                window = ViewingWindow(0.94f, 0.8f, 0.5f).clamped(),
                 windowCheckedAt = System.currentTimeMillis(),
                 tiles = TILES,
                 themeId = theme,

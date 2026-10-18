@@ -43,12 +43,11 @@ direct downloads it can't be replaced: a new key means people must uninstall and
 3. **Store listing:** copy from `fastlane/metadata/android/en-US/` (and `es-ES/`). The store
    icon (`images/icon.png`, 512×512) and feature graphic (`images/featureGraphic.png`,
    1024×500) are there too. Post `PRIVACY.md` on netgician.com for the privacy policy link.
-4. **Screenshots** (Play needs at least 2; up to 8): in Setup, turn on **Demo mode** so Texts
-   and Phone show made-up people instead of real messages, and use **Show a sample incoming
-   call** for the call screen. Take each with Power + Volume down. Good ones: the home screen,
-   a conversation, the call screen, See, Read text on the flyer picture in the group text, and
-   SOS practice. Save them as `fastlane/metadata/android/en-US/images/phoneScreenshots/1.png`,
-   `2.png`… so F-Droid shows them too. Demo mode turns itself off after two hours.
+4. **Screenshots** (Play needs at least 2; up to 8) are in
+   `fastlane/metadata/android/en-US/images/phoneScreenshots/`, where F-Droid finds them too.
+   To take them again after the screens change, run **Store screenshots** in the Actions tab:
+   an emulator opens each screen in Demo mode (made-up people) and saves the pictures there.
+   To take one by hand instead, turn on **Demo mode** in Setup and press Power + Volume down.
 5. **App content** answers:
    - *Ads:* no.
    - *Data safety:* no data shared. Data collected: **Location (precise)**, processed
@@ -70,12 +69,17 @@ direct downloads it can't be replaced: a new key means people must uninstall and
 ## 3. F-Droid
 
 1. The GitHub repository is public, which F-Droid needs. ✓
-2. Tag the release: `git tag v0.5.0 && git push --tags`.
-3. Run **F-Droid check** in the Actions tab and make sure it passes. Then install the
-   **F-Droid style test build** and check that Read text in See still works.
-4. With a free GitLab account: fork https://gitlab.com/fdroid/fdroiddata, add
-   `fdroid/com.netgician.rplauncher.yml` as `metadata/com.netgician.rplauncher.yml`, and open
-   a merge request titled "New app: RP Launcher". F-Droid reads the descriptions from
+2. Run **F-Droid recipe** in the Actions tab. It checks `fdroid/com.netgician.rplauncher.yml`
+   with F-Droid's own lint and does a real `fdroid build` (scanner included) in F-Droid's
+   build server image, the same checks their reviewers' pipeline runs.
+3. Tag the release: `git tag v0.5.0 && git push --tags`. F-Droid builds that tag, and picks up
+   later tags (v0.5.1, ...) by itself.
+4. With a free GitLab account: fork https://gitlab.com/fdroid/fdroiddata and add three files:
+   - `fdroid/com.netgician.rplauncher.yml` as `metadata/com.netgician.rplauncher.yml`
+   - `fdroid/srclibs/onnxruntime.yml` as `srclibs/onnxruntime.yml`
+   - `fdroid/srclibs/eigen.yml` as `srclibs/eigen.yml`
+   Then open a merge request titled "New app: RP Launcher", with the text in
+   `fdroid/MERGE_REQUEST.md`. F-Droid reads the descriptions and pictures from
    `fastlane/metadata`. Their reviewers usually reply within a few weeks.
 
 **About the test key:** `app/debug.keystore` is Android's standard test key, now public with
