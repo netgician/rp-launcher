@@ -141,7 +141,7 @@ object Retry {
 /** What is said for each message, and how the times are put. */
 object TextSpeech {
     /** "Today at 3:05 PM", "Yesterday at 9:12 AM", "Monday at 8:00 PM", "March 3 at 10:00 AM". */
-    fun whenSaid(date: Long, now: Long, locale: Locale = Locale.getDefault(), time: (Long) -> String): String {
+    fun whenSaid(date: Long, now: Long, locale: Locale = com.netgician.rplauncher.i18n.Lang.locale, time: (Long) -> String): String {
         val then = Calendar.getInstance().apply { timeInMillis = date }
         val today = Calendar.getInstance().apply { timeInMillis = now }
         val days = daysBetween(then, today)

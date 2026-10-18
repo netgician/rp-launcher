@@ -150,6 +150,8 @@ data class LauncherConfig(
     val windowFrame: Boolean = true,
     /** The number Voicemail calls, set by a helper; null to use the one the phone has. */
     val voicemailNumber: String? = null,
+    /** RP Launcher's own language: "en", "es", or null to follow the phone. */
+    val language: String? = null,
 ) {
     /** True when the viewing window check is due again. It never changes the layout by itself. */
     fun windowCheckDue(now: Long): Boolean =
@@ -243,6 +245,7 @@ object ConfigJson {
         put("windowReminderMonths", c.windowReminderMonths)
         put("windowFrame", c.windowFrame)
         c.voicemailNumber?.let { put("voicemail", it) }
+        c.language?.let { put("language", it) }
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -334,6 +337,7 @@ object ConfigJson {
                 .let { m -> if (m in LauncherConfig.WINDOW_REMINDERS) m else d.windowReminderMonths },
             windowFrame = o.optBoolean("windowFrame", d.windowFrame),
             voicemailNumber = o.optString("voicemail", "").filter { it.isDigit() || it in "+*#" }.ifBlank { null },
+            language = o.optString("language", "").takeIf { it == "en" || it == "es" },
         )
     }
 

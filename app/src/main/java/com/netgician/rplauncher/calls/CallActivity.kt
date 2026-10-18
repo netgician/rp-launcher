@@ -173,7 +173,7 @@ class CallActivity : ComponentActivity() {
                         CallPhase.RINGING -> {
                             vibes.play(longArrayOf(0, 300))
                             delay(600)
-                            speaker.speak(CallWords.ringing(c.name), Language.guess(c.name))
+                            speaker.speak(CallWords.ringing(c.name), com.netgician.rplauncher.i18n.Lang.code)
                         }
                         CallPhase.DIALING -> speaker.speak(tr("Calling %s", c.name))
                         else -> Unit
@@ -232,7 +232,7 @@ class CallActivity : ComponentActivity() {
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when {
                     main.phase == CallPhase.RINGING && replies -> {
-                        val choices = QuickReplies.forLanguage(Locale.getDefault().language).take(5)
+                        val choices = QuickReplies.forLanguage(com.netgician.rplauncher.i18n.Lang.code).take(5)
                         Grid(listOf(tr("Back")) + choices, cols = 1, rows = 6) { item, m ->
                             if (item == tr("Back")) Tile(tr("Back"), m, onLongPress = { say(tr("Back")) }) { replies = false }
                             else Tile(item, m, onLongPress = { say(item) }) {

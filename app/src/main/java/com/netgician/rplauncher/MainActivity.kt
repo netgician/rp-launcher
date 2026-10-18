@@ -69,6 +69,8 @@ class MainActivity : ComponentActivity() {
         guard.markStarting()
 
         val s = AppState(this, ConfigStore(this), speaker, torch, Vibes(this), lifecycleScope)
+        // The phone's language may have changed since RP Launcher started.
+        com.netgician.rplauncher.i18n.Lang.choose(s.config.language)
         state = s
         handleTextIntent(intent)
         lightSensor = LightSensor(this) { lux -> s.onLux(lux) }

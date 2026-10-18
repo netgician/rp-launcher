@@ -208,6 +208,7 @@ class AppState(
     fun update(change: (LauncherConfig) -> LauncherConfig) {
         val before = config.tiles
         config = change(config)
+        com.netgician.rplauncher.i18n.Lang.choose(config.language)
         store.save(config)
         refreshNightByClock()
         if (config.tiles != before && (config.tiles + before).any { it is TileSpec.Shortcut }) {

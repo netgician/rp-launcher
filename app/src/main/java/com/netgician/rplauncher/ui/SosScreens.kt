@@ -80,7 +80,7 @@ fun SosScreen(state: AppState, practice: Boolean) {
             val place: Place? = withContext(Dispatchers.IO) { runCatching { Where.place(context) }.getOrNull() }
             if (stage == SosStage.CANCELLED) return@launch
             val time = DateFormat.getTimeFormat(context).format(Date(place?.fixTime ?: System.currentTimeMillis()))
-            val text = Sos.message(place, time, Locale.getDefault().language)
+            val text = Sos.message(place, time, com.netgician.rplauncher.i18n.Lang.code)
             stage = SosStage.DONE
             lines = listOf(text)
             when {

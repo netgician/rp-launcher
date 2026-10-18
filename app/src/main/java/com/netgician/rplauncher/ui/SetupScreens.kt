@@ -81,6 +81,32 @@ fun SettingsScreen(state: AppState) {
         SettingRow(tr("Done")) { state.go(Screen.Home) }
         SettingRow(tr("Setup checklist (everything in one list)")) { state.go(Screen.Checklist(firstRun = false)) }
 
+        // The language of RP Launcher's own words. Texts, names and app names are never translated.
+        val phoneLanguage = if (java.util.Locale.getDefault().language == "es") "Español" else "English"
+        SettingRow(
+            tr("Language"),
+            when (c.language) {
+                "en" -> "English"
+                "es" -> "Español"
+                else -> tr("the phone's (%s)", phoneLanguage)
+            },
+        ) {
+            // The phone's language, then Spanish, then English, then back.
+            val next = when (c.language) {
+                null -> "es"
+                "es" -> "en"
+                else -> null
+            }
+            state.update { it.copy(language = next) }
+            state.speaker.stop()
+            state.say(
+                when (next) {
+                    "es" -> "Español"
+                    "en" -> "English"
+                    else -> tr("The phone's language")
+                },
+            )
+        }
         SettingRow(tr("Vision mode"), c.visionMode.label) {
             val next = VisionMode.entries.after(c.visionMode)
             // Speech modes turn on touch landmarks too; the person can still turn them off.

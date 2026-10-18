@@ -712,7 +712,7 @@ private fun TypingBox(state: AppState, initial: String, onDone: (String) -> Unit
 fun QuickReplyScreen(state: AppState) {
     val t = state.texts
     LaunchedEffect(Unit) { state.say(tr("Quick replies")) }
-    val replies = QuickReplies.forLanguage(Locale.getDefault().language)
+    val replies = QuickReplies.forLanguage(com.netgician.rplauncher.i18n.Lang.code)
     val choices = listOf(Control(tr("Back"), spoken = tr("Back to the text")) { state.go(Screen.Compose) }) +
         replies.map { r ->
             Control(r) {
@@ -835,7 +835,7 @@ private fun prepareAttachment(context: Context, uri: Uri, typeHint: String?, use
     val bytes = runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
         ?: return null to tr("That file couldn't be read.")
     if (bytes.size > budget) {
-        val what = if (type.startsWith("video/")) "video" else "file"
+        val what = if (type.startsWith("video/")) tr("video") else tr("file")
         return null to tr("That %s is too big to send as a picture text. Try a shorter one.", what)
     }
     val ext = when {
