@@ -85,6 +85,12 @@ screen the person can actually see, on a dark, glare-free background.
   Bluetooth, Volume, the notification drop-down, quick settings and helper apps (Be My Eyes,
   Lookout, Aira and others), new alerts in the middle of the window with a buzz, and an
   optional reminder to re-check the viewing window every few months.
+- **Pages tile:** every home page listed with what's on it, to jump straight to one.
+- **App shortcut tiles:** an app's own shortcuts (Navigate home, New chat) as tiles, and
+  "Add to home screen" from other apps, such as a web page in Chrome, with a big
+  Add / Don't add check.
+- **Demo mode** in Setup: made-up texts and calls for showing the app or taking store
+  screenshots. No texts are sent while it's on, and it turns itself off after two hours.
 - **Release ready:** a smaller release build, signing with the owner's own key, store
   listings in English and Spanish, a [privacy policy](PRIVACY.md), and an F-Droid build
   with ONNX Runtime compiled from source. See [RELEASE.md](RELEASE.md).
