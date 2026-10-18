@@ -50,6 +50,8 @@ fi
 
 GEN=()
 if command -v ninja >/dev/null; then GEN=(--cmake_generator Ninja); fi
+# ONNX Runtime's build refuses to run as root unless asked; build containers often are root.
+if [ "$(id -u)" = 0 ]; then GEN+=(--allow_running_as_root); fi
 
 for ABI in $ABIS; do
   echo "== Building ONNX Runtime $ORT_VERSION for $ABI"
