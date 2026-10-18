@@ -91,7 +91,7 @@ class PinShortcutActivity : ComponentActivity() {
         setContent {
             val theme = if (NightNow.active && config.autoNight != AutoNight.OFF) config.nightTheme else config.theme
             val style = remember(theme) { LvStyle(theme, AtkinsonFamily, config.textScale) }
-            CompositionLocalProvider(LocalLv provides style) {
+            CompositionLocalProvider(LocalLv provides style, LocalWindowFrame provides config.windowFrame) {
                 val question = "$appName wants to add ${entry.label} to your home screen."
                 LaunchedEffect(Unit) {
                     delay(400)

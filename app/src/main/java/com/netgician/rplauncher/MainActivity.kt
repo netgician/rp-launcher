@@ -214,7 +214,7 @@ fun Root(state: AppState) {
         drawContent()
         drawRect(ComposeColor.Black)
     } else Modifier
-    CompositionLocalProvider(LocalLv provides style, LocalTapMode provides tapMode) {
+    CompositionLocalProvider(LocalLv provides style, LocalTapMode provides tapMode, LocalWindowFrame provides c.windowFrame) {
         BackHandler { state.back() }
         // A short fade between screens: no sudden jumps, and never a white frame.
         // Test builds only: see each screen through a tunnel, as someone with RP might.

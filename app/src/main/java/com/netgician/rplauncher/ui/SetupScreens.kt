@@ -195,6 +195,11 @@ fun SettingsScreen(state: AppState) {
         SettingRow("Viewing window check", if (c.windowCheckDue(System.currentTimeMillis())) "due" else null) {
             state.go(Screen.WindowCheck(Screen.Settings))
         }
+        SettingRow("Frame around the window", if (c.windowFrame) "on" else "off") {
+            val next = !c.windowFrame
+            state.update { it.copy(windowFrame = next) }
+            state.say(if (next) "Frame on. A bright line now shows the edges of your viewing window." else "Frame off")
+        }
         SettingRow("Window check reminder", if (c.windowReminderMonths == 0) "Off" else "Every ${c.windowReminderMonths} months") {
             val next = LauncherConfig.WINDOW_REMINDERS.after(c.windowReminderMonths)
             state.update {

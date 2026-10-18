@@ -85,11 +85,20 @@ fun Modifier.place(a: Area): Modifier = this.offset(a.left.dp, a.top.dp).size(a.
 @Composable
 fun InWindow(window: ViewingWindow, content: @Composable BoxScope.() -> Unit) {
     val lv = LocalLv.current
+    val frame = LocalWindowFrame.current
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
         val r = window.rectIn(maxWidth.value, maxHeight.value)
-        Box(modifier = Modifier.place(r).background(lv.bg), content = content)
+        // With the frame on, everything sits just inside it, so no tile is ever under the line.
+        val framed = if (frame) Modifier.border(BorderStroke(FRAME_DP.dp, lv.accent)).padding((FRAME_DP + 4).dp) else Modifier
+        Box(modifier = Modifier.place(r).background(lv.bg).then(framed), content = content)
     }
 }
+
+/** The frame around the viewing window (Setup, Window frame): as thick as the window check's. */
+private const val FRAME_DP = 6
+
+/** True when the frame around the viewing window is on. */
+val LocalWindowFrame = staticCompositionLocalOf { false }
 
 /**
  * Bold text that shrinks until it fits, instead of being cut off or breaking a word

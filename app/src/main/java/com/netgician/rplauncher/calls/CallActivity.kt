@@ -138,7 +138,7 @@ class CallActivity : ComponentActivity() {
                 attrs.screenBrightness = theme.windowBrightness ?: config.brightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
                 window.attributes = attrs
             }
-            CompositionLocalProvider(LocalLv provides style) {
+            CompositionLocalProvider(LocalLv provides style, com.netgician.rplauncher.ui.LocalWindowFrame provides config.windowFrame) {
                 val calls by (if (demo) demoCalls else Calls.list).collectAsState()
                 val audio by Calls.audio.collectAsState()
                 var lastName by remember { mutableStateOf("") }

@@ -134,6 +134,8 @@ data class LauncherConfig(
     val windowCheckedAt: Long = 0L,
     /** Remind a helper to re-check the viewing window after this many months; 0 for never. RP changes over time. */
     val windowReminderMonths: Int = 0,
+    /** A bright frame around the viewing window, like the window check's, so its edges are easy to find. */
+    val windowFrame: Boolean = true,
 ) {
     /** True when the viewing window check is due again. It never changes the layout by itself. */
     fun windowCheckDue(now: Long): Boolean =
@@ -225,6 +227,7 @@ object ConfigJson {
         put("torchStrength", c.torchStrength.toDouble())
         put("windowCheckedAt", c.windowCheckedAt)
         put("windowReminderMonths", c.windowReminderMonths)
+        put("windowFrame", c.windowFrame)
     }.toString()
 
     private fun encodeTile(t: TileSpec): JSONObject = JSONObject().apply {
@@ -314,6 +317,7 @@ object ConfigJson {
             windowCheckedAt = o.optLong("windowCheckedAt", d.windowCheckedAt).coerceAtLeast(0L),
             windowReminderMonths = o.optInt("windowReminderMonths", d.windowReminderMonths)
                 .let { m -> if (m in LauncherConfig.WINDOW_REMINDERS) m else d.windowReminderMonths },
+            windowFrame = o.optBoolean("windowFrame", d.windowFrame),
         )
     }
 

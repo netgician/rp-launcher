@@ -75,6 +75,7 @@ class PagingAndConfigTest {
             nightUntilHour = 6,
             brightness = 0.5f,
             touchLandmarks = true,
+            windowFrame = false,
         )
         assertEquals(c, ConfigJson.decode(ConfigJson.encode(c)))
         assertEquals(c, ConfigJson.decodeSetupFile(ConfigJson.encode(c)))
