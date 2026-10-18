@@ -52,6 +52,10 @@ GEN=()
 if command -v ninja >/dev/null; then GEN=(--cmake_generator Ninja); fi
 # ONNX Runtime's build refuses to run as root unless asked; build containers often are root.
 if [ "$(id -u)" = 0 ]; then GEN+=(--allow_running_as_root); fi
+# Its own Android Gradle build is old enough to need Java 17; use it when the machine has it.
+for j in /usr/lib/jvm/java-17-openjdk-* /usr/lib/jvm/temurin-17-*; do
+  if [ -x "$j/bin/java" ]; then export JAVA_HOME="$j"; break; fi
+done
 
 for ABI in $ABIS; do
   echo "== Building ONNX Runtime $ORT_VERSION for $ABI"
@@ -63,6 +67,7 @@ for ABI in $ABIS; do
     --build_shared_lib --build_java \
     --use_preinstalled_eigen --eigen_path "$EIGEN" \
     --parallel --skip_tests --skip_submodule_sync --compile_no_warning_as_error \
+    --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF \
     "${GEN[@]}"
   mkdir -p "$OUT/$ABI"
   for lib in libonnxruntime.so libonnxruntime4j_jni.so; do
