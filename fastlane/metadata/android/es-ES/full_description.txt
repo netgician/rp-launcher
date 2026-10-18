@@ -1,0 +1,42 @@
+<p>RP Launcher es una pantalla de inicio para personas con <b>retinosis pigmentaria (RP)</b>, desde la visión en túnel temprana hasta el uso principalmente por voz.</p>
+
+<p>La mayoría de las herramientas para baja visión agrandan las cosas. La RP sobre todo estrecha el campo visual, así que RP Launcher hace que todo <b>quepa</b>: cada botón, texto y aviso queda dentro de la parte de la pantalla que usted puede ver, sobre un fondo oscuro y sin deslumbrar.</p>
+
+<p><b>Pantalla de inicio</b></p>
+<ul>
+<li>Una prueba de la ventana de visión al empezar: un marco brillante crece o se achica hasta que usted ve las cuatro esquinas. Todo cabe dentro.</li>
+<li>Botones grandes con bordes gruesos y letra Atkinson Hyperlegible.</li>
+<li>Botones grandes de Siguiente y Atrás en lugar de deslizar.</li>
+<li>Solo temas oscuros, y modo nocturno ámbar o rojo, por hora o por la luz del cuarto.</li>
+<li>Tres modos: primero la vista, vista y voz, y primero la voz.</li>
+</ul>
+
+<p><b>Ver y leer</b></p>
+<ul>
+<li>La cámara como lupa, con congelar imagen, luz y colores de alto contraste.</li>
+<li>Lee en voz alta el texto impreso, en inglés y español, en el propio teléfono.</li>
+<li>Avisos: sus notificaciones en letra grande y leídas en voz alta.</li>
+</ul>
+
+<p><b>Mensajes</b> (opcional)</p>
+<ul>
+<li>Mensajes de texto, con fotos y de grupo, en letra grande y leídos en voz alta.</li>
+<li>Responda hablando, con una respuesta rápida o con el teclado. Envíe fotos y mensajes de voz.</li>
+<li>Nada falla en silencio: cada mensaje dice Enviado o No enviado, y por qué.</li>
+</ul>
+
+<p><b>Teléfono</b> (opcional)</p>
+<ul>
+<li>Una pantalla de llamada grande que dice quién llama, con Contestar y Rechazar de un solo toque.</li>
+<li>Un teclado que dice cada número.</li>
+</ul>
+
+<p><b>Seguridad</b></p>
+<ul>
+<li>SOS: una cuenta regresiva que se cancela con un toque, luego un mensaje con su dirección a las personas que eligió, y un botón grande para llamar. Nunca llama solo.</li>
+<li>Dónde estoy: su dirección, en voz alta.</li>
+</ul>
+
+<p>Sin cuentas, sin anuncios, sin rastreo y sin permiso de internet.</p>
+
+<p>Nota: por ahora los menús de la aplicación están en inglés; la lectura de texto funciona en inglés y español.</p>

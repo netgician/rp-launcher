@@ -1,0 +1,45 @@
+# Draft F-Droid build recipe, for a merge request to https://gitlab.com/fdroid/fdroiddata
+# (as metadata/com.netgician.rplauncher.yml). The repository must be public first.
+# Check it locally with:  fdroid build -v -l com.netgician.rplauncher
+Categories:
+  - Phone & SMS
+  - System
+License: GPL-3.0-only
+AuthorName: Netgician LLC
+WebSite: https://netgician.com
+SourceCode: https://github.com/netgician/rp-launcher
+IssueTracker: https://github.com/netgician/rp-launcher/issues
+
+AutoName: RP Launcher
+
+RepoType: git
+Repo: https://github.com/netgician/rp-launcher.git
+
+Builds:
+  - versionName: 0.5.0
+    versionCode: 5
+    commit: v0.5.0
+    subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y ninja-build cmake python3-pip
+      - pip3 install --break-system-packages flatbuffers numpy packaging
+    gradle:
+      - yes
+    srclibs:
+      - onnxruntime@v1.20.0
+    output: build/outputs/apk/release/app-release-unsigned.apk
+    # ONNX Runtime (text reading) is compiled from its source; no prebuilt native libraries.
+    prebuild:
+      - mkdir -p ../build
+      - ln -s $$onnxruntime$$ ../build/onnxruntime-src
+    build:
+      - ../scripts/build_onnxruntime_android.sh
+    gradleprops:
+      - onnxFromSource=true
+    ndk: r27c
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 0.5.0
+CurrentVersionCode: 5

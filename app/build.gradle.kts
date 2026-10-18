@@ -4,6 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val abis = listOf("arm64-v8a", "armeabi-v7a")
+val splitApks = (findProperty("split") as String?) == "true"
+val releaseKeystore: String? = System.getenv("RP_KEYSTORE_FILE")?.takeIf { it.isNotBlank() && file(it).exists() }
+// -PonnxFromSource=true uses an ONNX Runtime built from source (scripts/build_onnxruntime_android.sh), as F-Droid requires.
+val onnxFromSource = (findProperty("onnxFromSource") as String?) == "true"
+
 android {
     namespace = "com.netgician.rplauncher"
     compileSdk = 35
@@ -13,12 +19,24 @@ android {
         // Android 10: brings the system role picker for home, phone and SMS apps.
         minSdk = 29
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
 
         // ONNX Runtime ships native code; phones only (32- and 64-bit ARM) keeps the app small.
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        // With -Psplit=true the release is split into one smaller APK per phone type instead.
+        if (!splitApks) {
+            ndk {
+                abiFilters += abis
+            }
+        }
+    }
+
+    splits {
+        abi {
+            isEnable = splitApks
+            reset()
+            include(*abis.toTypedArray())
+            isUniversalApk = false
         }
     }
 
@@ -28,13 +46,37 @@ android {
         getByName("debug") {
             storeFile = file("debug.keystore")
         }
+        // The release key stays with its owner. CI reads it from repository secrets; without
+        // them the release is left unsigned (F-Droid signs its own builds).
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("RP_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RP_KEY_ALIAS")
+                keyPassword = System.getenv("RP_KEY_PASSWORD") ?: System.getenv("RP_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = if (releaseKeystore != null) signingConfigs.getByName("release") else null
         }
+    }
+
+    lint {
+        // Lint runs as its own CI step and reports there; it doesn't block a release build.
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
+    // F-Droid wants a build it can reproduce; no build metadata that changes per machine.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     compileOptions {
@@ -53,6 +95,10 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    if (onnxFromSource) {
+        sourceSets.getByName("main").jniLibs.srcDir(rootProject.file("build/onnxruntime-jni"))
+    }
 }
 
 dependencies {
@@ -69,7 +115,10 @@ dependencies {
     // Text reading: our :ocr module on the Android build of ONNX Runtime (MIT).
     implementation(project(":ocr"))
     implementation(project(":mms"))
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+    if (!onnxFromSource) {
+        // From source, the Java API comes in through :ocr and the native libraries through jniLibs below.
+        implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+    }
 
     // CameraX for the See tile (open source, Apache-2.0).
     val camerax = "1.4.1"

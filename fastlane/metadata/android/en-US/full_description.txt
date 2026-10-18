@@ -1,0 +1,44 @@
+<p>RP Launcher is a home screen for people with <b>retinitis pigmentosa (RP)</b>, from early tunnel vision through to speech-first use.</p>
+
+<p>Most low-vision tools make things bigger. RP mainly narrows the field of view, so RP Launcher makes things <b>fit</b>: every tile, label and alert sits inside the part of the screen you can actually see, on a dark, glare-free background.</p>
+
+<p><b>Home screen</b></p>
+<ul>
+<li>A viewing window check at first start: a bright frame grows or shrinks until you can just see all four corners. Everything fits inside it.</li>
+<li>Big tiles with thick outlines and Atkinson Hyperlegible type that shrinks instead of being cut off.</li>
+<li>Big Next and Back tiles instead of swiping.</li>
+<li>Dark themes only, plus night amber and night red that switch on by clock or room light.</li>
+<li>Three vision modes: Sight first, Sight and speech (tap to hear, double tap to open), and Speech first.</li>
+<li>Touch landmarks: a long press buzzes once per row.</li>
+</ul>
+
+<p><b>See and read</b></p>
+<ul>
+<li>The camera as a magnifier, with freeze, light and high-contrast colours.</li>
+<li>Read text aloud from paper, in English and Spanish, on the phone itself.</li>
+<li>Alerts: your notifications shown large and read aloud, one at a time.</li>
+</ul>
+
+<p><b>Texts</b> (optional: make RP Launcher your texting app)</p>
+<ul>
+<li>Texts, picture texts and group texts, shown large and read aloud.</li>
+<li>Reply by speaking, with a quick reply, or with the keyboard. Send photos and voice messages.</li>
+<li>Pictures fill the screen, with zoom and Read text. Contact cards and calendar invites are read aloud.</li>
+<li>Nothing fails quietly: every text says Sent or Not sent, and why.</li>
+</ul>
+
+<p><b>Phone</b> (optional: make RP Launcher your phone app)</p>
+<ul>
+<li>A big call screen that says who's calling, with one-tap Answer and Decline.</li>
+<li>A keypad that says each number, and recent calls read aloud.</li>
+</ul>
+
+<p><b>Safety</b></p>
+<ul>
+<li>SOS: a countdown you can cancel with one tap, then a text with your street address to the people you chose, then a big Call button. It never calls by itself.</li>
+<li>Where am I: your street address, read aloud.</li>
+</ul>
+
+<p>A helper sets things up behind an optional PIN, and the whole setup can be saved to a file for the next phone.</p>
+
+<p>No accounts, no ads, no tracking, and no internet permission.</p>

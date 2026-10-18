@@ -73,6 +73,22 @@ screen the person can actually see, on a dark, glare-free background.
 - **Where am I:** the street address, read aloud, from the phone's own location and
   address lookup. Text it to someone with one more tap.
 
+## What's new in version 0.5
+
+- **Phone, built in.** RP Launcher can be the phone app: the caller's name large and spoken,
+  one-tap Answer, Decline and Text back over the lock screen, and Hang up, Speaker, Mute,
+  Louder, Quieter and Keypad during a call, with the screen off at the ear. The Phone tile
+  has a keypad that says each number, recent calls read aloud, and voicemail.
+- **Conversations show the last few texts** in big cards, open at once, and count only texts
+  that are really new.
+- **From the spec:** a lower voice and a choice of voices, torch brightness, tiles for Wi-Fi,
+  Bluetooth, Volume, the notification drop-down, quick settings and helper apps (Be My Eyes,
+  Lookout, Aira and others), new alerts in the middle of the window with a buzz, and an
+  optional reminder to re-check the viewing window every few months.
+- **Release ready:** a smaller release build, signing with the owner's own key, store
+  listings in English and Spanish, a [privacy policy](PRIVACY.md), and an F-Droid build
+  with ONNX Runtime compiled from source. See [RELEASE.md](RELEASE.md).
+
 No accounts, no ads, no tracking, and no internet permission. Texts go through the
 phone's own texting service; addresses come from the phone's own address lookup.
 

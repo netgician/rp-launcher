@@ -1,0 +1,83 @@
+name: F-Droid check
+
+# Builds RP Launcher the way F-Droid will: ONNX Runtime compiled from its source code, no
+# prebuilt native libraries, an unsigned release. Slow (about an hour), so it runs on request.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  from-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Tools for the native build
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build
+          pip3 install --quiet --break-system-packages flatbuffers numpy packaging || pip3 install --quiet flatbuffers numpy packaging
+          cmake --version
+          ls "$ANDROID_HOME/ndk" || true
+
+      - name: Build ONNX Runtime from source
+        run: |
+          set -o pipefail
+          scripts/build_onnxruntime_android.sh 2>&1 | tee ort-build.log | grep -E "^== |error:|Done|-rw" || true
+          test -f build/onnxruntime-jni/arm64-v8a/libonnxruntime.so
+          test -f build/onnxruntime-jni/armeabi-v7a/libonnxruntime4j_jni.so
+
+      - name: Build the app from source
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon -PonnxFromSource=true assembleRelease 2>&1 | tee gradle-build.log
+
+      - name: Check no prebuilt ONNX Runtime is left
+        run: |
+          ./gradlew --no-daemon -PonnxFromSource=true :app:dependencies --configuration releaseRuntimeClasspath > deps.txt
+          if grep -q "onnxruntime" deps.txt; then echo "::error::A prebuilt ONNX Runtime is still a dependency"; grep onnxruntime deps.txt; exit 1; fi
+          ls -l app/build/outputs/apk/release/
+          echo "::notice title=F-Droid style build::$(ls -l app/build/outputs/apk/release/*.apk | awk '{printf "%s %.1f MB; ", $9, $5/1048576}')"
+
+      - name: Report errors
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, re
+          lines = []
+          for p in sorted(glob.glob("*.log")):
+              for l in open(p, errors="replace"):
+                  l = l.rstrip()
+                  if re.search(r"(error:|FAILED|What went wrong|Execution failed|CMake Error|^e: )", l):
+                      lines.append(l[-300:])
+          seen = []
+          for l in lines:
+              if l not in seen: seen.append(l)
+          msg = "%0A".join(x.replace("%", "%25") for x in seen[-40:]) or "No error lines found"
+          print(f"::error title=Build errors::{msg}")
+          PY
+
+      # Signed with the shared test key so it installs over the test build, for trying text reading on a phone.
+      - name: Publish F-Droid style test build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=app/build/outputs/apk/release/app-release-unsigned.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -f 4 "$APK" aligned.apk
+          "$BT/apksigner" sign --ks app/debug.keystore --ks-pass pass:android --key-pass pass:android \
+            --ks-key-alias androiddebugkey --out rp-launcher-fdroid-style.apk aligned.apk
+          gh release delete fdroid-test --yes --cleanup-tag || true
+          gh release create fdroid-test rp-launcher-fdroid-style.apk --prerelease --target "$GITHUB_SHA" \
+            --title "F-Droid style test build" \
+            --notes "Built with ONNX Runtime compiled from source, as F-Droid will build it. For testing text reading only."

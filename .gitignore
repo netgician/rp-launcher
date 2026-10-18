@@ -13,3 +13,8 @@
 
 # Debug-only key with the standard public "android" password, so test builds install over each other.
 !app/debug.keystore
+
+# Built locally or in CI, never committed.
+/mms/build/
+/ocr/build/
+*.tar.gz
