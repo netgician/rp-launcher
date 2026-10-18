@@ -250,6 +250,7 @@ fun Root(state: AppState) {
                     is Screen.Pin -> PinScreen(state, screen.purpose)
                     Screen.PinReset -> PinResetScreen(state)
                     Screen.Settings -> SettingsScreen(state)
+                    is Screen.Checklist -> ChecklistScreen(state, screen.firstRun)
                     Screen.EditTiles -> EditTilesScreen(state)
                     Screen.AddTile -> AddTileScreen(state)
                     Screen.Texts -> TextsScreen(state)

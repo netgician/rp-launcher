@@ -40,6 +40,8 @@ sealed interface Screen {
     data class Pin(val purpose: PinPurpose, val next: Screen = Settings) : Screen
     data object PinReset : Screen
     data object Settings : Screen
+    /** Everything to set up, one line each. [firstRun] right after the very first window check. */
+    data class Checklist(val firstRun: Boolean) : Screen
     data object EditTiles : Screen
     data object AddTile : Screen
     data object PickApp : Screen
@@ -96,7 +98,7 @@ object NightNow {
 
 /** Screens for helpers. These are never darkened and never use the person's layout mode. */
 val Screen.isHelperScreen: Boolean
-    get() = this is Screen.Settings || this is Screen.Pin || this is Screen.PinReset ||
+    get() = this is Screen.Settings || this is Screen.Checklist || this is Screen.Pin || this is Screen.PinReset ||
         this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
         this is Screen.PickShortcutApp || this is Screen.PickShortcut ||
         this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck || this is Screen.SosSetup || this is Screen.PhoneSwitch ||
@@ -128,7 +130,8 @@ class AppState(
         private set
 
     var screen by mutableStateOf<Screen>(
-        if (config.windowChecked) Screen.Home else Screen.WindowCheck(Screen.Home),
+        // The first start: the viewing window check, then the setup checklist.
+        if (config.windowChecked) Screen.Home else Screen.WindowCheck(Screen.Checklist(firstRun = true)),
     )
         private set
 
@@ -290,6 +293,7 @@ class AppState(
             Screen.Apps, Screen.See, Screen.Alerts, is Screen.ConfirmCall, Screen.Settings -> go(Screen.Home)
             Screen.ReadText -> go(readText?.backTo ?: Screen.See)
             Screen.EditTiles -> go(Screen.Settings)
+            is Screen.Checklist -> go(if (s.firstRun) Screen.Home else Screen.Settings)
             Screen.AddTile -> go(Screen.EditTiles)
             Screen.PickApp -> go(Screen.AddTile)
             Screen.Pages -> go(Screen.Home)
@@ -373,6 +377,26 @@ class AppState(
 
     fun openSetup() {
         go(if (config.pinHash != null) Screen.Pin(PinPurpose.Unlock) else Screen.Settings)
+    }
+
+    /**
+     * Start over: RP Launcher's own setup back to how it came (tiles, window, colours, PIN, SOS
+     * contacts), then the first-start window check and checklist. Texts, calls and Android's own
+     * choices (permissions, default apps) are left as they are; the checklist shows each one.
+     */
+    fun startOver() {
+        if (Demo.on) {
+            Demo.set(false)
+            texts.demoChanged()
+        }
+        update { LauncherConfig() }
+        activity.getSharedPreferences("reminders", android.content.Context.MODE_PRIVATE).edit().clear().apply()
+        homePage = 0
+        tunnel = 0f
+        speaker.rate = config.speechRate
+        speaker.pitch = config.speechPitch
+        speaker.voiceName = config.voiceName
+        go(Screen.WindowCheck(Screen.Checklist(firstRun = true)))
     }
 
     /** Clears a forgotten PIN and opens Setup so a new one can be chosen. */

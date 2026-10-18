@@ -67,8 +67,18 @@ fun SettingsScreen(state: AppState) {
     val homeRole = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
     LaunchedEffect(Unit) { state.say("Setup") }
 
+    // Start over needs a second tap, so it can't happen by accident.
+    var startOverArmed by remember { mutableStateOf(false) }
+    LaunchedEffect(startOverArmed) {
+        if (startOverArmed) {
+            kotlinx.coroutines.delay(8_000)
+            startOverArmed = false
+        }
+    }
+
     HelperColumn(state) {
         SettingRow("Done") { state.go(Screen.Home) }
+        SettingRow("Setup checklist (everything in one list)") { state.go(Screen.Checklist(firstRun = false)) }
 
         SettingRow("Vision mode", c.visionMode.label) {
             val next = VisionMode.entries.after(c.visionMode)
@@ -254,6 +264,19 @@ fun SettingsScreen(state: AppState) {
                 val next = (i + 1) % tunnels.size
                 state.tunnel = tunnels[next]
                 state.say("Tunnel preview ${names[next]}")
+            }
+        }
+        SettingRow(if (startOverArmed) "Tap again to erase the setup" else "Start over (erase this setup)") {
+            if (!startOverArmed) {
+                startOverArmed = true
+                state.say(
+                    "This erases the tiles, colours, viewing window, PIN and SOS contacts, and starts again from the window check. " +
+                        "Texts and calls are kept. Tap again to start over.",
+                )
+            } else {
+                startOverArmed = false
+                state.say("Starting over")
+                state.startOver()
             }
         }
         val version = remember {

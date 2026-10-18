@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12 and newer: the same rule, for cloud backup and phone-to-phone transfer. -->
+<!-- No cloud backup (allowBackup is off), so a reinstall always starts fresh. Moving to a new
+     phone with a cable or Wi-Fi transfer brings the setup along, but not texting records,
+     which point at this phone's own messages. "Save setup to a file" works too. -->
 <data-extraction-rules>
-    <cloud-backup>
-        <include domain="sharedpref" path="config.xml" />
-    </cloud-backup>
     <device-transfer>
         <include domain="sharedpref" path="config.xml" />
     </device-transfer>
