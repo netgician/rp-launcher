@@ -65,3 +65,20 @@ class CallRulesTest {
         assertFalse(touchToHearOn(speech, screenReaderOn = false, screen = Screen.PhoneSwitch))
     }
 }
+
+class VoicemailWordsTest {
+    private val vm = com.netgician.rplauncher.calls.Voicemail(
+        id = 1, number = "+19195550142", date = 0, durationSeconds = 42, isNew = true,
+        transcript = null, hasAudio = true, source = null,
+    )
+
+    @org.junit.Test
+    fun listLineAndSpeech() {
+        org.junit.Assert.assertEquals("Mary · 0:42 · new", com.netgician.rplauncher.calls.CallWords.voicemailLabel(vm, "Mary"))
+        org.junit.Assert.assertEquals("Mary · 0:42", com.netgician.rplauncher.calls.CallWords.voicemailLabel(vm.copy(isNew = false), "Mary"))
+        org.junit.Assert.assertEquals(
+            "New voicemail from Mary, Today at 3:05 PM, 42 seconds.",
+            com.netgician.rplauncher.calls.CallWords.voicemailSpoken(vm, "Mary", "Today at 3:05 PM"),
+        )
+    }
+}

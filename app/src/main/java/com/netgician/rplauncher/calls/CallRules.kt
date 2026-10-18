@@ -28,6 +28,20 @@ data class RecentCall(
     enum class Kind { INCOMING, OUTGOING, MISSED, DECLINED, BLOCKED, VOICEMAIL }
 }
 
+/** A voicemail the phone keeps. */
+data class Voicemail(
+    val id: Long,
+    val number: String,
+    val date: Long,
+    val durationSeconds: Long,
+    val isNew: Boolean,
+    /** What the carrier's transcription says, when there is one. */
+    val transcript: String?,
+    val hasAudio: Boolean,
+    /** The app that keeps it (the carrier's or the phone's voicemail app). */
+    val source: String?,
+)
+
 /** The words for calls, kept apart from Android so the tests can check them. */
 object CallWords {
     /** "2:05" for the screen. */
@@ -112,4 +126,14 @@ object CallWords {
         }
         return (if (plus) "+" else "") + groups.joinToString(" ")
     }
+
+    /** "Mary · 0:42 · new" for a voicemail's line in the list. */
+    fun voicemailLabel(v: Voicemail, who: String): String =
+        if (v.isNew) tr("%s · %s · new", who, clock(v.durationSeconds)) else tr("%s · %s", who, clock(v.durationSeconds))
+
+    /** "New voicemail from Mary, Today at 3:05 PM, 42 seconds." */
+    fun voicemailSpoken(v: Voicemail, who: String, whenText: String): String =
+        if (v.isNew) tr("New voicemail from %s, %s, %s.", who, whenText, spokenDuration(v.durationSeconds))
+        else tr("Voicemail from %s, %s, %s.", who, whenText, spokenDuration(v.durationSeconds))
 }
+

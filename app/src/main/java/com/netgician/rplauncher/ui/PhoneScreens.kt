@@ -20,6 +20,8 @@ import com.netgician.rplauncher.calls.CallWords
 import com.netgician.rplauncher.calls.PhoneRole
 import com.netgician.rplauncher.calls.RecentCall
 import com.netgician.rplauncher.calls.RpInCallService
+import com.netgician.rplauncher.calls.Voicemail
+import com.netgician.rplauncher.calls.VoicemailStore
 import com.netgician.rplauncher.model.TileSpec
 import com.netgician.rplauncher.texts.People
 import com.netgician.rplauncher.texts.TextSpeech
@@ -240,15 +242,17 @@ internal fun voicemailSpoken(number: String): String =
     number.filter { it.isDigit() || it in "+*#" }.map { CallWords.key(it.toString()) }.joinToString(" ")
 
 /**
- * Voicemail: says and shows the number it will call before calling, so a wrong number in the
- * phone's settings (a scam number, say) is caught instead of called.
+ * Voicemail: the voicemails the phone keeps (newest first, read aloud, a tap to play), and Call
+ * voicemail, which says and shows the number it will call before calling.
  */
 @Composable
 fun VoicemailScreen(state: AppState) {
     val context = LocalContext.current
+    val t = state.texts
     val custom = state.config.voicemailNumber
     val phoneNumber = remember { PhoneRole.phoneVoicemailNumber(context) }
     val number = custom ?: phoneNumber
+    var list by remember { mutableStateOf<List<Voicemail>?>(null) }
     var pending by remember { mutableStateOf(false) }
     val place = {
         if (!PhoneRole.voicemail(context, custom)) state.say(tr("Voicemail couldn't be called. A helper can check the voicemail number in Setup."))
@@ -257,37 +261,159 @@ fun VoicemailScreen(state: AppState) {
         if (pending && ok) place() else if (pending) state.say(tr("Calls need the phone permission. A helper can allow it in Setup."))
         pending = false
     }
+    val callVoicemail = {
+        when {
+            Demo.on -> state.say(tr("Demo mode, so no call is made."))
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED -> {
+                state.say(tr("Calling voicemail"))
+                place()
+            }
+            else -> {
+                pending = true
+                ask.launch(Manifest.permission.CALL_PHONE)
+            }
+        }
+    }
     val where = if (custom != null) tr("the number set in Setup") else tr("your phone's voicemail setting")
     val about = when {
         number == null -> tr("The phone didn't say which number it uses for voicemail.")
         else -> tr("Voicemail calls %s, from %s.", CallWords.grouped(number), where)
     }
     LaunchedEffect(Unit) {
+        val found = withContext(Dispatchers.IO) { VoicemailStore.list(context) }
+        list = found
+        val fresh = found.count { it.isNew }
         state.say(
-            if (number == null) tr("Voicemail. %s Tap Call voicemail to try, or Back.", about)
-            else tr("Voicemail. It calls %s. If that isn't your voicemail, tap Back, and ask a helper to set the right number in Setup.", voicemailSpoken(number)),
+            when {
+                found.isEmpty() -> tr("Voicemail. No voicemails are saved on this phone. Tap Call voicemail to hear your messages.")
+                fresh == 1 -> tr("Voicemail. 1 new.")
+                fresh > 1 -> tr("Voicemail. %s new.", fresh)
+                found.size == 1 -> tr("Voicemail. 1 message.")
+                else -> tr("Voicemail. %s messages.", found.size)
+            },
         )
     }
-    ChoiceList(
-        state, tr("Voicemail"),
-        choices = listOf(
-            Control(tr("Call voicemail"), spoken = tr("Call voicemail"), icon = TileIcon.Vector(Icons.Filled.Call), emphasized = true) {
-                when {
-                    Demo.on -> state.say(tr("Demo mode, so no call is made."))
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED -> {
-                        state.say(tr("Calling voicemail"))
-                        place()
-                    }
-                    else -> {
-                        pending = true
-                        ask.launch(Manifest.permission.CALL_PHONE)
-                    }
-                }
+    val time: (Long) -> String = { DateFormat.getTimeFormat(context).format(Date(it)) }
+    val choices = buildList {
+        add(Control(tr("Back"), spoken = tr("Back to Phone")) { state.go(Screen.PhoneHome) })
+        add(
+            Control(tr("Call voicemail"), spoken = tr("Call voicemail"), icon = TileIcon.Vector(Icons.Filled.Call), emphasized = list?.isEmpty() == true) {
+                callVoicemail()
             },
-            Control(if (number == null) tr("Number not known") else tr("Calls %s", CallWords.grouped(number)), spoken = about) { state.say(about) },
-            Control(tr("Back"), spoken = tr("Back to Phone")) { state.go(Screen.PhoneHome) },
-        ),
-    )
+        )
+        list.orEmpty().forEach { v ->
+            val who = if (v.number.isBlank()) tr("Private number") else t.names.of(v.number)
+            val whenText = TextSpeech.whenSaid(v.date, System.currentTimeMillis(), time = time)
+            add(Control(CallWords.voicemailLabel(v, who), spoken = CallWords.voicemailSpoken(v, who, whenText), emphasized = v.isNew) {
+                state.go(Screen.VoicemailMessage(v.id))
+            })
+        }
+        add(Control(if (number == null) tr("Number not known") else tr("Calls %s", CallWords.grouped(number)), spoken = about) { state.say(about) })
+    }
+    ChoiceList(state, if (list == null) tr("Voicemail…") else tr("Voicemail"), choices = choices)
+}
+
+/** One voicemail: who and when, the transcript if there is one, Play, and Call or text back. */
+@Composable
+fun VoicemailMessageScreen(state: AppState, id: Long) {
+    val context = LocalContext.current
+    val t = state.texts
+    var v by remember(id) { mutableStateOf<Voicemail?>(null) }
+    var loaded by remember(id) { mutableStateOf(false) }
+    var playing by remember { mutableStateOf(false) }
+    val player = remember { arrayOfNulls<android.media.MediaPlayer>(1) }
+    fun stop() {
+        player[0]?.let { runCatching { it.stop() }; it.release() }
+        player[0] = null
+        playing = false
+    }
+    DisposableEffect(Unit) { onDispose { stop() } }
+    val time: (Long) -> String = { DateFormat.getTimeFormat(context).format(Date(it)) }
+    val who = v?.let { if (it.number.isBlank()) tr("Private number") else t.names.of(it.number) } ?: ""
+    val whenText = v?.let { TextSpeech.whenSaid(it.date, System.currentTimeMillis(), time = time) } ?: ""
+    LaunchedEffect(id) {
+        v = withContext(Dispatchers.IO) { VoicemailStore.list(context).firstOrNull { it.id == id } }
+        loaded = true
+        val vm = v
+        if (vm == null) {
+            state.say(tr("This voicemail is no longer here."))
+        } else {
+            val name = if (vm.number.isBlank()) tr("Private number") else t.names.of(vm.number)
+            val said = TextSpeech.whenSaid(vm.date, System.currentTimeMillis(), time = time)
+            state.say(CallWords.voicemailSpoken(vm, name, said) + " " + (vm.transcript?.let { tr("It says: %s", it) } ?: tr("Double tap Play to listen.")))
+        }
+    }
+    fun play(vm: Voicemail) {
+        if (playing) {
+            stop()
+            state.say(tr("Stopped"))
+            return
+        }
+        if (Demo.on) {
+            state.say(tr("Demo mode, so there's no recording to play."))
+            return
+        }
+        if (!vm.hasAudio) {
+            VoicemailStore.fetch(context, vm)
+            state.say(tr("This voicemail isn't on the phone yet. Try again in a minute, or tap Back, then Call voicemail."))
+            return
+        }
+        state.speaker.stop()
+        val p = android.media.MediaPlayer()
+        runCatching {
+            p.setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+            p.setDataSource(context, VoicemailStore.audio(vm.id))
+            p.setOnPreparedListener { it.start() }
+            p.setOnCompletionListener {
+                stop()
+                state.say(tr("End of voicemail"))
+            }
+            p.setOnErrorListener { _, _, _ ->
+                stop()
+                state.say(tr("This voicemail can't be played here. Tap Back, then Call voicemail."))
+                true
+            }
+            p.prepareAsync()
+            player[0] = p
+            playing = true
+            VoicemailStore.markHeard(context, vm)
+        }.onFailure {
+            p.release()
+            state.say(tr("This voicemail can't be played here. Tap Back, then Call voicemail."))
+        }
+    }
+    val vm = v
+    val controls = buildList {
+        if (vm != null) {
+            add(Control(if (playing) tr("Stop") else tr("Play"), spoken = if (playing) tr("Stop the voicemail") else tr("Play the voicemail"), emphasized = true) { play(vm) })
+            if (vm.number.isNotBlank()) {
+                add(Control(tr("Call or text"), spoken = tr("Call or text %s", who)) {
+                    stop()
+                    state.go(Screen.ConfirmCall(TileSpec.Contact(who, vm.number)))
+                })
+            }
+        }
+        add(Control(tr("Back"), spoken = tr("Back to voicemail")) {
+            stop()
+            state.go(Screen.Voicemail)
+        })
+    }
+    val body = when {
+        !loaded -> tr("Loading…")
+        vm == null -> tr("This voicemail is no longer here.")
+        else -> vm.transcript ?: tr("No transcript. Tap Play to listen.")
+    }
+    ReaderLayout(
+        state = state, body = body, onBodyTap = { state.say(body) },
+        header = if (vm == null) tr("Voicemail") else "$who · $whenText",
+        headerSpoken = if (vm == null) tr("Voicemail") else CallWords.voicemailSpoken(vm, who, whenText),
+        controls = controls,
+    ) { c, m, pos -> ControlTile(state, c, m, pos) }
 }
 
 /** Setup: which number Voicemail calls. The phone's own, or one a helper types in. */

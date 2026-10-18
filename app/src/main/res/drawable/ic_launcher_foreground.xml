@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Four bold tiles inside a frame: the viewing window idea. -->
+<!-- Four tiles inside a bright frame: the home screen fitted to the viewing window. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- The frame -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFE14D"
+        android:strokeWidth="4"
+        android:pathData="M38,29H70A9,9 0,0 1,79 38V70A9,9 0,0 1,70 79H38A9,9 0,0 1,29 70V38A9,9 0,0 1,38 29Z" />
+    <!-- The tiles -->
     <path
         android:fillColor="#FFE14D"
-        android:pathData="M33,33h19v19h-19z M56,33h19v19h-19z M33,56h19v19h-19z M56,56h19v19h-19z" />
+        android:pathData="M39,36H49A3,3 0,0 1,52 39V49A3,3 0,0 1,49 52H39A3,3 0,0 1,36 49V39A3,3 0,0 1,39 36Z
+            M59,36H69A3,3 0,0 1,72 39V49A3,3 0,0 1,69 52H59A3,3 0,0 1,56 49V39A3,3 0,0 1,59 36Z
+            M39,56H49A3,3 0,0 1,52 59V69A3,3 0,0 1,49 72H39A3,3 0,0 1,36 69V59A3,3 0,0 1,39 56Z
+            M59,56H69A3,3 0,0 1,72 59V69A3,3 0,0 1,69 72H59A3,3 0,0 1,56 69V59A3,3 0,0 1,59 56Z" />
 </vector>

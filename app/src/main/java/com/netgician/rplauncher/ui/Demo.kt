@@ -115,6 +115,20 @@ object Demo {
 
     const val MISSED = 1
 
+    val voicemails: List<com.netgician.rplauncher.calls.Voicemail>
+        get() = listOf(
+            com.netgician.rplauncher.calls.Voicemail(
+                1, OFFICE, ago(240), 23, isNew = true,
+                transcript = tr("Hi, this is Dr. Patel's office calling to confirm your appointment on Tuesday at 10:30. Please call us back if you need to change it."),
+                hasAudio = false, source = null,
+            ),
+            com.netgician.rplauncher.calls.Voicemail(
+                2, MARY, ago(2900), 41, isNew = false,
+                transcript = tr("Hey, it's Mary. Call me when you get a chance."),
+                hasAudio = false, source = null,
+            ),
+        )
+
     /** The picture in the group conversation: a flyer with big words, so Read text has something to read. */
     fun picture(maxSide: Int): Bitmap {
         val w = 1200

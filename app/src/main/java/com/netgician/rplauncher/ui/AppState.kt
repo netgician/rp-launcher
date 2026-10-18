@@ -84,6 +84,7 @@ sealed interface Screen {
     data object PhoneSwitch : Screen
     /** Voicemail: shows the number it will call before calling. */
     data object Voicemail : Screen
+    data class VoicemailMessage(val id: Long) : Screen
     /** Setup: which number Voicemail calls. */
     data object VoicemailSetup : Screen
 
@@ -338,6 +339,7 @@ class AppState(
             is Screen.Dial, Screen.Recents -> go(if (Demo.phoneIsOurs(activity)) Screen.PhoneHome else Screen.Home)
             Screen.PhoneSwitch -> go(Screen.Settings)
             Screen.Voicemail -> go(Screen.PhoneHome)
+            is Screen.VoicemailMessage -> go(Screen.Voicemail)
             Screen.VoicemailSetup -> go(Screen.Settings)
         }
     }
