@@ -15,8 +15,15 @@ ORT_VERSION="${ORT_VERSION:-1.20.0}"
 ABIS="${ABIS:-arm64-v8a armeabi-v7a}"
 API=29
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Set ANDROID_HOME to the Android SDK}}"
-NDK="${ANDROID_NDK_HOME:-${ANDROID_NDK:-${ANDROID_NDK_ROOT:-$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1)}}}"
-[ -d "$NDK" ] || { echo "No Android NDK found; set ANDROID_NDK_HOME" >&2; exit 1; }
+# F-Droid's build server can hand over the NDK path with "$ANDROID_HOME" still unexpanded.
+expand() { local p="$1"; p="${p/#\$\{ANDROID_HOME\}/$SDK}"; p="${p/#\$ANDROID_HOME/$SDK}"; p="${p/#\~/$HOME}"; printf '%s' "$p"; }
+NDK=""
+for c in "${ANDROID_NDK_HOME:-}" "${ANDROID_NDK:-}" "${ANDROID_NDK_ROOT:-}" "$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1)"; do
+  c="$(expand "$c")"
+  if [ -n "$c" ] && [ -d "$c" ]; then NDK="$c"; break; fi
+done
+[ -n "$NDK" ] || { echo "No Android NDK found (ANDROID_NDK_HOME='${ANDROID_NDK_HOME:-}', SDK '$SDK'); set ANDROID_NDK_HOME" >&2; exit 1; }
+echo "Using the NDK at $NDK"
 SRC="$ROOT/build/onnxruntime-src"
 OUT="$ROOT/build/onnxruntime-jni"
 # ONNX Runtime 1.20 downloads Eigen as a GitLab archive, which GitLab often refuses to build

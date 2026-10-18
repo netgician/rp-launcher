@@ -33,7 +33,7 @@ Builds:
       - mkdir -p ../build
       - ln -s $$onnxruntime$$ ../build/onnxruntime-src
       - ln -s $$eigen$$ ../build/eigen
-    build: ANDROID_NDK_HOME=$$NDK$$ ../scripts/build_onnxruntime_android.sh
+    build: ../scripts/build_onnxruntime_android.sh
     ndk: r27c
     gradleprops:
       - onnxFromSource=true
