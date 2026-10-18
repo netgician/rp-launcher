@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,6 +27,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -103,6 +104,9 @@ val LocalWindowFrame = staticCompositionLocalOf { false }
 /**
  * Bold text that shrinks until it fits, instead of being cut off or breaking a word
  * across lines. Its own semantics are cleared: the parent supplies what TalkBack reads.
+ *
+ * The size is worked out by measuring before anything is drawn, every time the space or the
+ * text changes, so a label can never be left blank or half-sized after a layout change.
  */
 @Composable
 fun FitText(
@@ -115,33 +119,39 @@ fun FitText(
     align: TextAlign = TextAlign.Center,
 ) {
     val lv = LocalLv.current
+    val measurer = rememberTextMeasurer(cacheSize = 16)
     BoxWithConstraints(modifier) {
-        var size by remember(text, maxSp, maxLines, maxWidth, maxHeight) { mutableFloatStateOf(maxSp) }
-        var ready by remember(text, maxSp, maxLines, maxWidth, maxHeight) { mutableStateOf(false) }
-        BasicText(
-            text = text,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clearAndSetSemantics { }
-                .drawWithContent { if (ready) drawContent() },
-            style = TextStyle(
+        val w = constraints.maxWidth
+        val h = constraints.maxHeight
+        val style = { sp: Float ->
+            TextStyle(
                 color = color,
-                fontSize = size.sp,
-                lineHeight = (size * 1.15f).sp,
+                fontSize = sp.sp,
+                lineHeight = (sp * 1.15f).sp,
                 fontFamily = lv.font,
                 fontWeight = FontWeight.Bold,
                 textAlign = align,
-            ),
+            )
+        }
+        val size = remember(text, maxSp, minSp, maxLines, w, h, lv.font, align) {
+            val limit = if (h == Constraints.Infinity) Constraints(maxWidth = w) else Constraints(maxWidth = w, maxHeight = h)
+            var sp = maxSp
+            while (sp > minSp) {
+                val r = measurer.measure(
+                    text, style(sp), overflow = TextOverflow.Clip, softWrap = true, maxLines = maxLines, constraints = limit,
+                )
+                if (!r.hasVisualOverflow && !breaksAWord(text, r)) break
+                sp = (sp * 0.9f).coerceAtLeast(minSp)
+            }
+            sp
+        }
+        BasicText(
+            text = text,
+            modifier = Modifier.fillMaxWidth().clearAndSetSemantics { },
+            style = style(size),
             maxLines = maxLines,
             softWrap = true,
             overflow = TextOverflow.Clip,
-            onTextLayout = { result ->
-                if (size > minSp && (result.hasVisualOverflow || breaksAWord(text, result))) {
-                    size = (size * 0.9f).coerceAtLeast(minSp)
-                } else {
-                    ready = true
-                }
-            },
         )
     }
 }
