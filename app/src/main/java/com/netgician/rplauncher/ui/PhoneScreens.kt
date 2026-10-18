@@ -243,15 +243,15 @@ internal fun voicemailSpoken(number: String): String =
 
 /**
  * Voicemail: the voicemails the phone keeps (newest first, read aloud, a tap to play), and Call
- * voicemail, which says and shows the number it will call before calling.
+ * voicemail, which calls the phone's voicemail number (or the one a helper set in Setup).
  */
 @Composable
 fun VoicemailScreen(state: AppState) {
     val context = LocalContext.current
     val t = state.texts
+    // The number itself isn't shown here: it can look like a stranger's number (scammers fake
+    // caller ID with carriers' voicemail numbers). A helper can see and change it in Setup.
     val custom = state.config.voicemailNumber
-    val phoneNumber = remember { PhoneRole.phoneVoicemailNumber(context) }
-    val number = custom ?: phoneNumber
     var list by remember { mutableStateOf<List<Voicemail>?>(null) }
     var pending by remember { mutableStateOf(false) }
     val place = {
@@ -273,11 +273,6 @@ fun VoicemailScreen(state: AppState) {
                 ask.launch(Manifest.permission.CALL_PHONE)
             }
         }
-    }
-    val where = if (custom != null) tr("the number set in Setup") else tr("your phone's voicemail setting")
-    val about = when {
-        number == null -> tr("The phone didn't say which number it uses for voicemail.")
-        else -> tr("Voicemail calls %s, from %s.", CallWords.grouped(number), where)
     }
     LaunchedEffect(Unit) {
         val found = withContext(Dispatchers.IO) { VoicemailStore.list(context) }
@@ -308,7 +303,6 @@ fun VoicemailScreen(state: AppState) {
                 state.go(Screen.VoicemailMessage(v.id))
             })
         }
-        add(Control(if (number == null) tr("Number not known") else tr("Calls %s", CallWords.grouped(number)), spoken = about) { state.say(about) })
     }
     ChoiceList(state, if (list == null) tr("Voicemail…") else tr("Voicemail"), choices = choices)
 }

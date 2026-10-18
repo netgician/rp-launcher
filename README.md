@@ -95,8 +95,8 @@ screen the person can actually see, on a dark, glare-free background.
   list, each saying where it stands, including Android's "Allow restricted settings" step
   for copies installed from a website.
 - **Frame around the viewing window**, on by default, so its edges are easy to find.
-- **Voicemail** shows and says the number it will call before calling, and a helper can set
-  the right one in Setup.
+- **Voicemail** lists the voicemails the phone keeps, and Call voicemail calls the phone's
+  voicemail number. A helper can see or change that number in Setup → Voicemail number.
 - **Demo mode** in Setup: made-up texts and calls for showing the app or taking store
   screenshots. No texts are sent while it's on, and it turns itself off after two hours.
 - **Release ready:** a smaller release build, signing with the owner's own key, store
