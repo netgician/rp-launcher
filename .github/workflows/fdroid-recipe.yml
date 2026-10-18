@@ -124,18 +124,15 @@ jobs:
         if: failure() && inputs.build
         continue-on-error: true
         run: |
-          G=$(ls -d "$HOME"/.cache/gradlew-fdroid/versions/*/bin/gradle 2>/dev/null | head -1)
-          [ -n "$G" ] || exit 0
-          cd fdroiddata/build/com.netgician.rplauncher
+          W=$(command -v gradlew-fdroid || ls "$fdroidserver"/gradlew-fdroid /opt/fdroidserver-git/gradlew-fdroid 2>/dev/null | head -1)
           {
-            echo "HOME=$HOME user=$(id -un) JAVA_HOME=${JAVA_HOME:-}"
-            java -version 2>&1 | head -1
-            ls -la "$HOME" "$HOME/.gradle" 2>&1 | head -20
-            find "$HOME/.gradle" -name '*.properties' -maxdepth 4 2>/dev/null | head -5 | while read f; do echo "== $f"; cat "$f"; done
-            "$G" --stacktrace --no-daemon -PonnxFromSource=false help 2>&1 | grep -E -A2 "Caused by|NumberFormat|at org.gradle.cache|at org.gradle.internal.file" | head -60
-          } > ../../../gradle-debug.log 2>&1
-          cd ../../..
-          python3 -c "import sys; l=open('gradle-debug.log',errors='replace').read().splitlines(); print('::notice title=Gradle detail::' + '%0A'.join(x.replace('%','%25')[:250] for x in l[:80]))"
+            echo "HOME=$HOME user=$(id -un) JAVA_HOME=${JAVA_HOME:-} wrapper=$W"
+            ls /usr/lib/jvm 2>&1
+            [ -n "$W" ] && grep -n -E "export|GRADLE_|JAVA|-D|user.home|exec " "$W" | head -40
+            cd fdroiddata/build/com.netgician.rplauncher/app
+            GRADLE_VERSION_DIR="$HOME/.cache/gradlew-fdroid/versions" CACHEDIR="$HOME/.cache/fdroidserver" "$W" --stacktrace --no-daemon help 2>&1 | grep -E -B1 -A3 "Caused by|NumberFormat|What went wrong|BUILD" | head -70
+          } > "$GITHUB_WORKSPACE/gradle-debug.log" 2>&1
+          python3 -c "import os; l=open(os.environ['GITHUB_WORKSPACE']+'/gradle-debug.log',errors='replace').read().splitlines(); print('::notice title=Gradle detail::' + '%0A'.join(x.replace('%','%25')[:250] for x in l[:110]))"
       - name: Report the build
         if: always() && inputs.build
         run: |
