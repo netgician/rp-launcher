@@ -1,13 +1,60 @@
-# RP Launcher
+<h1 align="center"><img src="docs/banner.svg" alt="RP Launcher" width="640"></h1>
 
-An Android home screen built for people with **retinitis pigmentosa (RP)**, from early
-tunnel vision through to speech-first use.
+<p align="center"><b>An Android home screen for people with retinitis pigmentosa (RP).</b><br>
+Everything fits inside the part of the screen you can see.</p>
 
 Most low-vision tools make things bigger. RP mainly narrows the field of view, so RP
 Launcher makes things **fit**: every tile, label and alert sits inside the part of the
-screen the person can actually see, on a dark, glare-free background.
+screen the person can actually see, on a dark, glare-free background. It works from early
+tunnel vision through to speech-first use.
 
-## What's in version 0.1
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="180" alt="Home screen: big Phone, Texts, See, Torch, SOS and Next tiles inside a bright frame">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="180" alt="A conversation with Mary, her last texts in big cards, with Reply">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="180" alt="Mary calling, with one big Answer button, Decline and Text back">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="180" alt="The camera pointed at a sign, with Closer, Wider and Read text">
+</p>
+
+## Get it
+
+- **F-Droid:** submitted and waiting for review
+  ([merge request](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/53136)). This will
+  be the main way to install it.
+- **Google Play:** coming later.
+- **Newest test build:** open [Releases](https://github.com/netgician/rp-launcher/releases)
+  on the phone, tap `rp-launcher-test.apk` under **Latest test build**, and allow installing
+  from your browser. Test builds are for trying changes first. They can't update an F-Droid
+  copy, or the other way round, so save the setup to a file before switching.
+
+Needs Android 10 or newer.
+
+## What it does
+
+- **Fits the viewing window.** At first start, a bright frame grows or shrinks until all
+  four corners can just be seen. Every screen fits inside it afterwards.
+- **Big, clear tiles** in Atkinson Hyperlegible type, turned page by page with big Next and
+  Back tiles, never by swiping. Dark themes only, with night amber and red.
+- **Everything can be read aloud,** with three vision modes (sight first, sight and speech,
+  speech first). It also works with TalkBack.
+- **See and Read:** the camera as a magnifier, and printed text read aloud on the phone itself.
+- **Texts and Phone built in:** big screens for texts, picture texts, group texts and calls.
+  Every send says "Sent" or "Not sent".
+- **Alerts:** new notifications shown large and read aloud, one at a time.
+- **SOS and Where am I:** a cancellable countdown that texts your address to chosen people,
+  and the street address read aloud.
+- **For helpers:** a setup checklist, settings behind an optional PIN, and the whole setup
+  saved to a file for a new phone.
+- **English and Spanish,** following the phone's language or chosen in Setup.
+
+No accounts, no ads, no tracking, and no internet permission. Texts go through the
+phone's own texting service; addresses come from the phone's own address lookup.
+
+## Version history
+
+<details>
+<summary>What each version added</summary>
+
+### Version 0.1
 
 - **Viewing window check.** At first start, a bright frame grows or shrinks until the
   person can just see all four corners. Everything afterwards fits inside it.
@@ -25,7 +72,7 @@ screen the person can actually see, on a dark, glare-free background.
 - **Safe screen:** if the launcher fails to start twice in a row, a plain screen with
   Phone, Contacts and settings appears instead of a black phone.
 
-## What's new in version 0.2
+### Version 0.2
 
 - **See tile:** the camera as a magnifier, inside the viewing window. Closer and Wider
   zoom (below normal size on phones with a wide lens, to fit more into a narrow field),
@@ -37,7 +84,7 @@ screen the person can actually see, on a dark, glare-free background.
 - **Forgot the helper PIN?** Reset it with the phone's own screen lock, or by holding a
   tile for three seconds on phones without one.
 
-## What's new in version 0.3
+### Version 0.3
 
 - **Read text aloud.** In See, tap Read: the camera takes a sharp photo, reads the print
   on the phone itself (no internet), and shows it one line at a time in large text.
@@ -49,7 +96,7 @@ screen the person can actually see, on a dark, glare-free background.
   to open), and Speech first (one list, tap to hear, optional dark screen). When TalkBack
   is on, tiles work the TalkBack way.
 
-## What's new in version 0.4
+### Version 0.4
 
 - **Texts, built in.** RP Launcher can be the phone's texting app: texts, picture texts
   and group texts, sent and received. Each text is shown large and read aloud, one at a
@@ -73,7 +120,7 @@ screen the person can actually see, on a dark, glare-free background.
 - **Where am I:** the street address, read aloud, from the phone's own location and
   address lookup. Text it to someone with one more tap.
 
-## What's new in version 0.5
+### Version 0.5
 
 - **Phone, built in.** RP Launcher can be the phone app: the caller's name large and spoken,
   one-tap Answer, Decline and Text back over the lock screen, and Hang up, Speaker, Mute,
@@ -103,12 +150,11 @@ screen the person can actually see, on a dark, glare-free background.
   listings in English and Spanish, a [privacy policy](PRIVACY.md), and an F-Droid build
   with ONNX Runtime compiled from source. See [RELEASE.md](RELEASE.md).
 
-No accounts, no ads, no tracking, and no internet permission. Texts go through the
-phone's own texting service; addresses come from the phone's own address lookup.
+</details>
 
 ## Testable rules
 
-The spec's promises are checked by unit tests on every build:
+The spec's promises are checked by automated tests on every build (110 of them):
 
 - every text and outline colour reaches **7:1 contrast** on every surface, in every theme
 - no pure white anywhere, and all surfaces stay near black
@@ -116,21 +162,19 @@ The spec's promises are checked by unit tests on every build:
   the check can produce, on small and large screens, at every text size
 - every tile is at least **48 dp**, Android's minimum touch target
 - setup files round-trip exactly, and broken or foreign files are refused safely
+- every phrase on every screen has a Spanish translation
 
 ## Build
 
-GitHub Actions builds the app and runs the tests on every push. Each push to `main`
-replaces the **Latest test build** release: open **Releases** on a phone, tap
-`rp-launcher-test.apk`, and allow installing from your browser. Test builds share one
-debug key, so a new one installs over the last.
+GitHub Actions builds the app and runs the tests on every push, and each push to `main`
+replaces the **Latest test build** release. Test builds share one debug key, so a new one
+installs over the last.
 
 To build locally you need JDK 17 and the Android SDK (compileSdk 35):
 
 ```
 ./gradlew testDebugUnitTest assembleDebug
 ```
-
-Requires Android 10 or newer.
 
 ## Licence
 
@@ -145,5 +189,5 @@ running on **ONNX Runtime** (MIT licence).
 
 Picture texts are read and written with message-format code from the **Android Open Source
 Project**, by way of android-smsmms, under the Apache License 2.0
-([licence text](licenses/AOSP-MMS-format-Apache-2.0.txt)). Before an F-Droid release, ONNX Runtime will be
-built from source, as F-Droid requires.
+([licence text](licenses/AOSP-MMS-format-Apache-2.0.txt)). F-Droid's build compiles ONNX Runtime from
+source.
