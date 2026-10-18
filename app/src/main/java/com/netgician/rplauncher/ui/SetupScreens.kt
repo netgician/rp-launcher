@@ -457,7 +457,46 @@ fun AddTileScreen(state: AppState) {
         helpers.forEach { app ->
             SettingRow("${app.label} (helper app)") { add(TileSpec.App(app.packageName, app.className, app.label)) }
         }
+        SettingRow("An app's shortcut (like Navigate home)") {
+            if (com.netgician.rplauncher.system.Shortcuts.allowed(context)) state.go(Screen.PickShortcutApp)
+            else state.say("App shortcuts only work while RP Launcher is the home screen. Make it the home screen in Setup first.")
+        }
+        SettingRow("Pages (jump to any page)") { add(TileSpec.Pages) }
         SettingRow("All apps") { add(TileSpec.AllApps) }
+    }
+}
+
+/** An app's shortcuts, to add one as a tile. */
+@Composable
+fun PickShortcutScreen(state: AppState, packageName: String, appLabel: String) {
+    val context = LocalContext.current
+    val list by produceState<List<com.netgician.rplauncher.system.Shortcuts.Entry>?>(null, packageName) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            com.netgician.rplauncher.system.Shortcuts.of(context, packageName)
+        }
+    }
+    LaunchedEffect(list) {
+        when {
+            list == null -> Unit
+            list!!.isEmpty() -> state.say("$appLabel has no shortcuts")
+            else -> state.say("Shortcuts in $appLabel")
+        }
+    }
+    HelperColumn(state) {
+        SettingRow("Back") { state.go(Screen.PickShortcutApp) }
+        when {
+            list == null -> SettingRow("Looking…") { }
+            list!!.isEmpty() -> SettingRow("$appLabel has no shortcuts") { state.go(Screen.PickShortcutApp) }
+            else -> list!!.forEach { s ->
+                SettingRow(s.longLabel) {
+                    // The app's name too, so "New chat" on the home screen says whose it is.
+                    val label = if (s.label.contains(appLabel, ignoreCase = true)) s.label else "${s.label} ($appLabel)"
+                    state.update { it.copy(tiles = it.tiles + TileSpec.Shortcut(s.packageName, s.id, label)) }
+                    state.say("$label added")
+                    state.go(Screen.EditTiles)
+                }
+            }
+        }
     }
 }
 

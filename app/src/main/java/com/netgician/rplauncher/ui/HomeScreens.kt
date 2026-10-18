@@ -62,7 +62,8 @@ fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.Notifications -> TileIcon.Vector(Icons.Filled.Notifications)
     TileSpec.Wifi, TileSpec.Bluetooth, TileSpec.Volume, TileSpec.QuickSettings -> null
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
-    is TileSpec.App -> null
+    TileSpec.Pages -> TileIcon.Vector(Icons.Filled.List)
+    is TileSpec.App, is TileSpec.Shortcut -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)
 }
 
@@ -113,6 +114,10 @@ fun HomeScreen(state: AppState) {
             rows = c.rows,
             onSpeak = state::say,
             header = { m -> StatusHeader(m, state::say) },
+            onPaged = { pages ->
+                val labels = pages.map { p -> p.map { if (it is HomeItem.Spec) it.spec.label else "Setup" } }
+                if (labels != state.homePages) state.homePages = labels
+            },
         ) { item, m, pos ->
             when (item) {
                 HomeItem.Setup -> Tile(
@@ -157,6 +162,7 @@ private fun SpecTile(state: AppState, spec: TileSpec, m: Modifier, pos: TilePos,
         spec == TileSpec.Alerts -> if (alertCount == 0) "Alerts, none new" else "Alerts, $alertCount new"
         spec == TileSpec.Messages && textCount > 0 -> if (textCount == 1) "Texts, 1 new" else "Texts, $textCount new"
         spec == TileSpec.Sos -> "SOS, emergency texts"
+        spec == TileSpec.Pages -> "Pages, to jump to any page"
         spec == TileSpec.Phone && missedCalls > 0 -> if (missedCalls == 1) "Phone, 1 missed call" else "Phone, $missedCalls missed calls"
         else -> spec.label
     }
@@ -377,4 +383,33 @@ fun WindowCheckScreen(state: AppState, returnTo: Screen) {
             }
         }
     }
+}
+
+/** The Pages tile: one line per home page, saying what's on it. A tap goes straight there. */
+@Composable
+fun PagesScreen(state: AppState) {
+    val pages = state.homePages
+    LaunchedEffect(Unit) {
+        state.say(if (pages.size <= 1) "The home screen has just one page." else "Pages. The home screen has ${pages.size} pages.")
+    }
+    val choices = buildList {
+        add(Control("Back", spoken = "Back to the home screen", icon = TileIcon.Vector(Icons.Filled.Home)) { state.go(Screen.Home) })
+        pages.forEachIndexed { i, tiles ->
+            val names = tiles.filter { it != "Pages" }
+            val shown = names.take(4).joinToString(", ") + if (names.size > 4) "…" else ""
+            add(
+                Control(
+                    "Page ${i + 1}: $shown",
+                    spoken = "Page ${i + 1}: ${com.netgician.rplauncher.texts.People.join(names, max = 8)}",
+                    emphasized = i == state.homePage,
+                ) {
+                    state.homePage = i
+                    state.go(Screen.Home)
+                    state.feel(Landmarks.PAGE_TURN)
+                    state.say("Page ${i + 1}")
+                },
+            )
+        }
+    }
+    ChoiceList(state, "Pages", choices = choices)
 }

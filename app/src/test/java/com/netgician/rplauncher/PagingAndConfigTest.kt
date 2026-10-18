@@ -65,6 +65,8 @@ class PagingAndConfigTest {
                 TileSpec.App("org.example.radio", "org.example.radio.Main", "Radio \"Live\""),
                 TileSpec.Phone,
                 TileSpec.See,
+                TileSpec.Pages,
+                TileSpec.Shortcut("com.android.chrome", "web:news \"today\"", "Local news"),
                 TileSpec.AllApps,
             ),
             autoNight = AutoNight.LIGHT,
@@ -76,6 +78,12 @@ class PagingAndConfigTest {
         )
         assertEquals(c, ConfigJson.decode(ConfigJson.encode(c)))
         assertEquals(c, ConfigJson.decodeSetupFile(ConfigJson.encode(c)))
+    }
+
+    @Test
+    fun brokenShortcutTilesAreDropped() {
+        val text = """{"version":5,"tiles":[{"type":"shortcut","pkg":"","id":"x"},{"type":"shortcut","pkg":"a.b","id":""},{"type":"pages"}]}"""
+        assertEquals(listOf<TileSpec>(TileSpec.Pages), ConfigJson.decodeSetupFile(text).tiles)
     }
 
     @Test

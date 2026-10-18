@@ -299,6 +299,8 @@ fun <T> PagedTiles(
     minTarget: Float = Layout.MIN_TARGET_DP,
     /** Null for the usual header row; 0 for none, when the screen shows its title elsewhere. */
     headerHeight: Float? = null,
+    /** Told how the items fell into pages, for the Pages tile. */
+    onPaged: ((List<List<T>>) -> Unit)? = null,
     tile: @Composable (item: T, modifier: Modifier, pos: TilePos) -> Unit,
 ) {
     val lv = LocalLv.current
@@ -316,6 +318,10 @@ fun <T> PagedTiles(
         )
         val pages = Paging.paginate(items, grid.tiles.size)
         val current = page.coerceIn(0, pages.lastIndex)
+        if (onPaged != null) {
+            val byPage = pages.map { p -> p.mapNotNull { (it as? Slot.Item<T>)?.value } }
+            SideEffect { onPaged(byPage) }
+        }
 
         if (headerH > 0f) header(Modifier.place(grid.header))
 

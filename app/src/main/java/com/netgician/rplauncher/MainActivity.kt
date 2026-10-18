@@ -164,6 +164,8 @@ class MainActivity : ComponentActivity() {
         torch.start()
         lightSensor?.start()
         state?.refreshNightByClock()
+        // A tile added from another app ("Add to home screen" in Chrome) while this screen was away.
+        state?.reloadFromStore()
         if (com.netgician.rplauncher.ui.Demo.expire()) state?.texts?.demoChanged()
         state?.texts?.refreshUnread()
         if (TextRole.isDefault(this)) {
@@ -274,6 +276,14 @@ fun Root(state: AppState) {
                     Screen.PhoneSwitch -> PhoneSwitchScreen(state)
                     Screen.WhereAmI -> WhereAmIScreen(state)
                     Screen.SosSetup -> SosSetupScreen(state)
+                    Screen.Pages -> PagesScreen(state)
+                    Screen.PickShortcutApp -> AppListScreen(
+                        state = state,
+                        title = "Shortcut from which app?",
+                        leaveLabel = "Back",
+                        onLeave = { state.go(Screen.AddTile) },
+                    ) { app -> state.go(Screen.PickShortcut(app.packageName, app.label)) }
+                    is Screen.PickShortcut -> PickShortcutScreen(state, screen.packageName, screen.appLabel)
                     Screen.PickApp -> AppListScreen(
                         state = state,
                         title = "Pick an app",

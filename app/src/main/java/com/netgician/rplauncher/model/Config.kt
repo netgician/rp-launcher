@@ -22,8 +22,12 @@ sealed class TileSpec {
     /** Pulls down the quick settings (Wi-Fi, Bluetooth, torch, brightness...). */
     data object QuickSettings : TileSpec()
     data object AllApps : TileSpec()
+    /** A list of the home screen's pages, to jump straight to one instead of paging through. */
+    data object Pages : TileSpec()
     data class App(val packageName: String, val className: String, val appLabel: String) : TileSpec()
     data class Contact(val name: String, val number: String) : TileSpec()
+    /** One of an app's own shortcuts ("Navigate home", "New chat", a web page added from Chrome). */
+    data class Shortcut(val packageName: String, val id: String, val shortcutLabel: String) : TileSpec()
 
     val label: String
         get() = when (this) {
@@ -41,8 +45,10 @@ sealed class TileSpec {
             Notifications -> "Notifications"
             QuickSettings -> "Quick settings"
             AllApps -> "All apps"
+            Pages -> "Pages"
             is App -> appLabel
             is Contact -> name
+            is Shortcut -> shortcutLabel
         }
 }
 
@@ -237,11 +243,15 @@ object ConfigJson {
             TileSpec.Notifications -> put("type", "notifications")
             TileSpec.QuickSettings -> put("type", "quick_settings")
             TileSpec.AllApps -> put("type", "all_apps")
+            TileSpec.Pages -> put("type", "pages")
             is TileSpec.App -> {
                 put("type", "app"); put("pkg", t.packageName); put("cls", t.className); put("label", t.appLabel)
             }
             is TileSpec.Contact -> {
                 put("type", "contact"); put("name", t.name); put("number", t.number)
+            }
+            is TileSpec.Shortcut -> {
+                put("type", "shortcut"); put("pkg", t.packageName); put("id", t.id); put("label", t.shortcutLabel)
             }
         }
     }
@@ -322,6 +332,7 @@ object ConfigJson {
         "notifications" -> TileSpec.Notifications
         "quick_settings" -> TileSpec.QuickSettings
         "all_apps" -> TileSpec.AllApps
+        "pages" -> TileSpec.Pages
         "app" -> {
             val pkg = o.optString("pkg"); val cls = o.optString("cls")
             if (pkg.isBlank() || cls.isBlank()) null else TileSpec.App(pkg, cls, o.optString("label", pkg))
@@ -329,6 +340,10 @@ object ConfigJson {
         "contact" -> {
             val number = o.optString("number")
             if (number.isBlank()) null else TileSpec.Contact(o.optString("name", number), number)
+        }
+        "shortcut" -> {
+            val pkg = o.optString("pkg"); val id = o.optString("id")
+            if (pkg.isBlank() || id.isBlank()) null else TileSpec.Shortcut(pkg, id, o.optString("label", id))
         }
         else -> null
     }

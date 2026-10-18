@@ -27,6 +27,7 @@ import com.netgician.rplauncher.system.Speaker
 import com.netgician.rplauncher.system.Torch
 import com.netgician.rplauncher.system.Vibes
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 sealed interface Screen {
@@ -42,6 +43,11 @@ sealed interface Screen {
     data object EditTiles : Screen
     data object AddTile : Screen
     data object PickApp : Screen
+    /** The Pages tile: every home page, to jump straight to one. */
+    data object Pages : Screen
+    /** Adding an app shortcut tile: first the app, then one of its shortcuts. */
+    data object PickShortcutApp : Screen
+    data class PickShortcut(val packageName: String, val appLabel: String) : Screen
     data object ReadText : Screen
     data object Alerts : Screen
 
@@ -92,6 +98,7 @@ object NightNow {
 val Screen.isHelperScreen: Boolean
     get() = this is Screen.Settings || this is Screen.Pin || this is Screen.PinReset ||
         this is Screen.EditTiles || this is Screen.AddTile || this is Screen.PickApp ||
+        this is Screen.PickShortcutApp || this is Screen.PickShortcut ||
         this is Screen.WindowCheck || this is Screen.TextsSwitch || this is Screen.TextsCheck || this is Screen.SosSetup || this is Screen.PhoneSwitch ||
         (this is Screen.NumberPad && purpose == NumberPurpose.OWN_NUMBER)
 
@@ -126,6 +133,9 @@ class AppState(
         private set
 
     var homePage by mutableIntStateOf(0)
+
+    /** The tile names on each home page, as last laid out (for the Pages tile). */
+    var homePages by mutableStateOf<List<List<String>>>(emptyList())
     var listPage by mutableIntStateOf(0)
 
     /** Test builds only: the radius of the tunnel preview, as a share of the screen width; 0 for off. */
@@ -187,9 +197,23 @@ class AppState(
         get() = if (darkScreenNow) 0.01f else theme.windowBrightness ?: config.brightness
 
     fun update(change: (LauncherConfig) -> LauncherConfig) {
+        val before = config.tiles
         config = change(config)
         store.save(config)
         refreshNightByClock()
+        if (config.tiles != before && (config.tiles + before).any { it is TileSpec.Shortcut }) {
+            val tiles = config.tiles
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.netgician.rplauncher.system.Shortcuts.keepPinned(activity, tiles) }
+        }
+    }
+
+    /** Picks up a change saved elsewhere in the app (a shortcut tile added from another app). */
+    fun reloadFromStore() {
+        val fresh = store.load()
+        if (fresh != config) {
+            config = fresh
+            refreshNightByClock()
+        }
     }
 
     fun go(to: Screen) {
@@ -268,6 +292,9 @@ class AppState(
             Screen.EditTiles -> go(Screen.Settings)
             Screen.AddTile -> go(Screen.EditTiles)
             Screen.PickApp -> go(Screen.AddTile)
+            Screen.Pages -> go(Screen.Home)
+            Screen.PickShortcutApp -> go(Screen.AddTile)
+            is Screen.PickShortcut -> go(Screen.PickShortcutApp)
             Screen.Texts -> go(Screen.Home)
             is Screen.Conversation -> go(Screen.Texts)
             is Screen.Message -> go(Screen.Conversation(s.threadId))
@@ -334,6 +361,8 @@ class AppState(
                 start(Intent(android.provider.Settings.ACTION_SETTINGS))
             }
             TileSpec.AllApps -> go(Screen.Apps)
+            TileSpec.Pages -> go(Screen.Pages)
+            is TileSpec.Shortcut -> com.netgician.rplauncher.system.Shortcuts.start(activity, spec)?.let { say(it) }
             is TileSpec.App -> start(
                 Apps.launchIntent(spec.packageName, spec.className),
                 "${spec.appLabel} isn't installed",

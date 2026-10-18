@@ -207,6 +207,18 @@
             android:theme="@style/Theme.RpLauncher"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale" />
 
+        <!-- "Add to home screen" from other apps (a web page in Chrome, say): asks, then adds a tile. -->
+        <activity
+            android:name=".ui.PinShortcutActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity="com.netgician.rplauncher.pin"
+            android:theme="@style/Theme.RpLauncher">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
+
         <!-- The keypad, for "call this number" from other apps. -->
         <activity
             android:name=".calls.DialActivity"
