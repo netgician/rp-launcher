@@ -43,7 +43,9 @@ private fun rememberCaller(state: AppState): (String) -> Unit {
     }
     return { number ->
         val allowed = ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
-        if (allowed) {
+        if (Demo.isDemoNumber(number)) {
+            com.netgician.rplauncher.calls.CallActivity.openDemo(context, incoming = false, name = state.texts.names.of(number), number = number)
+        } else if (allowed) {
             if (!PhoneRole.call(context, number)) state.say("The call couldn't be started.")
         } else {
             pending = number
@@ -81,7 +83,8 @@ fun PhoneHomeScreen(state: AppState) {
                     .onFailure { state.say("No contacts app found") }
             },
             Control("Voicemail", spoken = "Call your voicemail") {
-                if (!PhoneRole.voicemail(context)) state.say("Voicemail couldn't be called. A helper can allow phone calls in Setup, Phone app.")
+                if (Demo.on) state.say("Demo mode, so no call is made.")
+                else if (!PhoneRole.voicemail(context)) state.say("Voicemail couldn't be called. A helper can allow phone calls in Setup, Phone app.")
             },
         ),
     )

@@ -37,7 +37,11 @@ import com.netgician.rplauncher.ui.PagedTiles
 import com.netgician.rplauncher.ui.SpokenText
 import com.netgician.rplauncher.ui.Tile
 import com.netgician.rplauncher.ui.TileIcon
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
@@ -52,6 +56,44 @@ class CallActivity : ComponentActivity() {
 
     /** Night colours, the same as the home screen: by clock or by room light, as set in Setup. */
     private var night by mutableStateOf(NightNow.active)
+
+    /** Demo mode's pretend call (Setup, Demo mode): the same screen, with nothing really dialled. */
+    private var demo by mutableStateOf(false)
+    private val demoCalls = MutableStateFlow<List<CallInfo>>(emptyList())
+    private var demoMuted by mutableStateOf(false)
+    private var demoSpeaker by mutableStateOf(false)
+
+    private fun startDemo(i: android.content.Intent?) {
+        demo = i?.getBooleanExtra(EXTRA_DEMO, false) == true
+        if (!demo) return
+        val incoming = i?.getBooleanExtra(EXTRA_INCOMING, true) != false
+        val name = i?.getStringExtra(EXTRA_NAME).orEmpty().ifBlank { "Mary" }
+        val number = i?.getStringExtra(EXTRA_NUMBER).orEmpty()
+        demoCalls.value = listOf(CallInfo("demo", number, name, if (incoming) CallPhase.RINGING else CallPhase.DIALING, 0))
+        if (!incoming) lifecycleScope.launch {
+            delay(3_000)
+            answer("demo")
+        }
+    }
+
+    // What the buttons do: the real call, or the pretend one.
+    private fun answer(id: String) {
+        if (demo) demoCalls.update { l -> l.map { it.copy(phase = CallPhase.ACTIVE, connectedAt = System.currentTimeMillis()) } }
+        else Calls.answer(id)
+    }
+    private fun decline(id: String) { if (demo) demoCalls.value = emptyList() else Calls.decline(id) }
+    private fun declineWithText(id: String, text: String) { if (demo) demoCalls.value = emptyList() else Calls.declineWithText(id, text) }
+    private fun hangUp(id: String) { if (demo) demoCalls.value = emptyList() else Calls.hangUp(id) }
+    private fun hold(id: String, on: Boolean) { if (!demo) Calls.hold(id, on) }
+    private fun key(id: String, digit: Char) { if (!demo) Calls.key(id, digit) }
+    private fun mute(on: Boolean) { if (demo) demoMuted = on else Calls.mute(on) }
+    private fun setSpeaker(on: Boolean) { if (demo) demoSpeaker = on else Calls.speaker(on) }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        // A real call always takes over from a pretend one.
+        startDemo(intent)
+    }
 
     private fun refreshNightByClock() {
         if (config.autoNight == AutoNight.CLOCK) {
@@ -86,6 +128,7 @@ class CallActivity : ComponentActivity() {
                 ?.newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "rplauncher:call")
         }.getOrNull()
 
+        startDemo(intent)
         setContent {
             val theme = if (night && config.autoNight != AutoNight.OFF) config.nightTheme else config.theme
             val style = remember(theme) { LvStyle(theme, AtkinsonFamily, config.textScale) }
@@ -96,7 +139,7 @@ class CallActivity : ComponentActivity() {
                 window.attributes = attrs
             }
             CompositionLocalProvider(LocalLv provides style) {
-                val calls by Calls.list.collectAsState()
+                val calls by (if (demo) demoCalls else Calls.list).collectAsState()
                 val audio by Calls.audio.collectAsState()
                 var lastName by remember { mutableStateOf("") }
                 var lastSeconds by remember { mutableLongStateOf(0L) }
@@ -137,7 +180,7 @@ class CallActivity : ComponentActivity() {
                 }
 
                 // Earpiece calls turn the screen off at the ear, so the cheek can't press buttons.
-                val earpiece = main?.phase == CallPhase.ACTIVE && audio?.route != android.telecom.CallAudioState.ROUTE_SPEAKER
+                val earpiece = !demo && main?.phase == CallPhase.ACTIVE && audio?.route != android.telecom.CallAudioState.ROUTE_SPEAKER
                 LaunchedEffect(earpiece) { proximity(earpiece) }
 
                 // When the last call ends: say so, then close.
@@ -156,7 +199,11 @@ class CallActivity : ComponentActivity() {
                             FitText("Call ended", style.fg, maxSp = 34f * style.textScale, modifier = Modifier.fillMaxWidth())
                         }
                     } else {
-                        CallScreen(main, live, now, audio?.isMuted == true, audio?.route == android.telecom.CallAudioState.ROUTE_SPEAKER)
+                        CallScreen(
+                            main, live, now,
+                            if (demo) demoMuted else audio?.isMuted == true,
+                            if (demo) demoSpeaker else audio?.route == android.telecom.CallAudioState.ROUTE_SPEAKER,
+                        )
                     }
                 }
             }
@@ -188,8 +235,8 @@ class CallActivity : ComponentActivity() {
                         Grid(listOf("Back") + choices, cols = 1, rows = 6) { item, m ->
                             if (item == "Back") Tile("Back", m, onLongPress = { say("Back") }) { replies = false }
                             else Tile(item, m, onLongPress = { say(item) }) {
-                                Calls.declineWithText(main.id, item)
-                                say("Declined. Texting: $item")
+                                declineWithText(main.id, item)
+                                say(if (demo) "Declined. Demo mode, so no text was sent." else "Declined. Texting: $item")
                             }
                         }
                     }
@@ -198,12 +245,12 @@ class CallActivity : ComponentActivity() {
                             Tile(
                                 "Answer", Modifier.fillMaxWidth().weight(2f), spoken = "Answer the call from ${main.name}",
                                 icon = TileIcon.Vector(Icons.Filled.Call), emphasized = true, onLongPress = { say("Answer") },
-                            ) { Calls.answer(main.id) }
+                            ) { answer(main.id) }
                             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Tile(
                                     "Decline", Modifier.weight(1f).fillMaxHeight(), icon = TileIcon.Vector(Icons.Filled.Close),
                                     onLongPress = { say("Decline") },
-                                ) { Calls.decline(main.id) }
+                                ) { decline(main.id) }
                                 Tile(
                                     "Text back", Modifier.weight(1f).fillMaxHeight(), spoken = "Decline and send a text",
                                     onLongPress = { say("Decline and send a text") },
@@ -218,7 +265,7 @@ class CallActivity : ComponentActivity() {
                                 keypad = false
                                 typed = ""
                             } else Tile(k, m, spoken = CallWords.key(k), onLongPress = { say(CallWords.key(k)) }) {
-                                Calls.key(main.id, k[0])
+                                key(main.id, k[0])
                                 typed += k
                             }
                         }
@@ -237,20 +284,20 @@ class CallActivity : ComponentActivity() {
                                 "hangup" -> Tile(
                                     "Hang up", m, spoken = "Hang up", icon = TileIcon.Vector(Icons.Filled.Close), emphasized = true,
                                     onLongPress = { say("Hang up") },
-                                ) { Calls.hangUp(main.id) }
+                                ) { hangUp(main.id) }
                                 "speaker" -> Tile(
                                     if (speakerOn) "Speaker on" else "Speaker", m, emphasized = speakerOn,
                                     spoken = if (speakerOn) "Speaker is on. Tap to turn it off" else "Turn on the speaker",
                                     onLongPress = { say(if (speakerOn) "Speaker is on" else "Speaker is off") },
                                 ) {
-                                    Calls.speaker(!speakerOn)
+                                    setSpeaker(!speakerOn)
                                 }
                                 "mute" -> Tile(
                                     if (muted) "Muted" else "Mute", m, emphasized = muted,
                                     spoken = if (muted) "You're muted. Tap to unmute" else "Mute your microphone",
                                     onLongPress = { say(if (muted) "You're muted" else "Not muted") },
                                 ) {
-                                    Calls.mute(!muted)
+                                    mute(!muted)
                                 }
                                 "louder" -> Tile("Louder", m, onLongPress = { say("Louder") }) {
                                     audio?.adjustStreamVolume(AudioManager.STREAM_VOICE_CALL, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
@@ -262,7 +309,7 @@ class CallActivity : ComponentActivity() {
                                     keypad = true
                                 }
                                 else -> Tile("Switch to ${held?.name}", m, onLongPress = { say("Switch calls") }) {
-                                    held?.let { Calls.hold(it.id, false) }
+                                    held?.let { hold(it.id, false) }
                                 }
                             }
                         }
@@ -308,6 +355,23 @@ class CallActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val EXTRA_DEMO = "demo"
+        private const val EXTRA_INCOMING = "incoming"
+        private const val EXTRA_NAME = "name"
+        private const val EXTRA_NUMBER = "number"
+
+        /** Demo mode's pretend call: ringing, or (for a call you make) dialling and then answered. */
+        fun openDemo(context: Context, incoming: Boolean, name: String, number: String) {
+            runCatching {
+                context.startActivity(
+                    android.content.Intent(context, CallActivity::class.java)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        .putExtra(EXTRA_DEMO, true).putExtra(EXTRA_INCOMING, incoming)
+                        .putExtra(EXTRA_NAME, name).putExtra(EXTRA_NUMBER, number),
+                )
+            }
+        }
+
         fun open(context: Context) {
             runCatching {
                 context.startActivity(

@@ -12,6 +12,7 @@ import android.telecom.TelecomManager
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import com.netgician.rplauncher.MainActivity
+import com.netgician.rplauncher.ui.Demo
 
 /** Recent calls from the phone's call log. Needs call log access, which the phone app gets. */
 object CallLogStore {
@@ -19,6 +20,7 @@ object CallLogStore {
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
 
     fun recent(context: Context, limit: Int = 60): List<RecentCall> {
+        if (Demo.on) return Demo.recents
         if (!allowed(context)) return emptyList()
         val out = mutableListOf<RecentCall>()
         runCatching {
@@ -52,6 +54,7 @@ object CallLogStore {
     }
 
     fun missedCount(context: Context): Int {
+        if (Demo.on) return Demo.MISSED
         if (!allowed(context)) return 0
         return runCatching {
             context.contentResolver.query(
@@ -64,6 +67,7 @@ object CallLogStore {
     /** Missed calls have been seen: clears the count here and the phone's missed-call notification. */
     @android.annotation.SuppressLint("MissingPermission")
     fun markSeen(context: Context) {
+        if (Demo.on) return
         runCatching {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
                 val v = ContentValues().apply { put(CallLog.Calls.NEW, 0); put(CallLog.Calls.IS_READ, 1) }

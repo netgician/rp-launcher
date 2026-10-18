@@ -40,9 +40,16 @@ direct downloads it can't be replaced: a new key means people must uninstall and
 1. Create the app in the Play Console (a one-time $25 developer account). Turn on **Play App
    Signing** (the default).
 2. Upload the `.aab` from **Latest release build** to internal testing first.
-3. **Store listing:** copy from `fastlane/metadata/android/en-US/` (and `es-ES/`). Add
-   screenshots from the phone, and post `PRIVACY.md` on netgician.com for the privacy policy link.
-4. **App content** answers:
+3. **Store listing:** copy from `fastlane/metadata/android/en-US/` (and `es-ES/`). The store
+   icon (`images/icon.png`, 512×512) and feature graphic (`images/featureGraphic.png`,
+   1024×500) are there too. Post `PRIVACY.md` on netgician.com for the privacy policy link.
+4. **Screenshots** (Play needs at least 2; up to 8): in Setup, turn on **Demo mode** so Texts
+   and Phone show made-up people instead of real messages, and use **Show a sample incoming
+   call** for the call screen. Take each with Power + Volume down. Good ones: the home screen,
+   a conversation, the call screen, See, Read text on the flyer picture in the group text, and
+   SOS practice. Save them as `fastlane/metadata/android/en-US/images/phoneScreenshots/1.png`,
+   `2.png`… so F-Droid shows them too. Demo mode turns itself off after two hours.
+5. **App content** answers:
    - *Ads:* no.
    - *Data safety:* no data shared. Data collected: **Location (precise)**, processed
      ephemerally, not shared, optional, for app functionality (the street address for Where
@@ -56,7 +63,7 @@ direct downloads it can't be replaced: a new key means people must uninstall and
    - *Location:* foreground only, for SOS and Where am I.
    - *Accessibility:* RP Launcher doesn't use an accessibility service.
    - *Target audience:* adults; not designed for children.
-5. Since 2026, Google also requires **developer verification** (identity check) for apps
+6. Since 2026, Google also requires **developer verification** (identity check) for apps
    installed on certified Android phones, including outside Play. Verifying as Netgician LLC
    in the Play Console covers it.
 

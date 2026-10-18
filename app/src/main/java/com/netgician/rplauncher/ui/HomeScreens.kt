@@ -77,7 +77,7 @@ fun HomeScreen(state: AppState) {
     val newTexts = state.texts.unread
     var missedCalls by remember { mutableIntStateOf(0) }
     androidx.lifecycle.compose.LifecycleResumeEffect(textsVersion) {
-        missedCalls = if (com.netgician.rplauncher.calls.PhoneRole.isDefault(state.activityContext)) {
+        missedCalls = if (Demo.phoneIsOurs(state.activityContext)) {
             com.netgician.rplauncher.calls.CallLogStore.missedCount(state.activityContext)
         } else 0
         onPauseOrDispose { }
@@ -255,7 +255,8 @@ fun ConfirmCallScreen(state: AppState, contact: TileSpec.Contact) {
         state.go(Screen.Home)
     }
     val call = {
-        state.start(Intent(Intent.ACTION_CALL, tel))
+        if (Demo.isDemoNumber(contact.number)) com.netgician.rplauncher.calls.CallActivity.openDemo(context, false, contact.name, contact.number)
+        else state.start(Intent(Intent.ACTION_CALL, tel))
         state.go(Screen.Home)
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->

@@ -76,7 +76,16 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     var playingPart by mutableStateOf<Long?>(null)
         private set
 
-    val isDefault: Boolean get() = TextRole.isDefault(activity)
+    /** RP Launcher's own texts are shown: it's the texting app, or demo mode is on. */
+    val isDefault: Boolean get() = Demo.on || TextRole.isDefault(activity)
+
+    /** Demo mode was turned on or off: swap the real texts for the made-up ones, or back. */
+    fun demoChanged() {
+        synchronized(threads) { threads.clear() }
+        conversations = null
+        scope.launch { refreshCache() }
+        refreshUnread()
+    }
 
     // ---------------------------------------------------------------- loading, kept warm
 
@@ -92,6 +101,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
 
     /** Loads a conversation (the newest [limit] texts) and keeps it for next time. Call off the main thread. */
     fun loadThread(threadId: Long, limit: Int = 60, markRead: Boolean = true): ThreadData {
+        if (Demo.on) return Demo.thread(threadId).also { d -> synchronized(threads) { threads[threadId] = d } }
         val store = TextStore(activity)
         val data = runCatching {
             val messages = store.messages(threadId, { id -> com.netgician.rplauncher.texts.SendRecords.download(activity, id) }, limit)
@@ -105,6 +115,10 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
 
     /** Reloads the list, then the newest few conversations, so they're ready before they're opened. */
     suspend fun refreshCache() {
+        if (Demo.on) {
+            conversations = Demo.conversations
+            return
+        }
         if (!isDefault) return
         val list = withContext(Dispatchers.IO) {
             runCatching { TextStore(activity).conversations(names::of) }.getOrNull()
@@ -126,6 +140,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     }
 
     fun refreshUnread() {
+        if (Demo.on) { unread = Demo.UNREAD; return }
         if (!isDefault) { unread = 0; return }
         scope.launch {
             unread = withContext(Dispatchers.IO) { runCatching { TextStore(activity).unreadCount() }.getOrDefault(0) }
@@ -174,7 +189,8 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
 
     fun startReply(threadId: Long) {
         scope.launch {
-            val people = withContext(Dispatchers.IO) { runCatching { TextStore(activity).recipients(threadId) }.getOrDefault(emptyList()) }
+            val people = if (Demo.on) Demo.thread(threadId).people
+            else withContext(Dispatchers.IO) { runCatching { TextStore(activity).recipients(threadId) }.getOrDefault(emptyList()) }
             if (people.isEmpty()) {
                 app.say("Couldn't find who is in this conversation.")
                 return@launch
@@ -220,6 +236,13 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
             app.say("Pick who to send it to first.")
             return
         }
+        if (Demo.on) {
+            d.files.forEach { runCatching { File(it.path).delete() } }
+            draft = null
+            app.say("Demo mode, so nothing was sent.")
+            app.go(d.threadId?.let { Screen.Conversation(it) } ?: Screen.Texts)
+            return
+        }
         app.say("Sending to ${People.join(d.to.map(names::of))}.")
         scope.launch {
             val started = withContext(Dispatchers.IO) {
@@ -240,6 +263,7 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
     }
 
     fun retry(m: TextMessage) {
+        if (Demo.on) { app.say("Demo mode, so nothing was sent."); return }
         app.say("Trying again.")
         scope.launch(Dispatchers.IO) {
             if (m.box == com.netgician.rplauncher.texts.Box.WAITING) MmsDownloads.start(activity, m.id, attempt = 1)

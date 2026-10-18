@@ -228,6 +228,19 @@ fun SettingsScreen(state: AppState) {
         SettingRow("Load setup from a file") {
             importFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
         }
+        SettingRow("Demo mode (sample texts and calls)", if (Demo.on) "on" else "off") {
+            Demo.set(!Demo.on)
+            state.texts.demoChanged()
+            state.say(
+                if (Demo.on) "Demo mode on. Texts and Phone show made-up people, and no texts are sent. It turns off by itself in two hours."
+                else "Demo mode off",
+            )
+        }
+        if (Demo.on) {
+            SettingRow("Show a sample incoming call") {
+                com.netgician.rplauncher.calls.CallActivity.openDemo(context, incoming = true, name = Demo.CALLER_NAME, number = Demo.CALLER_NUMBER)
+            }
+        }
         if (state.isTestBuild) {
             val tunnels = listOf(0f, 0.4f, 0.25f, 0.15f)
             val names = listOf("Off", "Wide", "Narrow", "Very narrow")

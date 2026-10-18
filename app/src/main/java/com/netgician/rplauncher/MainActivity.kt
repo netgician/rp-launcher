@@ -164,6 +164,7 @@ class MainActivity : ComponentActivity() {
         torch.start()
         lightSensor?.start()
         state?.refreshNightByClock()
+        if (com.netgician.rplauncher.ui.Demo.expire()) state?.texts?.demoChanged()
         state?.texts?.refreshUnread()
         if (TextRole.isDefault(this)) {
             lifecycleScope.launch(Dispatchers.IO) { runCatching { MmsDownloads.resume(this@MainActivity) } }

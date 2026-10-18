@@ -1009,6 +1009,7 @@ fun RecordScreen(state: AppState) {
 /** Loads a picture from a picture text, no bigger than [maxSide] on its long side. */
 internal object Pictures {
     fun load(context: Context, partId: Long, maxSide: Int): Bitmap? = runCatching {
+        if (Demo.on && partId == Demo.PICTURE_ID) return Demo.picture(maxSide)
         val bytes = TextStore(context).readPart(partId) ?: return null
         ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE

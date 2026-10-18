@@ -223,7 +223,7 @@ class Names(private val context: Context) {
     val canRead: Boolean
         get() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
 
-    fun of(address: String): String = cache.getOrPut(address) { lookUp(address) }
+    fun of(address: String): String = com.netgician.rplauncher.ui.Demo.name(address) ?: cache.getOrPut(address) { lookUp(address) }
 
     /** Forget looked-up names, after contacts access is turned on or contacts change. */
     fun forget() {

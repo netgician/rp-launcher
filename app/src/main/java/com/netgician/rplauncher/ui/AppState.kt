@@ -291,7 +291,7 @@ class AppState(
             Screen.WhereAmI -> go(Screen.Home)
             Screen.SosSetup -> go(Screen.Settings)
             Screen.PhoneHome -> go(Screen.Home)
-            is Screen.Dial, Screen.Recents -> go(if (com.netgician.rplauncher.calls.PhoneRole.isDefault(activity)) Screen.PhoneHome else Screen.Home)
+            is Screen.Dial, Screen.Recents -> go(if (Demo.phoneIsOurs(activity)) Screen.PhoneHome else Screen.Home)
             Screen.PhoneSwitch -> go(Screen.Settings)
         }
     }
@@ -308,7 +308,7 @@ class AppState(
 
     fun open(spec: TileSpec) {
         when (spec) {
-            TileSpec.Phone -> if (com.netgician.rplauncher.calls.PhoneRole.isDefault(activity)) go(Screen.PhoneHome) else start(Intent(Intent.ACTION_DIAL))
+            TileSpec.Phone -> if (Demo.phoneIsOurs(activity)) go(Screen.PhoneHome) else start(Intent(Intent.ACTION_DIAL))
             TileSpec.Messages -> texts.openTile()
             TileSpec.Contacts -> start(
                 Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CONTACTS),
