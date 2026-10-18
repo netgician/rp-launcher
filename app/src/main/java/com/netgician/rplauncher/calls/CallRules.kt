@@ -1,5 +1,7 @@
 package com.netgician.rplauncher.calls
 
+import com.netgician.rplauncher.i18n.tr
+
 /** What a call is doing, in the words the call screen shows and says. */
 enum class CallPhase { RINGING, DIALING, CONNECTING, ACTIVE, HOLDING, ENDED, OTHER }
 
@@ -43,49 +45,49 @@ object CallWords {
         val h = s / 3600
         val m = (s % 3600) / 60
         val sec = s % 60
-        fun unit(n: Long, one: String) = "$n $one" + if (n == 1L) "" else "s"
+        fun unit(n: Long, one: String, many: String) = if (n == 1L) tr(one) else tr(many, n)
         return listOfNotNull(
-            h.takeIf { it > 0 }?.let { unit(it, "hour") },
-            m.takeIf { it > 0 }?.let { unit(it, "minute") },
-            sec.takeIf { it > 0 || (h == 0L && m == 0L) }?.let { unit(it, "second") },
+            h.takeIf { it > 0 }?.let { unit(it, "1 hour", "%s hours") },
+            m.takeIf { it > 0 }?.let { unit(it, "1 minute", "%s minutes") },
+            sec.takeIf { it > 0 || (h == 0L && m == 0L) }?.let { unit(it, "1 second", "%s seconds") },
         ).joinToString(", ")
     }
 
     /** The status line under the name. */
     fun status(c: CallInfo, now: Long): String = when (c.phase) {
-        CallPhase.RINGING -> "Calling you"
-        CallPhase.DIALING, CallPhase.CONNECTING -> "Calling…"
-        CallPhase.ACTIVE -> if (c.connectedAt > 0) "On call ${clock((now - c.connectedAt) / 1000)}" else "On call"
-        CallPhase.HOLDING -> "On hold"
-        CallPhase.ENDED -> "Call ended"
+        CallPhase.RINGING -> tr("Calling you")
+        CallPhase.DIALING, CallPhase.CONNECTING -> tr("Calling…")
+        CallPhase.ACTIVE -> if (c.connectedAt > 0) tr("On call %s", clock((now - c.connectedAt) / 1000)) else tr("On call")
+        CallPhase.HOLDING -> tr("On hold")
+        CallPhase.ENDED -> tr("Call ended")
         CallPhase.OTHER -> ""
     }
 
     /** Said when a call comes in. */
-    fun ringing(name: String): String = "Call from $name. Tap Answer, or Decline."
+    fun ringing(name: String): String = tr("Call from %s. Tap Answer, or Decline.", name)
 
     /** Said when a call ends. */
     fun ended(name: String, seconds: Long): String =
-        if (seconds > 0) "Call with $name ended after ${spokenDuration(seconds)}." else "Call with $name ended."
+        if (seconds > 0) tr("Call with %s ended after %s.", name, spokenDuration(seconds)) else tr("Call with %s ended.", name)
 
     /** How a recent call is read: "Missed call from Mary, Today at 3:05 PM." */
     fun recent(r: RecentCall, who: String, whenText: String): String = when (r.kind) {
-        RecentCall.Kind.MISSED -> "Missed call from $who, $whenText."
-        RecentCall.Kind.INCOMING -> "Call from $who, $whenText, ${spokenDuration(r.durationSeconds)}."
-        RecentCall.Kind.OUTGOING -> "You called $who, $whenText" + if (r.durationSeconds > 0) ", ${spokenDuration(r.durationSeconds)}." else ", no answer."
-        RecentCall.Kind.DECLINED -> "Declined call from $who, $whenText."
-        RecentCall.Kind.BLOCKED -> "Blocked call from $who, $whenText."
-        RecentCall.Kind.VOICEMAIL -> "Voicemail from $who, $whenText."
+        RecentCall.Kind.MISSED -> tr("Missed call from %s, %s.", who, whenText)
+        RecentCall.Kind.INCOMING -> tr("Call from %s, %s, %s.", who, whenText, spokenDuration(r.durationSeconds))
+        RecentCall.Kind.OUTGOING -> tr("You called %s, %s", who, whenText) + if (r.durationSeconds > 0) ", ${spokenDuration(r.durationSeconds)}." else tr(", no answer.")
+        RecentCall.Kind.DECLINED -> tr("Declined call from %s, %s.", who, whenText)
+        RecentCall.Kind.BLOCKED -> tr("Blocked call from %s, %s.", who, whenText)
+        RecentCall.Kind.VOICEMAIL -> tr("Voicemail from %s, %s.", who, whenText)
     }
 
     /** The short label on the tile: "Mary · missed". */
     fun recentLabel(r: RecentCall, who: String): String = when (r.kind) {
-        RecentCall.Kind.MISSED -> "$who · missed"
-        RecentCall.Kind.INCOMING -> "$who · in"
-        RecentCall.Kind.OUTGOING -> "$who · out"
-        RecentCall.Kind.DECLINED -> "$who · declined"
-        RecentCall.Kind.BLOCKED -> "$who · blocked"
-        RecentCall.Kind.VOICEMAIL -> "$who · voicemail"
+        RecentCall.Kind.MISSED -> tr("%s · missed", who)
+        RecentCall.Kind.INCOMING -> tr("%s · in", who)
+        RecentCall.Kind.OUTGOING -> tr("%s · out", who)
+        RecentCall.Kind.DECLINED -> tr("%s · declined", who)
+        RecentCall.Kind.BLOCKED -> tr("%s · blocked", who)
+        RecentCall.Kind.VOICEMAIL -> tr("%s · voicemail", who)
     }
 
     /** Each keypad key, said as pressed. */

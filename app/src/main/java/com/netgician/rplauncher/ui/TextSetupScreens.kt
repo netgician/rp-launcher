@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.Manifest
 import android.app.role.RoleManager
 import android.content.Intent
@@ -48,15 +49,11 @@ internal fun Words(state: AppState, text: String) {
 /** The RCS reminder, in the words of the app being switched away from. */
 private fun rcsAdvice(app: String?): String = when (app) {
     "Google Messages" ->
-        "Before you switch: Google Messages has chat features called RCS chats. Only Google Messages can receive them, " +
-            "so turn them off first, or some messages may never reach RP Launcher. In Google Messages, tap your profile " +
-            "picture, then Messages settings, then RCS chats, and turn RCS chats off. Then come back and tap Switch now."
+        tr("Before you switch: Google Messages has chat features called RCS chats. Only Google Messages can receive them, so turn them off first, or some messages may never reach RP Launcher. In Google Messages, tap your profile picture, then Messages settings, then RCS chats, and turn RCS chats off. Then come back and tap Switch now.")
     null ->
-        "Before you switch: if your texting app has chat features (sometimes called RCS or chat), turn them off in that " +
-            "app's settings first, so no messages are missed. Then tap Switch now."
+        tr("Before you switch: if your texting app has chat features (sometimes called RCS or chat), turn them off in that app's settings first, so no messages are missed. Then tap Switch now.")
     else ->
-        "Before you switch: $app has chat features. Only $app can receive those, so turn them off in its settings first " +
-            "(look for chat settings or RCS), or some messages may never reach RP Launcher. Then come back and tap Switch now."
+        tr("Before you switch: %s has chat features. Only %s can receive those, so turn them off in its settings first (look for chat settings or RCS), or some messages may never reach RP Launcher. Then come back and tap Switch now.", app, app)
 }
 
 /** Making RP Launcher the texting app, with the RCS reminder first. Switching back is always one step. */
@@ -75,8 +72,7 @@ fun TextsSwitchScreen(state: AppState) {
             com.netgician.rplauncher.texts.SendRecords.setSince(context, System.currentTimeMillis())
             state.update { it.copy(textsElsewhere = false) }
             state.say(
-                "RP Launcher is now the texting app. All your texts are still here. " +
-                    "Next, allow the questions that follow, then tap Check texts to test it with your carrier.",
+                tr("RP Launcher is now the texting app. All your texts are still here. Next, allow the questions that follow, then tap Check texts to test it with your carrier."),
             )
             TextNotifications.ensureChannels(context)
             val ask = buildList {
@@ -87,7 +83,7 @@ fun TextsSwitchScreen(state: AppState) {
             runCatching { permissions.launch(ask.toTypedArray()) }
             state.scope.launch(Dispatchers.IO) { runCatching { MmsDownloads.resume(context) } }
         } else {
-            state.say("RP Launcher is not the texting app. Nothing was changed.")
+            state.say(tr("RP Launcher is not the texting app. Nothing was changed."))
         }
     }
     LifecycleResumeEffect(Unit) {
@@ -96,43 +92,42 @@ fun TextsSwitchScreen(state: AppState) {
     }
     val current = remember(isDefault) { TextRole.currentAppName(context) }
     val explain = if (isDefault) {
-        "RP Launcher is the texting app. Texts, picture texts and group texts all come here, and are kept in the " +
-            "phone's shared message store. To go back to another texting app, tap Switch back. Nothing is lost either way."
+        tr("RP Launcher is the texting app. Texts, picture texts and group texts all come here, and are kept in the phone's shared message store. To go back to another texting app, tap Switch back. Nothing is lost either way.")
     } else {
-        (if (current == null) "No texting app is set on this phone right now. " else "Right now, texts go to $current. ") + rcsAdvice(rcs)
+        (if (current == null) tr("No texting app is set on this phone right now. ") else tr("Right now, texts go to %s. ", current)) + rcsAdvice(rcs)
     }
     LaunchedEffect(isDefault) { state.say(explain) }
 
     HelperColumn(state) {
-        SettingRow("Back to setup") { state.go(Screen.Settings) }
+        SettingRow(tr("Back to setup")) { state.go(Screen.Settings) }
         Words(state, explain)
         if (!isDefault) {
             if (rcs != null) {
-                SettingRow("Open $rcs") {
+                SettingRow(tr("Open %s", rcs)) {
                     val i = TextRole.previousAppIntent(context)
-                    if (i != null) state.start(i) else state.say("$rcs couldn't be opened")
+                    if (i != null) state.start(i) else state.say(tr("%s couldn't be opened", rcs))
                 }
             }
             if (state.config.textsElsewhere) {
-                SettingRow("Texts tile opens", current ?: "the texting app") {
+                SettingRow(tr("Texts tile opens"), current ?: tr("the texting app")) {
                     state.update { it.copy(textsElsewhere = false) }
-                    state.say("The Texts tile will ask again")
+                    state.say(tr("The Texts tile will ask again"))
                 }
             }
-            SettingRow(if (rcs != null) "Chats are off. Switch now" else "Switch now") {
+            SettingRow(if (rcs != null) tr("Chats are off. Switch now") else tr("Switch now")) {
                 val roles = context.getSystemService(RoleManager::class.java)
                 if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_SMS)) {
                     runCatching { role.launch(roles.createRequestRoleIntent(RoleManager.ROLE_SMS)) }
-                        .onFailure { state.say("This phone didn't allow the switch.") }
+                        .onFailure { state.say(tr("This phone didn't allow the switch.")) }
                 } else {
-                    state.say("This phone can't use RP Launcher for texts.")
+                    state.say(tr("This phone can't use RP Launcher for texts."))
                 }
             }
         } else {
-            SettingRow("Open Texts") { state.go(Screen.Texts) }
-            SettingRow("Check texts") { state.go(Screen.TextsCheck) }
-            SettingRow("Switch back to another texting app") {
-                state.start(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS), "Could not open the setting")
+            SettingRow(tr("Open Texts")) { state.go(Screen.Texts) }
+            SettingRow(tr("Check texts")) { state.go(Screen.TextsCheck) }
+            SettingRow(tr("Switch back to another texting app")) {
+                state.start(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS), tr("Could not open the setting"))
             }
         }
     }
@@ -146,27 +141,26 @@ fun TextsCheckScreen(state: AppState) {
     val mine = remember(t.checkLog.size, state.screen) { MyNumbers.get(context).firstOrNull() }
     val pickOther = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         val c = r.data?.data?.let { readPhoneContact(context, it) }
-        if (c == null) state.say("No one picked") else t.check(CheckStep.GROUP, c.number)
+        if (c == null) state.say(tr("No one picked")) else t.check(CheckStep.GROUP, c.number)
     }
-    val explain = "Check texts sends tests to this phone's own number, then listens for them to come back. " +
-        "Picture and group texts need mobile data turned on."
+    val explain = tr("Check texts sends tests to this phone's own number, then listens for them to come back. Picture and group texts need mobile data turned on.")
     LaunchedEffect(Unit) { state.say(explain) }
     HelperColumn(state) {
-        SettingRow("Back") { state.go(Screen.TextsSwitch) }
+        SettingRow(tr("Back")) { state.go(Screen.TextsSwitch) }
         Words(state, explain)
         if (mine == null) {
-            SettingRow("Type this phone's number") { state.go(Screen.NumberPad(NumberPurpose.OWN_NUMBER)) }
+            SettingRow(tr("Type this phone's number")) { state.go(Screen.NumberPad(NumberPurpose.OWN_NUMBER)) }
         } else {
-            SettingRow("This phone's number", mine) { state.say("This phone's number is ${People.spoken(mine)}") }
-            SettingRow("1. Send a test text") { t.check(CheckStep.TEXT) }
-            SettingRow("2. Send a test picture text") { t.check(CheckStep.PICTURE) }
-            SettingRow("3. Send a test group text") {
-                state.say("Pick one more person. They'll get a short test message.")
+            SettingRow(tr("This phone's number"), mine) { state.say(tr("This phone's number is %s", People.spoken(mine))) }
+            SettingRow(tr("1. Send a test text")) { t.check(CheckStep.TEXT) }
+            SettingRow(tr("2. Send a test picture text")) { t.check(CheckStep.PICTURE) }
+            SettingRow(tr("3. Send a test group text")) {
+                state.say(tr("Pick one more person. They'll get a short test message."))
                 runCatching {
                     pickOther.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI))
-                }.onFailure { state.say("No contacts app found") }
+                }.onFailure { state.say(tr("No contacts app found")) }
             }
-            SettingRow("Wrong number? Type it again") { state.go(Screen.NumberPad(NumberPurpose.OWN_NUMBER)) }
+            SettingRow(tr("Wrong number? Type it again")) { state.go(Screen.NumberPad(NumberPurpose.OWN_NUMBER)) }
         }
         t.checkLog.asReversed().take(12).forEach { line -> Words(state, line) }
     }

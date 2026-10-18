@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.texts
 
+import com.netgician.rplauncher.i18n.tr
 import android.Manifest
 import android.app.Activity
 import android.app.NotificationChannel
@@ -264,7 +265,7 @@ class Names(private val context: Context) {
     }
 
     private fun lookUp(address: String): String {
-        if (address.isBlank()) return "Unknown"
+        if (address.isBlank()) return tr("Unknown")
         if (address.contains('@')) return address
         key(address)?.let { k -> book()[k]?.let { return it } }
         return PhoneNumberUtils.formatNumber(address, Locale.getDefault().country) ?: address
@@ -281,13 +282,13 @@ object TextNotifications {
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_TEXTS, "Texts", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "New texts and picture texts"
+            NotificationChannel(CHANNEL_TEXTS, tr("Texts"), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = tr("New texts and picture texts")
             },
         )
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_PROBLEMS, "Texts that didn't go through", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "A text that wasn't sent, or a picture text that didn't download"
+            NotificationChannel(CHANNEL_PROBLEMS, tr("Texts that didn't go through"), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = tr("A text that wasn't sent, or a picture text that didn't download")
             },
         )
     }

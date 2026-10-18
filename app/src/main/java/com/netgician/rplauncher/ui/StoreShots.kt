@@ -18,7 +18,9 @@ object StoreShots {
         TileSpec.Sos, TileSpec.Contact(Demo.CALLER_NAME, Demo.CALLER_NUMBER),
     )
 
-    fun show(state: AppState, context: Context, screen: String) {
+    const val EXTRA_LANGUAGE = "lang"
+
+    fun show(state: AppState, context: Context, screen: String, language: String? = null) {
         if (!Demo.on) {
             Demo.set(true)
             state.texts.demoChanged()
@@ -37,6 +39,7 @@ object StoreShots {
                 tiles = TILES,
                 themeId = theme,
                 autoNight = AutoNight.OFF,
+                language = language ?: it.language,
                 sosContacts = listOf(TileSpec.Contact(Demo.CALLER_NAME, Demo.CALLER_NUMBER), TileSpec.Contact("Bob", "+19195550111")),
             )
         }

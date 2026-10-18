@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.texts
 
+import com.netgician.rplauncher.i18n.tr
 import android.app.Activity
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -67,7 +68,7 @@ class SmsDeliverReceiver : BroadcastReceiver() {
                 ?: runCatching { store.threadFor(listOf(from)) }.getOrDefault(-1L)
             if (uri == null) {
                 // Couldn't be saved: show it anyway, so it's never lost without a word.
-                TextNotifications.problem(context, thread, "Text from ${Names(context).of(from)} (not saved)", body)
+                TextNotifications.problem(context, thread, tr("Text from %s (not saved)", Names(context).of(from)), body)
             }
             announceIncoming(context, thread, from, body)
         }
@@ -104,7 +105,7 @@ class MmsPushReceiver : BroadcastReceiver() {
 object MmsDownloads {
     const val ACTION_DOWNLOADED = "com.netgician.rplauncher.MMS_DOWNLOADED"
     const val ACTION_RETRY = "com.netgician.rplauncher.MMS_RETRY"
-    const val STOPPED = "The download stopped."
+    val STOPPED: String get() = tr("The download stopped.")
 
     fun start(context: Context, id: Long, attempt: Int) {
         val n = TextStore(context).notice(id) ?: return
@@ -131,7 +132,7 @@ object MmsDownloads {
      */
     fun resume(context: Context) {
         val stuck = runCatching {
-            TextStore(context).failStuckOutgoing(15 * 60_000L) { key -> SendRecords.setProblem(context, key, "It didn't finish sending.") }
+            TextStore(context).failStuckOutgoing(15 * 60_000L) { key -> SendRecords.setProblem(context, key, tr("It didn't finish sending.")) }
         }.getOrDefault(0)
         if (stuck > 0) TextsBus.changed()
         val weekAgo = System.currentTimeMillis() / 1000 - 7 * 24 * 3600
@@ -186,7 +187,7 @@ object MmsDownloads {
                 // A message to just one number, with no one copied, was sent to this phone's own number.
                 if (message.to.size == 1 && message.cc.isEmpty()) SendRecords.learnNumber(context, message.to[0])
                 val saved = runCatching { store.saveReceivedMms(message, MyNumbers.get(context), notice.subId, id) }.getOrNull() ?: run {
-                    giveUp(context, id, notice, attempt, "The phone's message store isn't available.")
+                    giveUp(context, id, notice, attempt, tr("The phone's message store isn't available."))
                     return
                 }
                 SendRecords.clearDownload(context, id)
@@ -199,7 +200,7 @@ object MmsDownloads {
                 }
                 val words = message.text.ifBlank {
                     TextSpeech.attachments(message.attachments.mapIndexed { i, p -> TextPart(i.toLong(), p.kind, p.contentType, p.fileName, "") })
-                        .ifBlank { "Picture text" }
+                        .ifBlank { tr("Picture text") }
                 }
                 announceIncoming(context, saved.second, message.from ?: notice.from.orEmpty(), words)
             }
@@ -209,13 +210,13 @@ object MmsDownloads {
     private fun giveUp(context: Context, id: Long, notice: TextStore.Notice, attempt: Int, words: String) {
         SendRecords.setDownload(context, id, DownloadState.FAILED, attempt, words)
         val thread = TextStore(context).threadOfMms(id)
-        val who = notice.from?.let { Names(context).of(it) } ?: "someone"
+        val who = notice.from?.let { Names(context).of(it) } ?: tr("someone")
         TextsBus.post(TextsBus.Event.DownloadFailed(thread, who, words))
         if (!(TextsBus.foreground && TextsBus.openThread == thread)) {
             TextNotifications.problem(
                 context, thread,
-                "A picture text from $who didn't download",
-                "$words Open Texts and double tap Try again.",
+                tr("A picture text from %s didn't download", who),
+                tr("%s Open Texts and double tap Try again.", words),
             )
         }
     }

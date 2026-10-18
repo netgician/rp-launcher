@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -94,11 +95,11 @@ internal fun <T> ReaderLayout(
 }
 
 private enum class ReadControl(val label: String) {
-    PREVIOUS("Previous"),
-    NEXT("Next line"),
-    ALL("Read all"),
-    CAMERA("Camera"),
-    HOME("Home"),
+    PREVIOUS(tr("Previous")),
+    NEXT(tr("Next line")),
+    ALL(tr("Read all")),
+    CAMERA(tr("Camera")),
+    HOME(tr("Home")),
 }
 
 /** Text read by the camera, one line per page, in its own voice (English or Spanish). */
@@ -110,13 +111,13 @@ fun TextReaderScreen(state: AppState) {
     var index by remember(read) { mutableIntStateOf(0) }
 
     if (lines.isEmpty()) {
-        val advice = read?.hints?.joinToString(" ") ?: "Nothing has been read yet."
+        val advice = read?.hints?.joinToString(" ") ?: tr("Nothing has been read yet.")
         ReaderLayout(
             state = state,
             body = advice,
             onBodyTap = { state.say(advice) },
-            header = "No text",
-            headerSpoken = "No text found",
+            header = tr("No text"),
+            headerSpoken = tr("No text found"),
             controls = listOf(ReadControl.CAMERA, ReadControl.HOME),
         ) { c, m, pos -> ReadTile(state, c, m, pos) { if (c == ReadControl.CAMERA) state.go(read?.backTo ?: Screen.See) else state.go(Screen.Home) } }
         return
@@ -128,8 +129,8 @@ fun TextReaderScreen(state: AppState) {
         state = state,
         body = lines[i],
         onBodyTap = { speakLine(i) },
-        header = "Line ${i + 1} of ${lines.size}",
-        headerSpoken = "Line ${i + 1} of ${lines.size}",
+        header = tr("Line %s of %s", i + 1, lines.size),
+        headerSpoken = tr("Line %s of %s", i + 1, lines.size),
         controls = ReadControl.entries.toList(),
     ) { c, m, pos ->
         ReadTile(state, c, m, pos) {
@@ -137,11 +138,11 @@ fun TextReaderScreen(state: AppState) {
                 ReadControl.PREVIOUS -> if (i > 0) {
                     index = i - 1
                     speakLine(i - 1)
-                } else state.say("This is the first line")
+                } else state.say(tr("This is the first line"))
                 ReadControl.NEXT -> if (i < lines.lastIndex) {
                     index = i + 1
                     speakLine(i + 1)
-                } else state.say("That was the last line")
+                } else state.say(tr("That was the last line"))
                 ReadControl.ALL -> state.speaker.speak(lines.drop(i).joinToString(". "), language)
                 ReadControl.CAMERA -> state.go(read?.backTo ?: Screen.See)
                 ReadControl.HOME -> state.go(Screen.Home)
@@ -158,24 +159,22 @@ private fun ReadTile(state: AppState, c: ReadControl, m: Modifier, pos: TilePos,
         else -> null
     }
     // "Camera" goes back to See; from a picture text it's "Back".
-    val label = if (c == ReadControl.CAMERA && (state.readText?.backTo ?: Screen.See) != Screen.See) "Back" else c.label
+    val label = if (c == ReadControl.CAMERA && (state.readText?.backTo ?: Screen.See) != Screen.See) tr("Back") else c.label
     Tile(label, m, icon = icon, onLongPress = longPress(state, label, pos), onClick = onClick)
 }
 
 private enum class AlertControl(val label: String) {
-    PREVIOUS("Previous"),
-    NEXT("Next alert"),
-    READ("Read again"),
-    OPEN("Open"),
-    DISMISS("Dismiss"),
-    HOME("Home"),
-    ALLOW("Allow access"),
-    APP_INFO("App info"),
+    PREVIOUS(tr("Previous")),
+    NEXT(tr("Next alert")),
+    READ(tr("Read again")),
+    OPEN(tr("Open")),
+    DISMISS(tr("Dismiss")),
+    HOME(tr("Home")),
+    ALLOW(tr("Allow access")),
+    APP_INFO(tr("App info")),
 }
 
-private const val ACCESS_HELP = "To read alerts aloud, RP Launcher needs to see notifications. " +
-    "Tap Allow access and turn it on. If Android says the setting is restricted, tap App info, " +
-    "open the three-dot menu, choose Allow restricted settings, then try again."
+private val ACCESS_HELP: String get() = tr("To read alerts aloud, RP Launcher needs to see notifications. Tap Allow access and turn it on. If Android says the setting is restricted, tap App info, open the three-dot menu, choose Allow restricted settings, then try again.")
 
 /** New notifications, one per page, read aloud in their own language. Nothing is stored or sent. */
 @Composable
@@ -194,11 +193,11 @@ fun AlertsScreen(state: AppState) {
     LaunchedEffect(access, items.isEmpty()) {
         when {
             !access -> state.say(ACCESS_HELP)
-            items.isEmpty() -> state.say("No new alerts")
+            items.isEmpty() -> state.say(tr("No new alerts"))
         }
     }
     LaunchedEffect(current?.key) {
-        current?.let { state.speaker.speak("Alert ${i + 1} of ${items.size}. ${it.speech}", Language.guess(it.speech)) }
+        current?.let { state.speaker.speak(tr("Alert %s of %s. %s", i + 1, items.size, it.speech), Language.guess(it.speech)) }
     }
 
     val tile: @Composable (AlertControl, Modifier, TilePos) -> Unit = { c, m, pos ->
@@ -211,41 +210,41 @@ fun AlertsScreen(state: AppState) {
         Tile(c.label, m, icon = icon, onLongPress = longPress(state, c.label, pos)) {
             when (c) {
                 AlertControl.PREVIOUS -> {
-                    if (i > 0) index = i - 1 else state.say("This is the newest alert")
+                    if (i > 0) index = i - 1 else state.say(tr("This is the newest alert"))
                 }
                 AlertControl.NEXT -> {
-                    if (i < items.lastIndex) index = i + 1 else state.say("That was the last alert")
+                    if (i < items.lastIndex) index = i + 1 else state.say(tr("That was the last alert"))
                 }
                 AlertControl.READ -> current?.let { state.speaker.speak(it.speech, Language.guess(it.speech)) }
                 AlertControl.OPEN -> current?.let {
-                    if (!AlertsStore.open(context, it.key)) state.say("This alert can't be opened from here")
+                    if (!AlertsStore.open(context, it.key)) state.say(tr("This alert can't be opened from here"))
                 }
                 AlertControl.DISMISS -> current?.let {
                     AlertsStore.dismiss(it.key)
-                    state.say("Dismissed")
+                    state.say(tr("Dismissed"))
                 }
                 AlertControl.HOME -> state.go(Screen.Home)
-                AlertControl.ALLOW -> state.start(AlertsStore.accessIntent(context), "Could not open the setting")
-                AlertControl.APP_INFO -> state.start(AlertsStore.appInfoIntent(context), "Could not open app info")
+                AlertControl.ALLOW -> state.start(AlertsStore.accessIntent(context), tr("Could not open the setting"))
+                AlertControl.APP_INFO -> state.start(AlertsStore.appInfoIntent(context), tr("Could not open app info"))
             }
         }
     }
 
     when {
         !access -> ReaderLayout(
-            state, ACCESS_HELP, { state.say(ACCESS_HELP) }, "Alerts", "Alerts need access",
+            state, ACCESS_HELP, { state.say(ACCESS_HELP) }, tr("Alerts"), tr("Alerts need access"),
             listOf(AlertControl.ALLOW, AlertControl.APP_INFO, AlertControl.HOME), tile = tile,
         )
         current == null -> ReaderLayout(
-            state, "No new alerts", { state.say("No new alerts") }, "Alerts", "No new alerts",
+            state, tr("No new alerts"), { state.say(tr("No new alerts")) }, tr("Alerts"), tr("No new alerts"),
             listOf(AlertControl.HOME), tile = tile,
         )
         else -> ReaderLayout(
             state = state,
             body = "${current.app}\n${current.shown}",
             onBodyTap = { state.speaker.speak(current.speech, Language.guess(current.speech)) },
-            header = "Alert ${i + 1} of ${items.size}",
-            headerSpoken = "Alert ${i + 1} of ${items.size}, from ${current.app}",
+            header = tr("Alert %s of %s", i + 1, items.size),
+            headerSpoken = tr("Alert %s of %s, from %s", i + 1, items.size, current.app),
             controls = listOf(
                 AlertControl.PREVIOUS, AlertControl.NEXT, AlertControl.READ,
                 AlertControl.OPEN, AlertControl.DISMISS, AlertControl.HOME,

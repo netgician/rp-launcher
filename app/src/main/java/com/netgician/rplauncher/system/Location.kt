@@ -88,7 +88,7 @@ object Where {
     /** "12 Oak Street, Raleigh, NC 27601", or null when the phone can't look it up. */
     suspend fun address(context: Context, loc: Location): String? {
         if (!Geocoder.isPresent()) return null
-        val g = Geocoder(context, Locale.getDefault())
+        val g = Geocoder(context, com.netgician.rplauncher.i18n.Lang.locale)
         val found: List<Address>? = withTimeoutOrNull(8_000) {
             if (Build.VERSION.SDK_INT >= 33) {
                 suspendCancellableCoroutine { cont ->

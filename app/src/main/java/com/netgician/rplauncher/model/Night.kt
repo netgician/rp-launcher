@@ -1,5 +1,7 @@
 package com.netgician.rplauncher.model
 
+import com.netgician.rplauncher.i18n.tr
+
 /** Decides when night colours are on. Pure functions, so the rules can be tested. */
 object NightMode {
     /** Below this many lux the room counts as dark. */
@@ -62,9 +64,9 @@ object CameraMath {
 
     /** "Wide view", "Normal size" or "2.3 times closer". */
     fun describeZoom(z: Float): String = when {
-        z < 0.95f -> "Wide view"
-        z < 1.05f -> "Normal size"
-        else -> "${String.format(java.util.Locale.US, "%.1f", z).removeSuffix(".0")} times closer"
+        z < 0.95f -> tr("Wide view")
+        z < 1.05f -> tr("Normal size")
+        else -> tr("%s times closer", String.format(java.util.Locale.US, "%.1f", z).removeSuffix(".0"))
     }
 
     /** "2.3×" for the status line. */
@@ -73,17 +75,21 @@ object CameraMath {
     /** How much the filters stretch contrast. */
     const val CONTRAST = 1.6f
 
-    enum class Filter(val label: String) {
+    enum class Filter(private val en: String) {
         NORMAL("Normal colours"),
         HIGH_CONTRAST("High contrast"),
         WHITE_ON_BLACK("White on black"),
-        YELLOW_ON_BLACK("Yellow on black"),
+        YELLOW_ON_BLACK("Yellow on black");
+
+        val label: String get() = tr(en)
     }
 
-    enum class Light(val label: String) {
+    enum class Light(private val en: String) {
         OFF("Light off"),
         BRIGHTER("Brighter picture"),
-        TORCH("Torch on"),
+        TORCH("Torch on");
+
+        val label: String get() = tr(en)
     }
 
     /**

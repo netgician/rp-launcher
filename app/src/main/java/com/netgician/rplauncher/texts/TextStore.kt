@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.texts
 
+import com.netgician.rplauncher.i18n.tr
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
@@ -142,7 +143,7 @@ class TextStore(private val context: Context) {
             val words = mmsWords(newerMms.values.map { it.first })
             val kinds = mmsAttachmentWords(newerMms.values.map { it.first })
             for ((t, v) in newerMms) {
-                val w = words[v.first]?.takeIf { it.isNotBlank() } ?: kinds[v.first] ?: "Picture text"
+                val w = words[v.first]?.takeIf { it.isNotBlank() } ?: kinds[v.first] ?: tr("Picture text")
                 best[t] = Latest(v.second, w)
             }
         }
@@ -243,7 +244,7 @@ class TextStore(private val context: Context) {
                     subject = c.getString(4)?.takeIf { it.isNotBlank() },
                     delivered = c.getInt(6) == 129, // X-Mms-Status: retrieved
                     problem = when (box) {
-                        Box.FAILED -> SendRecords.problem(context, "mms:$id") ?: "The carrier could not send it."
+                        Box.FAILED -> SendRecords.problem(context, "mms:$id") ?: tr("The carrier could not send it.")
                         Box.WAITING -> why
                         else -> null
                     },
@@ -402,7 +403,7 @@ class TextStore(private val context: Context) {
     /** Saves a "picture text waiting" row, so it shows (and isn't lost) before it downloads. */
     fun saveNotice(n: MmsNotice, subId: Int): Long? {
         val from = n.from ?: ""
-        val thread = threadFor(listOf(from.ifEmpty { "Unknown" }))
+        val thread = threadFor(listOf(from.ifEmpty { tr("Unknown") }))
         val v = ContentValues().apply {
             put("thread_id", thread)
             put("date", System.currentTimeMillis() / 1000)
@@ -445,7 +446,7 @@ class TextStore(private val context: Context) {
      * then removes its "waiting" row. Returns the new message id and its conversation.
      */
     fun saveReceivedMms(m: MmsMessage, myNumbers: Collection<String>, subId: Int, noticeId: Long?): Pair<Long, Long>? {
-        val others = m.others(myNumbers).ifEmpty { listOfNotNull(m.from).ifEmpty { listOf("Unknown") } }
+        val others = m.others(myNumbers).ifEmpty { listOfNotNull(m.from).ifEmpty { listOf(tr("Unknown")) } }
         val thread = threadFor(others)
         val v = ContentValues().apply {
             put("thread_id", thread)

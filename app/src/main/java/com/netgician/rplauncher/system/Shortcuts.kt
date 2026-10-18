@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.system
 
+import com.netgician.rplauncher.i18n.tr
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.pm.LauncherApps
@@ -46,17 +47,17 @@ object Shortcuts {
 
     /** Opens a shortcut tile. Returns what to say when it can't. */
     fun start(context: Context, tile: TileSpec.Shortcut): String? {
-        val la = apps(context) ?: return "Shortcuts don't work on this phone."
-        if (!allowed(context)) return "Shortcuts only work while RP Launcher is the home screen."
+        val la = apps(context) ?: return tr("Shortcuts don't work on this phone.")
+        if (!allowed(context)) return tr("Shortcuts only work while RP Launcher is the home screen.")
         return try {
             la.startShortcut(tile.packageName, tile.id, null, null, Process.myUserHandle())
             null
         } catch (e: ActivityNotFoundException) {
-            "${tile.shortcutLabel} isn't available any more. A helper can remove the tile in Setup."
+            tr("%s isn't available any more. A helper can remove the tile in Setup.", tile.shortcutLabel)
         } catch (e: IllegalStateException) {
-            "Unlock the phone first."
+            tr("Unlock the phone first.")
         } catch (e: Exception) {
-            "${tile.shortcutLabel} isn't available any more. A helper can remove the tile in Setup."
+            tr("%s isn't available any more. A helper can remove the tile in Setup.", tile.shortcutLabel)
         }
     }
 

@@ -15,7 +15,8 @@ class Speaker(context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
     private var ready = false
     private val pending = mutableListOf<Triple<String, String?, Boolean>>()
-    private val home: Locale = Locale.getDefault()
+    /** RP Launcher's own language: the phone's, unless a helper chose another in Setup. */
+    private val home: Locale get() = com.netgician.rplauncher.i18n.Lang.locale
 
     var rate: Float = 1f
     var pitch: Float = 1f

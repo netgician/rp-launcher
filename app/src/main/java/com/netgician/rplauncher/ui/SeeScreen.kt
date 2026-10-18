@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -220,8 +221,7 @@ class SeeCamera(context: Context) {
 
 private enum class SeeControl { READ, CLOSER, WIDER, FREEZE, LIGHT, COLOURS, HOME }
 
-private const val SEE_INTRO = "See. Point the camera at what you want to look at. " +
-    "Read reads printed text aloud. Closer and Wider zoom. Freeze holds the picture still."
+private val SEE_INTRO: String get() = tr("See. Point the camera at what you want to look at. Read reads printed text aloud. Closer and Wider zoom. Freeze holds the picture still.")
 
 /** Copies a picture into the text reader's format, scaled so its longest side is at most [maxSide]. */
 internal fun Bitmap.toRgbImage(maxSide: Int = 2048): RgbImage {
@@ -249,7 +249,7 @@ fun SeeScreen(state: AppState) {
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         granted = ok
-        state.say(if (ok) SEE_INTRO else "See needs the camera. You can allow it in the phone's settings.")
+        state.say(if (ok) SEE_INTRO else tr("See needs the camera. You can allow it in the phone's settings."))
     }
     LaunchedEffect(Unit) {
         if (granted) state.say(SEE_INTRO) else ask.launch(Manifest.permission.CAMERA)
@@ -269,9 +269,8 @@ fun SeeScreen(state: AppState) {
 
     val frozen = see.frozen
     val shownZoom = if (frozen != null) frozenScale else see.zoom
-    val status = if (reading) "Reading…" else "${if (frozen != null) "Frozen" else "Live"} · ${CameraMath.shortZoom(shownZoom)}"
-    val spokenStatus = "${if (frozen != null) "Frozen picture" else "Live picture"}, " +
-        "${CameraMath.describeZoom(shownZoom)}, ${see.filter.label}, ${see.light.label}"
+    val status = if (reading) tr("Reading…") else "${if (frozen != null) tr("Frozen") else tr("Live")} · ${CameraMath.shortZoom(shownZoom)}"
+    val spokenStatus = "${if (frozen != null) tr("Frozen picture") else tr("Live picture")}, ${CameraMath.describeZoom(shownZoom)}, ${see.filter.label}, ${see.light.label}"
 
     InWindow(state.config.window) {
         Column(Modifier.fillMaxSize()) {
@@ -282,11 +281,11 @@ fun SeeScreen(state: AppState) {
                     .padding(8.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black)
-                    .semantics { contentDescription = "Camera picture. $spokenStatus" },
+                    .semantics { contentDescription = tr("Camera picture. %s", spokenStatus) },
                 contentAlignment = Alignment.Center,
             ) {
                 if (!granted) {
-                    FitText("The camera is not allowed", lv.fg, maxSp = 22f * lv.textScale, maxLines = 3)
+                    FitText(tr("The camera is not allowed"), lv.fg, maxSp = 22f * lv.textScale, maxLines = 3)
                 } else {
                     AndroidView(factory = { see.previewView }, modifier = Modifier.fillMaxSize())
                     if (frozen != null) {
@@ -329,15 +328,15 @@ fun SeeScreen(state: AppState) {
                 ) { control, m, pos ->
                     when (control) {
                         SeeControl.READ -> Tile(
-                            if (reading) "Reading…" else "Read", m,
-                            spoken = "Read the text aloud",
+                            if (reading) tr("Reading…") else tr("Read"), m,
+                            spoken = tr("Read the text aloud"),
                             icon = TileIcon.Vector(Icons.Filled.PlayArrow),
                             emphasized = true,
-                            onLongPress = longPress(state, "Read the text aloud", pos),
+                            onLongPress = longPress(state, tr("Read the text aloud"), pos),
                         ) {
                             if (!reading && granted) {
                                 reading = true
-                                state.say("Reading. Hold still.")
+                                state.say(tr("Reading. Hold still."))
                                 val still = frozen
                                 scope.launch {
                                     val picture = still ?: see.photo() ?: see.screenPicture()
@@ -347,34 +346,34 @@ fun SeeScreen(state: AppState) {
                                         }.getOrNull()
                                     }
                                     reading = false
-                                    if (result == null) state.say("Sorry, the text could not be read. Try again.")
+                                    if (result == null) state.say(tr("Sorry, the text could not be read. Try again."))
                                     else state.showRead(result)
                                 }
                             }
                         }
                         SeeControl.CLOSER -> Tile(
-                            "Closer", m, spoken = "Zoom closer",
-                            onLongPress = longPress(state, "Closer", pos),
+                            tr("Closer"), m, spoken = tr("Zoom closer"),
+                            onLongPress = longPress(state, tr("Closer"), pos),
                         ) {
                             if (frozen != null) {
                                 val next = minOf(CameraMath.FROZEN_MAX_ZOOM, frozenScale * CameraMath.ZOOM_STEP)
-                                if (next == frozenScale) state.say("This is the closest") else {
+                                if (next == frozenScale) state.say(tr("This is the closest")) else {
                                     frozenScale = next
                                     state.say(CameraMath.describeZoom(next))
                                 }
                             } else if (see.closer()) {
                                 state.say(CameraMath.describeZoom(see.zoom))
                             } else {
-                                state.say("This is the closest")
+                                state.say(tr("This is the closest"))
                             }
                         }
                         SeeControl.WIDER -> Tile(
-                            "Wider", m, spoken = "Zoom wider",
-                            onLongPress = longPress(state, "Wider", pos),
+                            tr("Wider"), m, spoken = tr("Zoom wider"),
+                            onLongPress = longPress(state, tr("Wider"), pos),
                         ) {
                             if (frozen != null) {
                                 val next = maxOf(1f, frozenScale / CameraMath.ZOOM_STEP)
-                                if (next == frozenScale) state.say("This is the widest") else {
+                                if (next == frozenScale) state.say(tr("This is the widest")) else {
                                     frozenScale = next
                                     if (next <= 1f) frozenOffset = Offset.Zero
                                     state.say(CameraMath.describeZoom(next))
@@ -382,25 +381,25 @@ fun SeeScreen(state: AppState) {
                             } else if (see.wider()) {
                                 state.say(CameraMath.describeZoom(see.zoom))
                             } else {
-                                state.say("This is the widest")
+                                state.say(tr("This is the widest"))
                             }
                         }
                         SeeControl.FREEZE -> Tile(
-                            if (frozen != null) "Live" else "Freeze", m,
-                            spoken = if (frozen != null) "Back to the live picture" else "Freeze the picture",
+                            if (frozen != null) tr("Live") else tr("Freeze"), m,
+                            spoken = if (frozen != null) tr("Back to the live picture") else tr("Freeze the picture"),
                             icon = if (frozen != null) TileIcon.Vector(Icons.Filled.PlayArrow) else null,
                             emphasized = frozen != null,
-                            onLongPress = longPress(state, if (frozen != null) "Live" else "Freeze", pos),
+                            onLongPress = longPress(state, if (frozen != null) tr("Live") else tr("Freeze"), pos),
                         ) {
                             if (frozen != null) {
                                 see.live()
                                 frozenScale = 1f
                                 frozenOffset = Offset.Zero
-                                state.say("Live picture")
+                                state.say(tr("Live picture"))
                             } else if (see.freeze()) {
-                                state.say("Frozen. Tap Closer to look closer, or Live to go back.")
+                                state.say(tr("Frozen. Tap Closer to look closer, or Live to go back."))
                             } else {
-                                state.say("Could not freeze the picture")
+                                state.say(tr("Could not freeze the picture"))
                             }
                         }
                         SeeControl.LIGHT -> Tile(
@@ -410,22 +409,22 @@ fun SeeScreen(state: AppState) {
                         ) {
                             see.nextLight()
                             if (see.light == CameraMath.Light.TORCH && !see.hasFlash) {
-                                state.say("This phone has no torch. The picture is brightened instead.")
+                                state.say(tr("This phone has no torch. The picture is brightened instead."))
                             } else {
                                 state.say(see.light.label)
                             }
                         }
                         SeeControl.COLOURS -> Tile(
                             see.filter.label, m,
-                            spoken = "Colours: ${see.filter.label}",
+                            spoken = tr("Colours: %s", see.filter.label),
                             onLongPress = longPress(state, see.filter.label, pos),
                         ) {
                             see.nextFilter()
                             state.say(see.filter.label)
                         }
                         SeeControl.HOME -> Tile(
-                            "Home", m, icon = TileIcon.Vector(Icons.Filled.Home),
-                            onLongPress = longPress(state, "Home", pos),
+                            tr("Home"), m, icon = TileIcon.Vector(Icons.Filled.Home),
+                            onLongPress = longPress(state, tr("Home"), pos),
                         ) { state.go(Screen.Home) }
                     }
                 }

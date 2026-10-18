@@ -89,6 +89,14 @@ screen the person can actually see, on a dark, glare-free background.
 - **App shortcut tiles:** an app's own shortcuts (Navigate home, New chat) as tiles, and
   "Add to home screen" from other apps, such as a web page in Chrome, with a big
   Add / Don't add check.
+- **Spanish:** every screen, spoken line and notification, following the phone's language
+  or chosen in Setup. Texts, names and what the camera reads are never translated.
+- **Setup checklist** on first start (and in Setup): every setting and permission in one
+  list, each saying where it stands, including Android's "Allow restricted settings" step
+  for copies installed from a website.
+- **Frame around the viewing window**, on by default, so its edges are easy to find.
+- **Voicemail** shows and says the number it will call before calling, and a helper can set
+  the right one in Setup.
 - **Demo mode** in Setup: made-up texts and calls for showing the app or taking store
   screenshots. No texts are sent while it's on, and it turns itself off after two hours.
 - **Release ready:** a smaller release build, signing with the owner's own key, store

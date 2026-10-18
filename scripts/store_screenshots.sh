@@ -3,7 +3,9 @@
 # Run on an emulator by .github/workflows/screenshots.yml; needs a test build installed.
 set -e
 PKG=com.netgician.rplauncher
-OUT=fastlane/metadata/android/en-US/images/phoneScreenshots
+# SHOT_LANG=en (default) or es: which language the app shows, and which store listing gets them.
+SHOT_LANG="${SHOT_LANG:-en}"
+if [ "$SHOT_LANG" = es ]; then OUT=fastlane/metadata/android/es-ES/images/phoneScreenshots; else OUT=fastlane/metadata/android/en-US/images/phoneScreenshots; fi
 mkdir -p "$OUT"
 rm -f "$OUT"/*.png
 
@@ -21,7 +23,7 @@ demo network -e mobile show -e datatype none -e level 4
 demo notifications -e visible false
 
 shot() {
-  adb shell am start -n "$PKG/.MainActivity" -a "$PKG.STORE_SHOT" --es screen "$2" >/dev/null
+  adb shell am start -n "$PKG/.MainActivity" -a "$PKG.STORE_SHOT" --es screen "$2" --es lang "$SHOT_LANG" >/dev/null
   sleep "${3:-4}"
   adb exec-out screencap -p > "$OUT/$1.png"
   echo "$1.png: $2"

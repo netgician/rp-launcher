@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.model
 
+import com.netgician.rplauncher.i18n.tr
 import com.netgician.rplauncher.ocr.TextBox
 
 /** Picks the voice for a piece of text: Spanish or English. */
@@ -36,18 +37,18 @@ object AimHelp {
 
     fun hints(boxes: List<TextBox>, width: Int, height: Int): List<String> {
         if (boxes.isEmpty()) {
-            return listOf("No text found. Hold the phone a little farther away, and add light if you can.")
+            return listOf(tr("No text found. Hold the phone a little farther away, and add light if you can."))
         }
         val mx = width * EDGE
         val my = height * EDGE
         val sides = buildList {
-            if (boxes.any { it.left <= mx }) add("left")
-            if (boxes.any { it.right >= width - mx }) add("right")
-            if (boxes.any { it.top <= my }) add("top")
-            if (boxes.any { it.bottom >= height - my }) add("bottom")
+            if (boxes.any { it.left <= mx }) add(tr("left"))
+            if (boxes.any { it.right >= width - mx }) add(tr("right"))
+            if (boxes.any { it.top <= my }) add(tr("top"))
+            if (boxes.any { it.bottom >= height - my }) add(tr("bottom"))
         }
         return if (sides.isEmpty()) emptyList()
-        else listOf("Some text may be cut off at the ${sides.joinToString(" and ")}. Move the phone back a little.")
+        else listOf(tr("Some text may be cut off at the %s. Move the phone back a little.", sides.joinToString(tr(" and "))))
     }
 }
 
@@ -60,5 +61,5 @@ data class AlertItem(
     val postedAt: Long,
 ) {
     val shown: String get() = listOf(title, text).filter { it.isNotBlank() }.joinToString("\n")
-    val speech: String get() = listOf("From $app", title, text).filter { it.isNotBlank() }.joinToString(". ")
+    val speech: String get() = listOf(tr("From %s", app), title, text).filter { it.isNotBlank() }.joinToString(". ")
 }

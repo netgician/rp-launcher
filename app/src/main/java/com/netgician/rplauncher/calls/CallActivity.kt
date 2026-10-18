@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.calls
 
+import com.netgician.rplauncher.i18n.tr
 import android.content.Context
 import android.graphics.Color
 import android.media.AudioManager
@@ -172,9 +173,9 @@ class CallActivity : ComponentActivity() {
                         CallPhase.RINGING -> {
                             vibes.play(longArrayOf(0, 300))
                             delay(600)
-                            speaker.speak(CallWords.ringing(c.name), Language.guess(c.name))
+                            speaker.speak(CallWords.ringing(c.name), com.netgician.rplauncher.i18n.Lang.code)
                         }
-                        CallPhase.DIALING -> speaker.speak("Calling ${c.name}")
+                        CallPhase.DIALING -> speaker.speak(tr("Calling %s", c.name))
                         else -> Unit
                     }
                 }
@@ -196,7 +197,7 @@ class CallActivity : ComponentActivity() {
                 InWindow(config.window) {
                     if (main == null) {
                         Box(Modifier.fillMaxSize().padding(16.dp)) {
-                            FitText("Call ended", style.fg, maxSp = 34f * style.textScale, modifier = Modifier.fillMaxWidth())
+                            FitText(tr("Call ended"), style.fg, maxSp = 34f * style.textScale, modifier = Modifier.fillMaxWidth())
                         }
                     } else {
                         CallScreen(
@@ -225,43 +226,43 @@ class CallActivity : ComponentActivity() {
                 spoken = "${main.name}. ${CallWords.status(main, now)}", maxSp = 34f, maxLines = 1,
             )
             SpokenText(
-                if (keypad && typed.isNotEmpty()) typed else CallWords.status(main, now) + if (held != null) " · ${held.name} on hold" else "",
+                if (keypad && typed.isNotEmpty()) typed else CallWords.status(main, now) + if (held != null) tr(" · %s on hold", held.name) else "",
                 Modifier.fillMaxWidth().height((36f * lv.textScale).dp), say, maxSp = 22f,
             )
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when {
                     main.phase == CallPhase.RINGING && replies -> {
-                        val choices = QuickReplies.forLanguage(Locale.getDefault().language).take(5)
-                        Grid(listOf("Back") + choices, cols = 1, rows = 6) { item, m ->
-                            if (item == "Back") Tile("Back", m, onLongPress = { say("Back") }) { replies = false }
+                        val choices = QuickReplies.forLanguage(com.netgician.rplauncher.i18n.Lang.code).take(5)
+                        Grid(listOf(tr("Back")) + choices, cols = 1, rows = 6) { item, m ->
+                            if (item == tr("Back")) Tile(tr("Back"), m, onLongPress = { say(tr("Back")) }) { replies = false }
                             else Tile(item, m, onLongPress = { say(item) }) {
                                 declineWithText(main.id, item)
-                                say(if (demo) "Declined. Demo mode, so no text was sent." else "Declined. Texting: $item")
+                                say(if (demo) tr("Declined. Demo mode, so no text was sent.") else tr("Declined. Texting: %s", item))
                             }
                         }
                     }
                     main.phase == CallPhase.RINGING -> {
                         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Tile(
-                                "Answer", Modifier.fillMaxWidth().weight(2f), spoken = "Answer the call from ${main.name}",
-                                icon = TileIcon.Vector(Icons.Filled.Call), emphasized = true, onLongPress = { say("Answer") },
+                                tr("Answer"), Modifier.fillMaxWidth().weight(2f), spoken = tr("Answer the call from %s", main.name),
+                                icon = TileIcon.Vector(Icons.Filled.Call), emphasized = true, onLongPress = { say(tr("Answer")) },
                             ) { answer(main.id) }
                             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Tile(
-                                    "Decline", Modifier.weight(1f).fillMaxHeight(), icon = TileIcon.Vector(Icons.Filled.Close),
-                                    onLongPress = { say("Decline") },
+                                    tr("Decline"), Modifier.weight(1f).fillMaxHeight(), icon = TileIcon.Vector(Icons.Filled.Close),
+                                    onLongPress = { say(tr("Decline")) },
                                 ) { decline(main.id) }
                                 Tile(
-                                    "Text back", Modifier.weight(1f).fillMaxHeight(), spoken = "Decline and send a text",
-                                    onLongPress = { say("Decline and send a text") },
+                                    tr("Text back"), Modifier.weight(1f).fillMaxHeight(), spoken = tr("Decline and send a text"),
+                                    onLongPress = { say(tr("Decline and send a text")) },
                                 ) { replies = true }
                             }
                         }
                     }
                     keypad -> {
-                        val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#", "Done")
+                        val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#", tr("Done"))
                         Grid(keys, cols = 3, rows = 5) { k, m ->
-                            if (k == "Done") Tile("Done", m, emphasized = true, onLongPress = { say("Done") }) {
+                            if (k == tr("Done")) Tile(tr("Done"), m, emphasized = true, onLongPress = { say(tr("Done")) }) {
                                 keypad = false
                                 typed = ""
                             } else Tile(k, m, spoken = CallWords.key(k), onLongPress = { say(CallWords.key(k)) }) {
@@ -282,33 +283,33 @@ class CallActivity : ComponentActivity() {
                         Grid(items, cols = 2, rows = 4) { item, m ->
                             when (item) {
                                 "hangup" -> Tile(
-                                    "Hang up", m, spoken = "Hang up", icon = TileIcon.Vector(Icons.Filled.Close), emphasized = true,
-                                    onLongPress = { say("Hang up") },
+                                    tr("Hang up"), m, spoken = tr("Hang up"), icon = TileIcon.Vector(Icons.Filled.Close), emphasized = true,
+                                    onLongPress = { say(tr("Hang up")) },
                                 ) { hangUp(main.id) }
                                 "speaker" -> Tile(
-                                    if (speakerOn) "Speaker on" else "Speaker", m, emphasized = speakerOn,
-                                    spoken = if (speakerOn) "Speaker is on. Tap to turn it off" else "Turn on the speaker",
-                                    onLongPress = { say(if (speakerOn) "Speaker is on" else "Speaker is off") },
+                                    if (speakerOn) tr("Speaker on") else tr("Speaker"), m, emphasized = speakerOn,
+                                    spoken = if (speakerOn) tr("Speaker is on. Tap to turn it off") else tr("Turn on the speaker"),
+                                    onLongPress = { say(if (speakerOn) tr("Speaker is on") else tr("Speaker is off")) },
                                 ) {
                                     setSpeaker(!speakerOn)
                                 }
                                 "mute" -> Tile(
-                                    if (muted) "Muted" else "Mute", m, emphasized = muted,
-                                    spoken = if (muted) "You're muted. Tap to unmute" else "Mute your microphone",
-                                    onLongPress = { say(if (muted) "You're muted" else "Not muted") },
+                                    if (muted) tr("Muted") else tr("Mute"), m, emphasized = muted,
+                                    spoken = if (muted) tr("You're muted. Tap to unmute") else tr("Mute your microphone"),
+                                    onLongPress = { say(if (muted) tr("You're muted") else tr("Not muted")) },
                                 ) {
                                     mute(!muted)
                                 }
-                                "louder" -> Tile("Louder", m, onLongPress = { say("Louder") }) {
+                                "louder" -> Tile(tr("Louder"), m, onLongPress = { say(tr("Louder")) }) {
                                     audio?.adjustStreamVolume(AudioManager.STREAM_VOICE_CALL, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
                                 }
-                                "quieter" -> Tile("Quieter", m, onLongPress = { say("Quieter") }) {
+                                "quieter" -> Tile(tr("Quieter"), m, onLongPress = { say(tr("Quieter")) }) {
                                     audio?.adjustStreamVolume(AudioManager.STREAM_VOICE_CALL, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
                                 }
-                                "keypad" -> Tile("Keypad", m, spoken = "Keypad, for menus that ask you to press a number", onLongPress = { say("Keypad") }) {
+                                "keypad" -> Tile(tr("Keypad"), m, spoken = tr("Keypad, for menus that ask you to press a number"), onLongPress = { say(tr("Keypad")) }) {
                                     keypad = true
                                 }
-                                else -> Tile("Switch to ${held?.name}", m, onLongPress = { say("Switch calls") }) {
+                                else -> Tile(tr("Switch to %s", held?.name), m, onLongPress = { say(tr("Switch calls")) }) {
                                     held?.let { hold(it.id, false) }
                                 }
                             }

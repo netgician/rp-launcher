@@ -1,5 +1,6 @@
 package com.netgician.rplauncher
 
+import com.netgician.rplauncher.i18n.tr
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -68,6 +69,8 @@ class MainActivity : ComponentActivity() {
         guard.markStarting()
 
         val s = AppState(this, ConfigStore(this), speaker, torch, Vibes(this), lifecycleScope)
+        // The phone's language may have changed since RP Launcher started.
+        com.netgician.rplauncher.i18n.Lang.choose(s.config.language)
         state = s
         handleTextIntent(intent)
         lightSensor = LightSensor(this) { lux -> s.onLux(lux) }
@@ -131,7 +134,7 @@ class MainActivity : ComponentActivity() {
     private fun handleTextIntent(intent: Intent?) {
         val s = state ?: return
         when (intent?.action) {
-            StoreShots.ACTION -> if (s.isTestBuild) StoreShots.show(s, this, intent.getStringExtra(StoreShots.EXTRA_SCREEN).orEmpty())
+            StoreShots.ACTION -> if (s.isTestBuild) StoreShots.show(s, this, intent.getStringExtra(StoreShots.EXTRA_SCREEN).orEmpty(), intent.getStringExtra(StoreShots.EXTRA_LANGUAGE))
             TextNotifications.ACTION_OPEN_THREAD -> {
                 val thread = intent.getLongExtra(TextNotifications.EXTRA_THREAD, -1L)
                 if (thread >= 0 && s.config.windowChecked) s.texts.openThread(thread)
@@ -237,8 +240,8 @@ fun Root(state: AppState) {
                     is Screen.WindowCheck -> WindowCheckScreen(state, screen.returnTo)
                     Screen.Apps -> AppListScreen(
                         state = state,
-                        title = "All apps",
-                        leaveLabel = "Home",
+                        title = tr("All apps"),
+                        leaveLabel = tr("Home"),
                         onLeave = { state.go(Screen.Home) },
                     ) { app ->
                         state.start(Apps.launchIntent(app.packageName, app.className))
@@ -283,19 +286,19 @@ fun Root(state: AppState) {
                     Screen.Pages -> PagesScreen(state)
                     Screen.PickShortcutApp -> AppListScreen(
                         state = state,
-                        title = "Shortcut from which app?",
-                        leaveLabel = "Back",
+                        title = tr("Shortcut from which app?"),
+                        leaveLabel = tr("Back"),
                         onLeave = { state.go(Screen.AddTile) },
                     ) { app -> state.go(Screen.PickShortcut(app.packageName, app.label)) }
                     is Screen.PickShortcut -> PickShortcutScreen(state, screen.packageName, screen.appLabel)
                     Screen.PickApp -> AppListScreen(
                         state = state,
-                        title = "Pick an app",
-                        leaveLabel = "Back",
+                        title = tr("Pick an app"),
+                        leaveLabel = tr("Back"),
                         onLeave = { state.go(Screen.AddTile) },
                     ) { app ->
                         state.update { it.copy(tiles = it.tiles + TileSpec.App(app.packageName, app.className, app.label)) }
-                        state.say("${app.label} added")
+                        state.say(tr("%s added", app.label))
                         state.go(Screen.EditTiles)
                     }
                 }

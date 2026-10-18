@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -55,7 +56,7 @@ object Demo {
     const val CALLER_NAME = "Mary"
     const val CALLER_NUMBER = MARY
 
-    private val names = mapOf(MARY to "Mary", OFFICE to "Dr. Patel's office", BOB to "Bob", ANA to "Ana")
+    private val names = mapOf(MARY to "Mary", OFFICE to tr("Dr. Patel's office"), BOB to "Bob", ANA to "Ana")
 
     /** The made-up name for a made-up number, while demo mode is on. */
     fun name(number: String): String? = if (on) names[number] else null
@@ -67,9 +68,9 @@ object Demo {
 
     val conversations: List<Conversation>
         get() = listOf(
-            Conversation(1, listOf(MARY), listOf("Mary"), "Save me a seat by the window", ago(4), unread = 2, hasProblem = false),
-            Conversation(2, listOf(OFFICE), listOf("Dr. Patel's office"), "C", ago(90), 0, false),
-            Conversation(3, listOf(MARY, BOB, ANA), listOf("Mary", "Bob", "Ana"), "Picture", ago(300), 0, false),
+            Conversation(1, listOf(MARY), listOf("Mary"), tr("Save me a seat by the window"), ago(4), unread = 2, hasProblem = false),
+            Conversation(2, listOf(OFFICE), listOf(tr("Dr. Patel's office")), "C", ago(90), 0, false),
+            Conversation(3, listOf(MARY, BOB, ANA), listOf("Mary", "Bob", "Ana"), tr("Picture"), ago(300), 0, false),
         )
 
     const val UNREAD = 2
@@ -77,27 +78,27 @@ object Demo {
     fun thread(id: Long): ThreadData = when (id) {
         1L -> ThreadData(
             listOf(
-                TextMessage(101, false, Box.SENT, ago(50), "Are we still on for dinner tonight?", from = null, delivered = true),
-                TextMessage(102, false, Box.INBOX, ago(45), "Yes! 6 o'clock at Mario's", from = MARY),
-                TextMessage(103, false, Box.SENT, ago(30), "Great. Bob is giving me a ride", from = null, delivered = true),
-                TextMessage(104, false, Box.INBOX, ago(5), "Running a little late, see you at 6", from = MARY, read = false),
-                TextMessage(105, false, Box.INBOX, ago(4), "Save me a seat by the window", from = MARY, read = false),
+                TextMessage(101, false, Box.SENT, ago(50), tr("Are we still on for dinner tonight?"), from = null, delivered = true),
+                TextMessage(102, false, Box.INBOX, ago(45), tr("Yes! 6 o'clock at Mario's"), from = MARY),
+                TextMessage(103, false, Box.SENT, ago(30), tr("Great. Bob is giving me a ride"), from = null, delivered = true),
+                TextMessage(104, false, Box.INBOX, ago(5), tr("Running a little late, see you at 6"), from = MARY, read = false),
+                TextMessage(105, false, Box.INBOX, ago(4), tr("Save me a seat by the window"), from = MARY, read = false),
             ),
             listOf(MARY),
         )
         2L -> ThreadData(
             listOf(
-                TextMessage(201, false, Box.INBOX, ago(95), "Reminder: your appointment is Tuesday at 10:30 AM. Reply C to confirm.", from = OFFICE),
-                TextMessage(202, false, Box.SENT, ago(90), "C", from = null, delivered = true),
+                TextMessage(201, false, Box.INBOX, ago(95), tr("Reminder: your appointment is Tuesday at 10:30 AM. Reply C to confirm."), from = OFFICE),
+                TextMessage(202, false, Box.SENT, ago(90), tr("C"), from = null, delivered = true),
             ),
             listOf(OFFICE),
         )
         else -> ThreadData(
             listOf(
-                TextMessage(301, false, Box.INBOX, ago(320), "Who's coming to the cookout Saturday?", from = BOB),
-                TextMessage(302, false, Box.INBOX, ago(310), "Me! I'll bring the potato salad", from = ANA),
+                TextMessage(301, false, Box.INBOX, ago(320), tr("Who's coming to the cookout Saturday?"), from = BOB),
+                TextMessage(302, false, Box.INBOX, ago(310), tr("Me! I'll bring the potato salad"), from = ANA),
                 TextMessage(
-                    303, true, Box.INBOX, ago(300), "Here's the flyer", from = MARY,
+                    303, true, Box.INBOX, ago(300), tr("Here's the flyer"), from = MARY,
                     parts = listOf(TextPart(PICTURE_ID, PartKind.IMAGE, "image/png", "flyer.png", "")),
                 ),
             ),
@@ -108,7 +109,7 @@ object Demo {
     val recents: List<RecentCall>
         get() = listOf(
             RecentCall(MARY, "Mary", RecentCall.Kind.MISSED, ago(20), 0, isNew = true),
-            RecentCall(OFFICE, "Dr. Patel's office", RecentCall.Kind.INCOMING, ago(180), 154, isNew = false),
+            RecentCall(OFFICE, tr("Dr. Patel's office"), RecentCall.Kind.INCOMING, ago(180), 154, isNew = false),
             RecentCall(BOB, "Bob", RecentCall.Kind.OUTGOING, ago(1500), 412, isNew = false),
         )
 
@@ -134,10 +135,10 @@ object Demo {
         p.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
         p.textAlign = Paint.Align.CENTER
         p.textSize = 96f
-        c.drawText("COOKOUT", w * 0.42f, h * 0.31f, p)
+        c.drawText(tr("COOKOUT"), w * 0.42f, h * 0.31f, p)
         p.textSize = 72f
-        c.drawText("Saturday 4 PM", w * 0.42f, h * 0.42f, p)
-        c.drawText("Bring a chair", w * 0.42f, h * 0.53f, p)
+        c.drawText(tr("Saturday 4 PM"), w * 0.42f, h * 0.42f, p)
+        c.drawText(tr("Bring a chair"), w * 0.42f, h * 0.53f, p)
         if (maxSide >= w) return b
         val scale = maxSide / w.toFloat()
         return Bitmap.createScaledBitmap(b, maxSide, (h * scale).toInt(), true).also { if (it != b) b.recycle() }

@@ -1,5 +1,6 @@
 package com.netgician.rplauncher.ui
 
+import com.netgician.rplauncher.i18n.tr
 import android.content.pm.LauncherApps
 import android.graphics.Color
 import android.os.Bundle
@@ -62,7 +63,7 @@ class PinShortcutActivity : ComponentActivity() {
         val entry = Shortcuts.entry(info)
         val appName = runCatching {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(info.`package`, 0)).toString()
-        }.getOrDefault("An app")
+        }.getOrDefault(tr("An app"))
 
         fun close(words: String) {
             done = true
@@ -77,7 +78,7 @@ class PinShortcutActivity : ComponentActivity() {
             if (done) return
             val ok = runCatching { request.accept() }.getOrDefault(false)
             if (!ok) {
-                close("It couldn't be added. Nothing changed.")
+                close(tr("It couldn't be added. Nothing changed."))
                 return
             }
             val tile = TileSpec.Shortcut(info.`package`, info.id, entry.label)
@@ -85,32 +86,32 @@ class PinShortcutActivity : ComponentActivity() {
             if (now.tiles.none { it is TileSpec.Shortcut && it.packageName == tile.packageName && it.id == tile.id }) {
                 store.save(now.copy(tiles = now.tiles + tile))
             }
-            close("${entry.label} added. It's the last tile on your home screen.")
+            close(tr("%s added. It's the last tile on your home screen.", entry.label))
         }
 
         setContent {
             val theme = if (NightNow.active && config.autoNight != AutoNight.OFF) config.nightTheme else config.theme
             val style = remember(theme) { LvStyle(theme, AtkinsonFamily, config.textScale) }
             CompositionLocalProvider(LocalLv provides style, LocalWindowFrame provides config.windowFrame) {
-                val question = "$appName wants to add ${entry.label} to your home screen."
+                val question = tr("%s wants to add %s to your home screen.", appName, entry.label)
                 LaunchedEffect(Unit) {
                     delay(400)
-                    sp.speak("$question Tap Add, or Don't add.")
+                    sp.speak(tr("%s Tap Add, or Don't add.", question))
                 }
                 InWindow(config.window) {
                     Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SpokenText(
-                            "Add ${entry.label}?", Modifier.fillMaxWidth().height((96f * style.textScale).dp), { sp.speak(it) },
+                            tr("Add %s?", entry.label), Modifier.fillMaxWidth().height((96f * style.textScale).dp), { sp.speak(it) },
                             spoken = question, maxSp = 30f, maxLines = 2,
                         )
                         Tile(
-                            "Add", Modifier.fillMaxWidth().weight(2f), spoken = "Add ${entry.label} to the home screen",
-                            icon = TileIcon.Vector(Icons.Filled.Add), emphasized = true, onLongPress = { sp.speak("Add") },
+                            tr("Add"), Modifier.fillMaxWidth().weight(2f), spoken = tr("Add %s to the home screen", entry.label),
+                            icon = TileIcon.Vector(Icons.Filled.Add), emphasized = true, onLongPress = { sp.speak(tr("Add")) },
                         ) { add() }
                         Tile(
-                            "Don't add", Modifier.fillMaxWidth().weight(1f), icon = TileIcon.Vector(Icons.Filled.Close),
-                            onLongPress = { sp.speak("Don't add") },
-                        ) { if (!done) close("Not added") }
+                            tr("Don't add"), Modifier.fillMaxWidth().weight(1f), icon = TileIcon.Vector(Icons.Filled.Close),
+                            onLongPress = { sp.speak(tr("Don't add")) },
+                        ) { if (!done) close(tr("Not added")) }
                     }
                 }
             }
