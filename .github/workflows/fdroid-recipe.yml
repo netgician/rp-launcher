@@ -10,6 +10,10 @@ on:
         description: "Also run the full F-Droid build"
         type: boolean
         default: true
+      quick:
+        description: "Quick: skip building ONNX Runtime (for checking the rest of the build)"
+        type: boolean
+        default: false
 
 jobs:
   recipe:
@@ -67,6 +71,19 @@ jobs:
             echo "::notice title=Version tag::$TAG isn't tagged yet, so this checks commit ${GITHUB_SHA}"
           fi
           cp fdroiddata/metadata/com.netgician.rplauncher.yml recipe-before.yml
+          if [ "${{ inputs.quick }}" = "true" ]; then
+            python3 - <<'PY'
+          import re
+          p = "fdroiddata/metadata/com.netgician.rplauncher.yml"
+          s = open(p).read()
+          s = re.sub(r"    build: .*\n", "", s)
+          s = re.sub(r"    gradleprops:\n      - onnxFromSource=true\n", "", s)
+          s = re.sub(r"    srclibs:\n(      - .*\n)+", "", s)
+          s = re.sub(r"    prebuild:\n(      - .*\n)+", "", s)
+          open(p, "w").write(s)
+          PY
+            echo "::notice title=Quick check::ONNX Runtime is not built from source in this run"
+          fi
 
       - name: F-Droid lint
         run: |
@@ -97,6 +114,7 @@ jobs:
           cd fdroiddata
           set -o pipefail
           fdroid build --verbose --on-server --no-tarball com.netgician.rplauncher:5 2>&1 | tee ../build.log
+          echo "env: HOME=$HOME JAVA_HOME=${JAVA_HOME:-} GRADLE_USER_HOME=${GRADLE_USER_HOME:-} GRADLE_OPTS=${GRADLE_OPTS:-}" >> ../build.log
 
       - name: Report the build
         if: always() && inputs.build
@@ -106,13 +124,13 @@ jobs:
           if not os.path.exists("build.log"):
               print("::warning title=F-Droid build::No build log"); raise SystemExit
           lines = open("build.log", errors="replace").read().splitlines()
-          keep = [l for l in lines if re.search(r"(ERROR|Error|error:|Found |Scanner|scanner|BUILD FAILED|FAILURE|What went wrong|Exception|Could not|not found|Unknown|denied|Successfully built|Finished)", l)]
+          keep = [l for l in lines if re.search(r"(ERROR|Error|error:|Found |Scanner|scanner|BUILD FAILED|FAILURE|What went wrong|Exception|Caused by|Could not|not found|Unknown|denied|Successfully built|Finished|> Task|gradle |Gradle |JAVA_HOME|GRADLE)", l)]
           seen = []
           for l in keep:
               l = l.strip()[:300]
               if l and l not in seen: seen.append(l)
           tail = [l.strip()[:300] for l in lines[-15:]]
-          msg = "%0A".join(x.replace("%", "%25") for x in (seen[-45:] + ["--- last lines ---"] + tail))
+          msg = "%0A".join(x.replace("%", "%25") for x in (seen[-60:] + ["--- last lines ---"] + tail))
           print(f"::notice title=F-Droid build::{msg}")
           PY
           find fdroiddata/unsigned -name '*.apk' -exec ls -l {} \; 2>/dev/null | sed 's/^/::notice title=F-Droid APK::/' || true
