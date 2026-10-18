@@ -168,6 +168,21 @@ object SendRecords {
         prefs(c).edit().putString("fetched", list.joinToString("\n")).commit()
     }
 
+    /**
+     * When RP Launcher became the texting app. Only texts after this count as new. Set when
+     * switching; on phones that switched before this was recorded, it starts now.
+     */
+    fun since(c: Context): Long {
+        val p = prefs(c)
+        val saved = p.getLong("since", 0L)
+        if (saved > 0L) return saved
+        val now = System.currentTimeMillis()
+        p.edit().putLong("since", now).apply()
+        return now
+    }
+
+    fun setSince(c: Context, time: Long) { prefs(c).edit().putLong("since", time).apply() }
+
     fun learnedNumbers(c: Context): List<String> =
         prefs(c).getString("mine", "").orEmpty().split('\n').filter { it.isNotBlank() }
 

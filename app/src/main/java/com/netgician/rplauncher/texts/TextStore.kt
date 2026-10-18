@@ -88,13 +88,29 @@ class TextStore(private val context: Context) {
         }
     }
 
+    /**
+     * Rows matching [base] that count as new: unread texts that arrived since RP Launcher became
+     * the texting app (saved by it, or dated after the switch). Texts the old app left marked
+     * unread in the shared store, often thousands, don't count; that app kept its own record.
+     */
+    private fun queryNew(uri: Uri, projection: Array<String>, base: String, seconds: Boolean, each: (Cursor) -> Unit) {
+        val since = SendRecords.since(context).let { if (seconds) it / 1000 else it }
+        try {
+            resolver.query(uri, projection, "$base AND (creator = ? OR date >= $since)", arrayOf(context.packageName), null)
+                ?.use { c -> while (c.moveToNext()) each(c) }
+        } catch (e: Exception) {
+            // Some phones' stores have no "creator" column: go by date alone.
+            resolver.query(uri, projection, "$base AND date >= $since", null, null)?.use { c -> while (c.moveToNext()) each(c) }
+        }
+    }
+
     private fun unreadByThread(): Map<Long, Int> {
         val counts = mutableMapOf<Long, Int>()
-        resolver.query(SMS, arrayOf("thread_id"), "read = 0 AND type = ${Telephony.Sms.MESSAGE_TYPE_INBOX}", null, null)?.use { c ->
-            while (c.moveToNext()) counts.merge(c.getLong(0), 1, Int::plus)
+        queryNew(SMS, arrayOf("thread_id"), "read = 0 AND type = ${Telephony.Sms.MESSAGE_TYPE_INBOX}", seconds = false) { c ->
+            counts.merge(c.getLong(0), 1, Int::plus)
         }
-        resolver.query(MMS, arrayOf("thread_id"), "read = 0 AND msg_box = ${Telephony.Mms.MESSAGE_BOX_INBOX}", null, null)?.use { c ->
-            while (c.moveToNext()) counts.merge(c.getLong(0), 1, Int::plus)
+        queryNew(MMS, arrayOf("thread_id"), "read = 0 AND msg_box = ${Telephony.Mms.MESSAGE_BOX_INBOX}", seconds = true) { c ->
+            counts.merge(c.getLong(0), 1, Int::plus)
         }
         return counts
     }
@@ -163,6 +179,10 @@ class TextStore(private val context: Context) {
     /** Messages in a conversation, oldest first. */
     fun messages(threadId: Long, downloads: (Long) -> Pair<DownloadState, String?>, limit: Int = 200): List<TextMessage> {
         val out = mutableListOf<TextMessage>()
+        val newSms = mutableSetOf<Long>()
+        val newMms = mutableSetOf<Long>()
+        queryNew(SMS, arrayOf("_id"), "thread_id = $threadId AND read = 0 AND type = ${Telephony.Sms.MESSAGE_TYPE_INBOX}", false) { newSms += it.getLong(0) }
+        queryNew(MMS, arrayOf("_id"), "thread_id = $threadId AND read = 0 AND msg_box = ${Telephony.Mms.MESSAGE_BOX_INBOX}", true) { newMms += it.getLong(0) }
         resolver.query(
             SMS, arrayOf("_id", "address", "body", "date", "type", "status", "read", "error_code"),
             "thread_id = ?", arrayOf(threadId.toString()), "date DESC",
@@ -187,7 +207,7 @@ class TextStore(private val context: Context) {
                     from = if (box == Box.INBOX) c.getString(1) else null,
                     delivered = c.getInt(5) == Telephony.Sms.STATUS_COMPLETE,
                     problem = if (box == Box.FAILED) SendRecords.problem(context, "sms:$id") ?: Problems.sms(c.getInt(7)) else null,
-                    read = c.getInt(6) != 0,
+                    read = id !in newSms,
                 )
             }
         }
@@ -228,7 +248,7 @@ class TextStore(private val context: Context) {
                         else -> null
                     },
                     download = dl,
-                    read = c.getInt(5) != 0,
+                    read = id !in newMms,
                 )
             }
         }

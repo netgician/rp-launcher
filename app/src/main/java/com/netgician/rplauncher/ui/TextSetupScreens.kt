@@ -71,6 +71,8 @@ fun TextsSwitchScreen(state: AppState) {
     val role = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         isDefault = TextRole.isDefault(context)
         if (isDefault) {
+            // From now on, texts that arrive count as new; older ones were the old app's to track.
+            com.netgician.rplauncher.texts.SendRecords.setSince(context, System.currentTimeMillis())
             state.update { it.copy(textsElsewhere = false) }
             state.say(
                 "RP Launcher is now the texting app. All your texts are still here. " +
