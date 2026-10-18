@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older: only the setup is backed up, so a new phone gets the same tiles,
+     window and colours. Texting records point at this phone's own messages, so they stay here. -->
+<full-backup-content>
+    <include domain="sharedpref" path="config.xml" />
+</full-backup-content>
