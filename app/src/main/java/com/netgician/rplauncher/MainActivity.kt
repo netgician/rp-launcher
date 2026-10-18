@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.Color as ComposeColor
 import com.netgician.rplauncher.model.Hints
 import com.netgician.rplauncher.model.LauncherConfig
@@ -213,7 +214,19 @@ fun Root(state: AppState) {
     CompositionLocalProvider(LocalLv provides style, LocalTapMode provides tapMode) {
         BackHandler { state.back() }
         // A short fade between screens: no sudden jumps, and never a white frame.
-        Box(Modifier.fillMaxSize().then(curtain)) {
+        // Test builds only: see each screen through a tunnel, as someone with RP might.
+        val tunnel = state.tunnel
+        val tunnelView = if (tunnel > 0f) Modifier.drawWithContent {
+            drawContent()
+            val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * c.window.centerYFraction)
+            val hole = androidx.compose.ui.graphics.Path().apply {
+                addOval(androidx.compose.ui.geometry.Rect(center, size.width * tunnel))
+            }
+            clipPath(hole, androidx.compose.ui.graphics.ClipOp.Difference) { drawRect(ComposeColor.Black) }
+            // Lower contrast inside the tunnel too, as RP often does.
+            drawCircle(ComposeColor(0x40808080), radius = size.width * tunnel, center = center)
+        } else Modifier
+        Box(Modifier.fillMaxSize().then(curtain).then(tunnelView)) {
             Crossfade(targetState = state.screen, animationSpec = tween(180), label = "screen") { screen ->
                 when (screen) {
                     Screen.Home -> HomeScreen(state)

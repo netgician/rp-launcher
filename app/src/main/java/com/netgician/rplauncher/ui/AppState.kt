@@ -128,6 +128,13 @@ class AppState(
     var homePage by mutableIntStateOf(0)
     var listPage by mutableIntStateOf(0)
 
+    /** Test builds only: the radius of the tunnel preview, as a share of the screen width; 0 for off. */
+    var tunnel by mutableStateOf(0f)
+
+    /** True for test builds, which have the developer aids. */
+    val isTestBuild: Boolean
+        get() = (activity.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
     /** The last tile spoken in touch-to-hear mode; it gets a thicker outline. */
     var heard by mutableStateOf<String?>(null)
 

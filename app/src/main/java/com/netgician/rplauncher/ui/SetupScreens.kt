@@ -228,6 +228,16 @@ fun SettingsScreen(state: AppState) {
         SettingRow("Load setup from a file") {
             importFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
         }
+        if (state.isTestBuild) {
+            val tunnels = listOf(0f, 0.4f, 0.25f, 0.15f)
+            val names = listOf("Off", "Wide", "Narrow", "Very narrow")
+            val i = tunnels.indexOf(state.tunnel).coerceAtLeast(0)
+            SettingRow("Tunnel preview (test builds)", names[i]) {
+                val next = (i + 1) % tunnels.size
+                state.tunnel = tunnels[next]
+                state.say("Tunnel preview ${names[next]}")
+            }
+        }
         val version = remember {
             runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
         }
