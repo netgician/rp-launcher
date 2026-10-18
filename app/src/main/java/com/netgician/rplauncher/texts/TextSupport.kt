@@ -211,29 +211,62 @@ object MyNumbers {
     }
 }
 
-/** Contact names for numbers. Without contacts access, numbers are shown nicely spaced. */
+/**
+ * Contact names for numbers. The whole address book is read once (one quick query) rather
+ * than looking up each number, so long lists load fast. Without contacts access, numbers are
+ * shown nicely spaced.
+ */
 class Names(private val context: Context) {
-    private val cache = HashMap<String, String>()
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    @Volatile private var book: Map<String, String>? = null
 
     val canRead: Boolean
         get() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
 
     fun of(address: String): String = cache.getOrPut(address) { lookUp(address) }
 
-    /** Forget looked-up names, after contacts access is turned on. */
-    fun forget() = cache.clear()
+    /** Forget looked-up names, after contacts access is turned on or contacts change. */
+    fun forget() {
+        cache.clear()
+        book = null
+    }
 
-    private fun lookUp(address: String): String {
-        if (address.isBlank()) return "Unknown"
-        if (canRead && !address.contains('@')) {
-            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(address))
-            runCatching {
-                context.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME), null, null, null)?.use { c ->
-                    if (c.moveToFirst()) c.getString(0)?.takeIf { it.isNotBlank() }?.let { return it }
+    /** Numbers match on their last ten digits, so +1 919 555 0100 finds (919) 555-0100. */
+    private fun key(number: String): String? {
+        val d = number.filter { it.isDigit() }
+        return when {
+            d.length >= 10 -> d.takeLast(10)
+            d.length >= 3 -> d
+            else -> null
+        }
+    }
+
+    private fun book(): Map<String, String> = book ?: synchronized(this) {
+        book ?: loadBook().also { book = it }
+    }
+
+    private fun loadBook(): Map<String, String> {
+        if (!canRead) return emptyMap()
+        val out = HashMap<String, String>()
+        runCatching {
+            context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME),
+                null, null, null,
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(1)?.takeIf { it.isNotBlank() } ?: continue
+                    key(c.getString(0).orEmpty())?.let { out.putIfAbsent(it, name) }
                 }
             }
         }
+        return out
+    }
+
+    private fun lookUp(address: String): String {
+        if (address.isBlank()) return "Unknown"
         if (address.contains('@')) return address
+        key(address)?.let { k -> book()[k]?.let { return it } }
         return PhoneNumberUtils.formatNumber(address, Locale.getDefault().country) ?: address
     }
 }

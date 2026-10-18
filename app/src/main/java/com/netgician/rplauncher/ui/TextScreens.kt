@@ -138,13 +138,9 @@ private val SEND_ICON = TileIcon.Vector(Icons.AutoMirrored.Filled.Send)
 fun TextsScreen(state: AppState) {
     val context = LocalContext.current
     val t = state.texts
-    val version by TextsBus.version.collectAsState()
-    var list by remember { mutableStateOf<List<Conversation>?>(null) }
-    LaunchedEffect(version) {
-        list = withContext(Dispatchers.IO) {
-            runCatching { TextStore(context).conversations(t.names::of) }.getOrDefault(emptyList())
-        }
-    }
+    // Shown at once from what's already loaded; refreshed behind it.
+    val list = t.conversations
+    LaunchedEffect(Unit) { t.refreshCache() }
     val contacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) {
             t.names.forget()
@@ -188,24 +184,15 @@ fun TextsScreen(state: AppState) {
     ChoiceList(state, if (loaded == null) "Texts…" else "Texts", choices = choices)
 }
 
-private class Loaded(val messages: List<TextMessage>, val people: List<String>)
-
-/** A conversation's texts and people, reloaded whenever texts change. Marks new texts read. */
+/** A conversation's texts and people: from memory at once if seen before, then fresh. Marks new texts read. */
 @Composable
-private fun rememberThread(state: AppState, threadId: Long): Loaded? {
+private fun rememberThread(state: AppState, threadId: Long, limit: Int = 60): ThreadData? {
     val context = LocalContext.current
     val t = state.texts
     val version by TextsBus.version.collectAsState()
-    var loaded by remember(threadId) { mutableStateOf<Loaded?>(null) }
-    LaunchedEffect(threadId, version) {
-        loaded = withContext(Dispatchers.IO) {
-            runCatching {
-                val store = TextStore(context)
-                val messages = store.messages(threadId, { id -> SendRecords.download(context, id) })
-                if (messages.any { !it.read }) store.markRead(threadId)
-                Loaded(messages, store.recipients(threadId))
-            }.getOrElse { Loaded(emptyList(), emptyList()) }
-        }
+    var loaded by remember(threadId) { mutableStateOf(t.cachedThread(threadId)) }
+    LaunchedEffect(threadId, version, limit) {
+        loaded = withContext(Dispatchers.IO) { t.loadThread(threadId, limit) }
         t.refreshUnread()
     }
     DisposableEffect(threadId) {
@@ -324,7 +311,8 @@ fun ConversationScreen(state: AppState, threadId: Long) {
     val context = LocalContext.current
     val lv = LocalLv.current
     val t = state.texts
-    val data = rememberThread(state, threadId)
+    var limit by remember(threadId) { mutableIntStateOf(60) }
+    val data = rememberThread(state, threadId, limit)
     val msgs = data?.messages.orEmpty()
     val group = (data?.people?.size ?: 0) > 1
     val title = data?.people?.let { p -> People.join(p.map(t.names::of)) } ?: "Texts"
@@ -408,8 +396,10 @@ fun ConversationScreen(state: AppState, threadId: Long) {
                         state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
                         if (page - 1 == 0) state.say("Newest texts") else state.say("Later texts")
                     }
-                } else if (page < pageCount - 1) {
+                } else if (page < pageCount - 1 || msgs.size >= limit) {
                     Tile("Earlier", Modifier.weight(1f).fillMaxHeight(), spoken = "Earlier texts") {
+                        // The oldest loaded page: fetch more before going back.
+                        if (page + 1 >= pageCount - 1 && msgs.size >= limit) limit += 60
                         back = page + 1
                         state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
                         state.say("Earlier texts")
@@ -417,8 +407,9 @@ fun ConversationScreen(state: AppState, threadId: Long) {
                 }
                 Tile("All texts", Modifier.weight(1f).fillMaxHeight(), spoken = "Back to all texts") { state.go(Screen.Texts) }
             }
-            if (page > 0 && page < pageCount - 1) {
+            if (page > 0 && (page < pageCount - 1 || msgs.size >= limit)) {
                 Tile("Earlier", Modifier.fillMaxWidth().height((56f * lv.textScale).dp), spoken = "Earlier texts") {
+                    if (page + 1 >= pageCount - 1 && msgs.size >= limit) limit += 60
                     back = page + 1
                     state.feel(com.netgician.rplauncher.model.Landmarks.PAGE_TURN)
                     state.say("Earlier texts")
@@ -433,7 +424,7 @@ fun ConversationScreen(state: AppState, threadId: Long) {
 fun MessageScreen(state: AppState, threadId: Long, key: String) {
     val context = LocalContext.current
     val t = state.texts
-    val data = rememberThread(state, threadId)
+    val data = rememberThread(state, threadId, limit = maxOf(60, state.texts.cachedThread(threadId)?.messages?.size ?: 0))
     val m = data?.messages?.firstOrNull { it.key == key }
     if (data == null || m == null) {
         val words = if (data == null) "Loading…" else "This text is no longer here."

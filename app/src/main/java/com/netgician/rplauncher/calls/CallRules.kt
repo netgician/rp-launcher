@@ -105,6 +105,7 @@ object CallWords {
             d.length == 10 -> listOf(d.substring(0, 3), d.substring(3, 6), d.substring(6))
             d.length == 11 && d.startsWith("1") -> listOf("1", d.substring(1, 4), d.substring(4, 7), d.substring(7))
             d.length == 7 -> listOf(d.substring(0, 3), d.substring(3))
+            plus && d.length == 11 -> listOf(d.substring(0, 2), d.substring(2, 5), d.substring(5, 8), d.substring(8))
             else -> d.chunked(3)
         }
         return (if (plus) "+" else "") + groups.joinToString(" ")

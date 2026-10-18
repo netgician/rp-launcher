@@ -45,7 +45,7 @@ class TextStore(private val context: Context) {
     // ---------------------------------------------------------------- reading
 
     /** Conversations, newest first, with each person's name from [names]. */
-    fun conversations(names: (String) -> String, limit: Int = 100): List<Conversation> {
+    fun conversations(names: (String) -> String, limit: Int = 60): List<Conversation> {
         val canonical = mutableMapOf<String, String>()
         resolver.query(CANONICAL, arrayOf("_id", "address"), null, null, null)?.use { c ->
             while (c.moveToNext()) canonical[c.getString(0)] = c.getString(1).orEmpty()
@@ -177,7 +177,7 @@ class TextStore(private val context: Context) {
     }
 
     /** Messages in a conversation, oldest first. */
-    fun messages(threadId: Long, downloads: (Long) -> Pair<DownloadState, String?>, limit: Int = 200): List<TextMessage> {
+    fun messages(threadId: Long, downloads: (Long) -> Pair<DownloadState, String?>, limit: Int = 60): List<TextMessage> {
         val out = mutableListOf<TextMessage>()
         val newSms = mutableSetOf<Long>()
         val newMms = mutableSetOf<Long>()
@@ -253,7 +253,7 @@ class TextStore(private val context: Context) {
             }
         }
         if (mms.isNotEmpty()) {
-            val senders = mmsSenders(mms)
+            val senders = mmsSenders(mms.filter { rows[it]?.box == Box.INBOX || rows[it]?.box == Box.WAITING })
             val parts = mutableMapOf<Long, MutableList<TextPart>>()
             val words = mutableMapOf<Long, String>()
             resolver.query(
@@ -279,14 +279,17 @@ class TextStore(private val context: Context) {
                 )
             }
         }
-        return out.sortedBy { it.date }
+        return out.sortedBy { it.date }.takeLast(limit)
     }
 
+    /** Who sent each picture text. One small lookup each, so they run side by side. */
     private fun mmsSenders(ids: List<Long>): Map<Long, String> {
-        val out = mutableMapOf<Long, String>()
-        for (id in ids) {
-            resolver.query(Uri.parse("content://mms/$id/addr"), arrayOf("address"), "type = $ADDR_FROM", null, null)?.use { c ->
-                if (c.moveToFirst()) out[id] = Addresses.clean(c.getString(0))
+        val out = java.util.concurrent.ConcurrentHashMap<Long, String>()
+        ids.parallelStream().forEach { id ->
+            runCatching {
+                resolver.query(Uri.parse("content://mms/$id/addr"), arrayOf("address"), "type = $ADDR_FROM", null, null)?.use { c ->
+                    if (c.moveToFirst()) out[id] = Addresses.clean(c.getString(0))
+                }
             }
         }
         return out
@@ -308,10 +311,11 @@ class TextStore(private val context: Context) {
     fun recipients(threadId: Long): List<String> {
         val ids = resolver.query(CONVERSATIONS, arrayOf("recipient_ids"), "_id = ?", arrayOf(threadId.toString()), null)
             ?.use { c -> if (c.moveToFirst()) c.getString(0).orEmpty().split(' ') else emptyList() }.orEmpty()
-        if (ids.isEmpty()) return emptyList()
+        val wanted = ids.mapNotNull { it.trim().toLongOrNull() }
+        if (wanted.isEmpty()) return emptyList()
         val out = mutableListOf<String>()
-        resolver.query(CANONICAL, arrayOf("_id", "address"), null, null, null)?.use { c ->
-            while (c.moveToNext()) if (c.getString(0) in ids) out += c.getString(1).orEmpty()
+        resolver.query(CANONICAL, arrayOf("_id", "address"), "_id IN (${wanted.joinToString(",")})", null, null)?.use { c ->
+            while (c.moveToNext()) out += c.getString(1).orEmpty()
         }
         return Addresses.distinct(out)
     }

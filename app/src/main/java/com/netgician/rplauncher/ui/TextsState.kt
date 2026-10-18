@@ -27,6 +27,7 @@ import com.netgician.rplauncher.texts.TextStore
 import com.netgician.rplauncher.texts.TextsBus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -43,6 +44,9 @@ data class Draft(
     val files: List<DraftFile> = emptyList(),
     val threadId: Long? = null,
 )
+
+/** A conversation's texts and people, kept in memory so it opens at once next time. */
+class ThreadData(val messages: List<TextMessage>, val people: List<String>)
 
 /** What a "Check texts" step is waiting to hear back about. */
 enum class CheckStep(val label: String) { TEXT("test text"), PICTURE("test picture text"), GROUP("test group text") }
@@ -73,6 +77,53 @@ class TextsState(private val app: AppState, private val activity: Activity, priv
         private set
 
     val isDefault: Boolean get() = TextRole.isDefault(activity)
+
+    // ---------------------------------------------------------------- loading, kept warm
+
+    /** The conversation list, loaded in the background so Texts opens at once. Null until first loaded. */
+    var conversations by mutableStateOf<List<com.netgician.rplauncher.texts.Conversation>?>(null)
+        private set
+
+    private val threads = object : LinkedHashMap<Long, ThreadData>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, ThreadData>?) = size > 12
+    }
+
+    fun cachedThread(threadId: Long): ThreadData? = synchronized(threads) { threads[threadId] }
+
+    /** Loads a conversation (the newest [limit] texts) and keeps it for next time. Call off the main thread. */
+    fun loadThread(threadId: Long, limit: Int = 60, markRead: Boolean = true): ThreadData {
+        val store = TextStore(activity)
+        val data = runCatching {
+            val messages = store.messages(threadId, { id -> com.netgician.rplauncher.texts.SendRecords.download(activity, id) }, limit)
+            if (markRead && messages.any { !it.read }) store.markRead(threadId)
+            val people = conversations?.firstOrNull { it.threadId == threadId }?.addresses ?: store.recipients(threadId)
+            ThreadData(messages, people)
+        }.getOrElse { ThreadData(emptyList(), emptyList()) }
+        synchronized(threads) { threads[threadId] = data }
+        return data
+    }
+
+    /** Reloads the list, then the newest few conversations, so they're ready before they're opened. */
+    suspend fun refreshCache() {
+        if (!isDefault) return
+        val list = withContext(Dispatchers.IO) {
+            runCatching { TextStore(activity).conversations(names::of) }.getOrNull()
+        } ?: return
+        conversations = list
+        withContext(Dispatchers.IO) {
+            list.take(4).forEach { c -> if (TextsBus.openThread != c.threadId) loadThread(c.threadId, markRead = false) }
+        }
+    }
+
+    init {
+        // Whenever texts change, refresh in the background (after a short pause, so a burst of changes loads once).
+        scope.launch {
+            TextsBus.version.collectLatest {
+                kotlinx.coroutines.delay(300)
+                refreshCache()
+            }
+        }
+    }
 
     fun refreshUnread() {
         if (!isDefault) { unread = 0; return }
