@@ -111,6 +111,10 @@ jobs:
         if: inputs.build
         run: |
           command -v sudo >/dev/null || (apt-get update -q && apt-get install -y -q sudo)
+          # A clean Gradle home: the image's own one isn't usable by root in this container.
+          export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-home"
+          mkdir -p "$GRADLE_USER_HOME"
+          echo "::notice title=Gradle home::was ${GRADLE_HOME_BEFORE:-unset}; now $GRADLE_USER_HOME"
           cd fdroiddata
           set -o pipefail
           fdroid build --verbose --on-server --no-tarball com.netgician.rplauncher:5 2>&1 | tee ../build.log
