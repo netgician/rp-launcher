@@ -41,18 +41,18 @@ jobs:
           profile: pixel_3
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
-          script: sh scripts/store_screenshots.sh
+          script: sh scripts/store_screenshots.sh && SHOT_LANG=es sh scripts/store_screenshots.sh
 
       - name: Save them with the store listing
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add fastlane/metadata/android/en-US/images/phoneScreenshots
+          git add fastlane/metadata/android/*/images/phoneScreenshots
           git commit -m "Store screenshots from Demo mode" || exit 0
-          git pull --rebase origin main
-          git push origin HEAD:main
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
 
       - uses: actions/upload-artifact@v4
         with:
           name: store-screenshots
-          path: fastlane/metadata/android/en-US/images/phoneScreenshots/
+          path: fastlane/metadata/android/*/images/phoneScreenshots/

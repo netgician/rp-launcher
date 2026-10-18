@@ -134,7 +134,7 @@ class MainActivity : ComponentActivity() {
     private fun handleTextIntent(intent: Intent?) {
         val s = state ?: return
         when (intent?.action) {
-            StoreShots.ACTION -> if (s.isTestBuild) StoreShots.show(s, this, intent.getStringExtra(StoreShots.EXTRA_SCREEN).orEmpty())
+            StoreShots.ACTION -> if (s.isTestBuild) StoreShots.show(s, this, intent.getStringExtra(StoreShots.EXTRA_SCREEN).orEmpty(), intent.getStringExtra(StoreShots.EXTRA_LANGUAGE))
             TextNotifications.ACTION_OPEN_THREAD -> {
                 val thread = intent.getLongExtra(TextNotifications.EXTRA_THREAD, -1L)
                 if (thread >= 0 && s.config.windowChecked) s.texts.openThread(thread)
