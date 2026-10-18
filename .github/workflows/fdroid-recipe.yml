@@ -22,6 +22,28 @@ jobs:
         with:
           path: rp-launcher
 
+      # The image has F-Droid's tools' dependencies; the tools themselves come from their git,
+      # as in fdroiddata's own pipelines.
+      - name: Set up F-Droid's tools
+        run: |
+          echo "::group::Environment"; ls /etc/profile.d || true; env | grep -i -E 'fdroid|android|ndk' || true; python3 --version; echo "::endgroup::"
+          [ -f /etc/profile.d/bsenv.sh ] && . /etc/profile.d/bsenv.sh
+          if [ -n "$fdroidserver" ] && [ -x "$fdroidserver/fdroid" ]; then
+            FS="$fdroidserver"
+          else
+            git clone --depth 1 https://gitlab.com/fdroid/fdroidserver.git /opt/fdroidserver-git
+            FS=/opt/fdroidserver-git
+          fi
+          echo "$FS" >> "$GITHUB_PATH"
+          echo "PYTHONPATH=$FS:$FS/examples" >> "$GITHUB_ENV"
+          echo "PYTHONUNBUFFERED=true" >> "$GITHUB_ENV"
+          [ -n "$ANDROID_HOME" ] || echo "ANDROID_HOME=/opt/android-sdk" >> "$GITHUB_ENV"
+          export PATH="$FS:$PATH" PYTHONPATH="$FS:$FS/examples"
+          if ! fdroid --version; then
+            pip3 install --break-system-packages -e "$FS" || pip3 install -e "$FS"
+            fdroid --version
+          fi
+
       - name: Get F-Droid's app list and add RP Launcher's recipe
         run: |
           git clone --depth 1 https://gitlab.com/fdroid/fdroiddata.git
@@ -45,12 +67,10 @@ jobs:
 
       - name: F-Droid lint
         run: |
-          [ -f /etc/profile.d/bsenv.sh ] && . /etc/profile.d/bsenv.sh
-          [ -n "$fdroidserver" ] && export PATH="$fdroidserver:$PATH" PYTHONPATH="$fdroidserver:$fdroidserver/examples"
           cd fdroiddata
           [ -f config.yml ] || echo "sdk_path: ${ANDROID_HOME:-/opt/android-sdk}" > config.yml
           fdroid readmeta > ../lint.log 2>&1 || true
-          fdroid rewritemeta com.netgician.rplauncher >> ../lint.log 2>&1 || true
+          fdroid rewritemeta com.netgician.rplauncher >> ../lint.log 2>&1 && touch ../rewritemeta.ran || true
           diff -u ../recipe-before.yml metadata/com.netgician.rplauncher.yml > ../rewritemeta.diff || true
           fdroid lint com.netgician.rplauncher >> ../lint.log 2>&1 || echo "LINT FAILED" >> ../lint.log
           cd ..
@@ -60,17 +80,16 @@ jobs:
           diff = open("rewritemeta.diff", errors="replace").read().strip().splitlines()
           esc = lambda xs: "%0A".join(x.replace("%", "%25") for x in xs[:40])
           print(f"::notice title=F-Droid lint::{esc(log) if log else 'No problems found'}")
+          import os
           if diff:
               print(f"::warning title=F-Droid rewritemeta::{esc(diff)}")
-          else:
+          elif os.path.exists("rewritemeta.ran"):
               print("::notice title=F-Droid rewritemeta::Recipe is already in F-Droid's format")
           PY
 
       - name: F-Droid build
         if: inputs.build
         run: |
-          [ -f /etc/profile.d/bsenv.sh ] && . /etc/profile.d/bsenv.sh
-          [ -n "$fdroidserver" ] && export PATH="$fdroidserver:$PATH" PYTHONPATH="$fdroidserver:$fdroidserver/examples"
           command -v sudo >/dev/null || (apt-get update -q && apt-get install -y -q sudo)
           cd fdroiddata
           set -o pipefail
