@@ -6,6 +6,7 @@ import com.netgician.rplauncher.model.TileSpec
 import com.netgician.rplauncher.model.TimerRules
 import com.netgician.rplauncher.model.ViewingWindow
 import com.netgician.rplauncher.system.Timer
+import kotlinx.coroutines.launch
 
 /**
  * Test builds only: the build machine opens each screen in Demo mode and photographs it for the
@@ -100,8 +101,12 @@ object StoreShots {
             "timer-typed-130", "timer-typed-600" -> {
                 Timer.cancel(context)
                 typedTime = screen.substringAfterLast('-')
+                // Home first, so the number pad opens fresh with the digits in it.
                 state.go(Screen.Home)
-                state.go(Screen.NumberPad(NumberPurpose.TIMER))
+                state.scope.launch {
+                    kotlinx.coroutines.delay(800)
+                    state.go(Screen.NumberPad(NumberPurpose.TIMER))
+                }
             }
             // Only the alarm can ring this one: the in-app check is off, as when the phone sleeps.
             "timer-asleep-locked" -> {
