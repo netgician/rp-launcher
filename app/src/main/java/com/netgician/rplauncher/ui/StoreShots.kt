@@ -27,6 +27,11 @@ object StoreShots {
 
     const val EXTRA_LANGUAGE = "lang"
 
+    /** Digits already typed on the timer's number pad, for checking the min and sec boxes. */
+    private var typedTime = ""
+
+    fun takeTypedTime(): String = typedTime.also { typedTime = "" }
+
     fun show(state: AppState, context: Context, screen: String, language: String? = null) {
         if (!Demo.on) {
             Demo.set(true)
@@ -90,6 +95,12 @@ object StoreShots {
             }
             "timer-minutes" -> {
                 Timer.cancel(context)
+                state.go(Screen.NumberPad(NumberPurpose.TIMER))
+            }
+            "timer-typed-130", "timer-typed-600" -> {
+                Timer.cancel(context)
+                typedTime = screen.substringAfterLast('-')
+                state.go(Screen.Home)
                 state.go(Screen.NumberPad(NumberPurpose.TIMER))
             }
             // Only the alarm can ring this one: the in-app check is off, as when the phone sleeps.

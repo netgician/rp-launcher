@@ -2,6 +2,15 @@ package com.netgician.rplauncher.ui
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -221,3 +230,34 @@ internal fun TimerTile(state: AppState, m: Modifier, pos: TilePos) {
 
 /** The Timer tile's icon, for Setup's tile list. */
 internal val timerIcon: TileIcon get() = TIMER_ICON
+
+/**
+ * The typed time in two big boxes, "1 min" and "30 sec", side by side. A tap says it. The
+ * last two digits are always the seconds, so the boxes show exactly how it's being read.
+ */
+@Composable
+internal fun TimerEntryBoxes(digits: String, modifier: Modifier, onSpeak: (String) -> Unit) {
+    val lv = LocalLv.current
+    val ms = TimerRules.typed(digits)
+    val spoken = when {
+        digits.isEmpty() -> tr("Nothing typed yet. Type the minutes and seconds.")
+        ms == null -> tr("No time yet")
+        else -> TimerWords.length(ms)
+    }
+    Row(
+        modifier.semantics(mergeDescendants = true) { contentDescription = spoken }.clickable { onSpeak(spoken) },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        listOf(TimerRules.typedMinutes(digits) to tr("min"), TimerRules.typedSeconds(digits) to tr("sec")).forEach { (value, unit) ->
+            Column(
+                Modifier.weight(1f).fillMaxHeight()
+                    .border(BorderStroke(4.dp, lv.accent), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                FitText(value, lv.fg, maxSp = 64f * lv.textScale, maxLines = 1, modifier = Modifier.fillMaxWidth().weight(2f))
+                FitText(unit, lv.fg, maxSp = 24f * lv.textScale, maxLines = 1, modifier = Modifier.fillMaxWidth().weight(1f))
+            }
+        }
+    }
+}

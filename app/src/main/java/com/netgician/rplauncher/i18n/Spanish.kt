@@ -1042,12 +1042,13 @@ internal object Spanish {
         "Tap Stop to turn it off." to "Toca Detener para apagarlo.",
         "Ring again in 1 minute" to "Sonar otra vez en 1 minuto",
         "It rings again in 1 minute." to "Vuelve a sonar en 1 minuto.",
-        "Type the time: minutes, then seconds. For 1 minute 30 seconds, type 1, 3, 0." to "Escribe el tiempo: minutos y luego segundos. Para 1 minuto 30 segundos, escribe 1, 3, 0.",
-        "Type the time" to "Escribe el tiempo",
-        "Too long" to "Demasiado largo",
-        "Longer than 24 hours" to "Más de 24 horas",
+        "Type the minutes and seconds. The last two numbers are the seconds." to "Escribe los minutos y los segundos. Los dos últimos números son los segundos.",
+        "Nothing typed yet. Type the minutes and seconds." to "Todavía no hay nada. Escribe los minutos y los segundos.",
+        "No time yet" to "Todavía no hay tiempo",
+        "min" to "min",
+        "sec" to "seg",
         "Deleted. %s" to "Borrado. %s",
         "Start" to "Empezar",
-        "Type a time up to 24 hours" to "Escribe un tiempo de hasta 24 horas",
+        "Type the minutes and seconds first" to "Primero escribe los minutos y los segundos",
     )
 }

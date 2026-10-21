@@ -69,18 +69,23 @@ object TimerRules {
     /** The choices on the Timer screen. Anything else is typed in. */
     val PRESETS: List<Long> = listOf(30 * SECOND, MINUTE, 3 * MINUTE, 5 * MINUTE, 10 * MINUTE, 15 * MINUTE, 30 * MINUTE, 60 * MINUTE)
 
-    /** The most digits a typed time can have: hours, minutes and seconds. */
-    const val MAX_DIGITS = 6
+    /** The most digits a typed time can have: up to 999 minutes, then two for seconds. */
+    const val MAX_DIGITS = 5
+
+    /** The minutes box of a typed time: everything before the last two digits ("130" is 1). */
+    fun typedMinutes(digits: String): String = digits.dropLast(2).trimStart('0').ifEmpty { "0" }
+
+    /** The seconds box of a typed time: the last two digits ("130" is 30, "5" is 05). */
+    fun typedSeconds(digits: String): String = digits.takeLast(2).padStart(2, '0')
 
     /**
-     * A typed time, the way a microwave reads it: the last two digits are seconds, the two
-     * before them minutes, and any before that hours. "130" is 1:30, "500" is 5:00, "45" is
-     * 45 seconds, and "90" is 90 seconds. Null for nothing typed, or over a day.
+     * A typed time: the last two digits are seconds and the ones before are minutes, shown in a
+     * min box and a sec box as they're typed. "130" is 1 min 30 sec, "600" is 6 min 00 sec,
+     * "45" is 45 seconds. Null for nothing typed, or no time at all.
      */
     fun typed(digits: String): Long? {
         if (digits.isEmpty() || digits.length > MAX_DIGITS || digits.any { !it.isDigit() }) return null
-        val n = digits.padStart(MAX_DIGITS, '0')
-        val seconds = n.substring(0, 2).toLong() * 3600 + n.substring(2, 4).toLong() * 60 + n.substring(4, 6).toLong()
+        val seconds = typedMinutes(digits).toLong() * 60 + typedSeconds(digits).toLong()
         return (seconds * SECOND).takeIf { it in SECOND..MAX_MS }
     }
 

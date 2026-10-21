@@ -757,13 +757,13 @@ fun NewTextScreen(state: AppState) {
 @Composable
 fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
     val context = LocalContext.current
-    var number by remember(purpose) { mutableStateOf("") }
+    var number by remember(purpose) { mutableStateOf(if (purpose == NumberPurpose.TIMER) StoreShots.takeTypedTime() else "") }
     LaunchedEffect(purpose) {
         state.say(
             when (purpose) {
                 NumberPurpose.OWN_NUMBER -> tr("Type this phone's own number")
                 NumberPurpose.VOICEMAIL -> tr("Type the voicemail number. Your carrier can tell you what it is.")
-                NumberPurpose.TIMER -> tr("Type the time: minutes, then seconds. For 1 minute 30 seconds, type 1, 3, 0.")
+                NumberPurpose.TIMER -> tr("Type the minutes and seconds. The last two numbers are the seconds.")
                 NumberPurpose.TEXT -> tr("Type the phone number")
             },
         )
@@ -784,19 +784,16 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
             onSpeak = state::say,
             header = { m ->
                 if (purpose == NumberPurpose.TIMER) {
-                    // Shown as a clock as it's typed: 1, 3, 0 reads 1:30.
-                    val ms = TimerRules.typed(number)
-                    SpokenText(
-                        if (number.isEmpty()) tr("Type the time") else ms?.let { TimerWords.clock(it) } ?: tr("Too long"),
-                        m, state::say,
-                        spoken = if (number.isEmpty()) tr("Nothing typed yet") else ms?.let { TimerWords.length(it) } ?: tr("Longer than 24 hours"),
-                    )
+                    // A min box and a sec box, filled as it's typed: 1, 3, 0 shows 1 min 30 sec.
+                    TimerEntryBoxes(number, m, state::say)
                 } else SpokenText(
                     number.ifEmpty { tr("Type the number") }, m, state::say,
                     spoken = if (number.isEmpty()) tr("Nothing typed yet") else People.spoken(number),
                 )
             },
             minTarget = 0f,
+            // The timer's min and sec boxes get a taller row, so the numbers can be big.
+            headerHeight = if (purpose == NumberPurpose.TIMER) 120f * state.config.textScale else null,
         ) { key, m, _ ->
             when (key) {
                 "delete" -> if (number.isEmpty()) {
@@ -811,7 +808,7 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
                 "done" -> Tile(if (purpose == NumberPurpose.TIMER) tr("Start") else tr("Done"), m, emphasized = true) {
                     if (purpose == NumberPurpose.TIMER) {
                         val ms = TimerRules.typed(number)
-                        if (ms == null) state.say(tr("Type a time up to 24 hours"))
+                        if (ms == null) state.say(tr("Type the minutes and seconds first"))
                         else startTimer(state, ms)
                     } else if (number.length < 3) {
                         state.say(tr("Type the whole number first"))
@@ -832,7 +829,7 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
                         // Says the whole time so far, so it's clear how the digits are read.
                         if (number.length < TimerRules.MAX_DIGITS && !(number.isEmpty() && key == "0")) {
                             number += key
-                            state.say(TimerRules.typed(number)?.let { TimerWords.length(it) } ?: tr("Longer than 24 hours"))
+                            state.say(TimerRules.typed(number)?.let { TimerWords.length(it) } ?: tr("No time yet"))
                         }
                     } else if (number.length < 15) {
                         number += key

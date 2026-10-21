@@ -83,18 +83,23 @@ class TimerRulesTest {
     }
 
     @Test
-    fun typedLikeAMicrowave() {
+    fun typedMinutesAndSeconds() {
         assertEquals(45 * 1_000L, TimerRules.typed("45"))
-        assertEquals(90 * 1_000L, TimerRules.typed("90"))
         assertEquals(MINUTE + 30_000, TimerRules.typed("130"))
-        assertEquals(5 * MINUTE, TimerRules.typed("500"))
+        assertEquals(6 * MINUTE, TimerRules.typed("600"))
         assertEquals(25 * MINUTE, TimerRules.typed("2500"))
-        assertEquals(60 * MINUTE + 30 * MINUTE, TimerRules.typed("13000"))
-        assertEquals(TimerRules.MAX_MS, TimerRules.typed("240000"))
+        assertEquals(999 * MINUTE + 59_000, TimerRules.typed("99959"))
         assertNull(TimerRules.typed("0"))
-        assertNull(TimerRules.typed("240001"))
-        assertNull(TimerRules.typed("1234567"))
+        assertNull(TimerRules.typed("000"))
+        assertNull(TimerRules.typed("123456"))
         assertNull(TimerRules.typed(""))
+        // The two boxes, as they fill in.
+        assertEquals("0" to "05", TimerRules.typedMinutes("5") to TimerRules.typedSeconds("5"))
+        assertEquals("1" to "30", TimerRules.typedMinutes("130") to TimerRules.typedSeconds("130"))
+        assertEquals("6" to "00", TimerRules.typedMinutes("600") to TimerRules.typedSeconds("600"))
+        assertEquals("25" to "00", TimerRules.typedMinutes("2500") to TimerRules.typedSeconds("2500"))
+        assertEquals("0" to "00", TimerRules.typedMinutes("") to TimerRules.typedSeconds(""))
+        assertEquals("6 minutes", TimerWords.length(TimerRules.typed("600")!!))
         assertEquals("1:30", TimerWords.clock(TimerRules.typed("130")!!))
         assertEquals("1 minute, 30 seconds", TimerWords.length(TimerRules.typed("130")!!))
         assertEquals("30 seconds", TimerWords.length(TimerRules.PRESETS.first()))
