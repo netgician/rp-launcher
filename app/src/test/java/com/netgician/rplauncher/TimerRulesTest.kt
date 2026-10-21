@@ -97,9 +97,9 @@ class TimerRulesTest {
         assertEquals("1 hour", TimerWords.length(60 * MINUTE))
         assertEquals("1 hour, 30 minutes", TimerWords.length(90 * MINUTE))
         assertEquals("1:30:00", TimerWords.clock(90 * MINUTE))
-        assertEquals("4 minutes, 32 seconds left", TimerWords.left(4 * MINUTE + 32_000))
+        assertEquals("Time left: 4 minutes, 32 seconds", TimerWords.left(4 * MINUTE + 32_000))
         // Over ten minutes, whole minutes only.
-        assertEquals("25 minutes left", TimerWords.left(24 * MINUTE + 10_000))
+        assertEquals("Time left: 25 minutes", TimerWords.left(24 * MINUTE + 10_000))
         assertEquals("Timer set for 10 minutes. It rings at 3:15 PM.", TimerWords.started(10 * MINUTE, "3:15 PM"))
         val s = TimerState().start(t0, 5 * MINUTE)
         assertEquals("5:00 left", TimerWords.tile(s, t0))
@@ -114,5 +114,6 @@ class TimerRulesTest {
         assertEquals("Temporizador de 10 minutos. Suena a las 3:15 PM.", TimerWords.started(10 * MINUTE, "3:15 PM"))
         assertEquals("Se acabó el tiempo", TimerWords.tile(TimerState().start(t0, MINUTE).ring(t0), t0))
         assertEquals("Tiempo restante: 1 minuto", TimerWords.left(MINUTE))
+        assertEquals("Faltan 5:00", TimerWords.tile(TimerState().start(t0, 5 * MINUTE), t0))
     }
 }

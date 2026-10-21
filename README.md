@@ -40,6 +40,8 @@ Needs Android 10 or newer.
 - **Texts and Phone built in:** big screens for texts, picture texts, group texts and calls.
   Every send says "Sent" or "Not sent".
 - **Alerts:** new notifications shown large and read aloud, one at a time.
+- **Timer:** big choices for how long, a countdown that fills the window, and a loud alarm
+  with a big Stop, even when the phone is locked.
 - **SOS and Where am I:** a cancellable countdown that texts your address to chosen people,
   and the street address read aloud.
 - **For helpers:** a setup checklist, settings behind an optional PIN, and the whole setup

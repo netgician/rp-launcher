@@ -105,7 +105,7 @@ object TimerWords {
     fun left(leftMs: Long): String {
         val s = TimerRules.shownSeconds(leftMs)
         val rounded = if (s >= 600) (s + 59) / 60 * 60 else s
-        return tr("%s left", CallWords.spokenDuration(rounded))
+        return tr("Time left: %s", CallWords.spokenDuration(rounded))
     }
 
     fun started(ms: Long, ringsAt: String): String = tr("Timer set for %s. It rings at %s.", length(ms), ringsAt)
