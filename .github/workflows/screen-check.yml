@@ -1,7 +1,8 @@
 name: Screen check
 
 # Run by hand from the Actions tab: photographs chosen screens on an emulator in Demo mode,
-# to check a change by eye. Nothing is committed; the pictures are attached to the run.
+# to check a change by eye. The pictures are attached to the run and also kept on the
+# "screen-check" branch (replaced each time), apart from the app's own code.
 on:
   workflow_dispatch:
     inputs:
@@ -13,6 +14,9 @@ on:
         description: "Languages (en, es)"
         required: true
         default: "en"
+
+permissions:
+  contents: write
 
 jobs:
   check:
@@ -56,3 +60,16 @@ jobs:
         with:
           name: screen-check
           path: screen-check/
+
+      - name: Keep the pictures on the screen-check branch
+        if: always()
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          cd screen-check
+          git init -q -b screen-check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Screen check of ${GITHUB_SHA::7} (${GITHUB_REF_NAME})"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" screen-check
