@@ -40,8 +40,13 @@ Needs Android 10 or newer.
 - **Texts and Phone built in:** big screens for texts, picture texts, group texts and calls.
   Every send says "Sent" or "Not sent".
 - **Alerts:** new notifications shown large and read aloud, one at a time.
-- **Timer:** big choices for how long, a countdown that fills the window, and a loud alarm
-  with a big Stop, even when the phone is locked.
+- **Timer, alarms and reminders:** big choices, the time typed into hour and minute boxes,
+  any days of the week, and a loud alarm with a big Stop, even when the phone is locked.
+  Reminders are spoken ("Take your pills") and said aloud when they go off.
+- **Talking clock, voice notes and a big calculator** that says each key and the answer.
+- **Music:** Play, Pause, Next and Back for whatever is playing, with big buttons.
+- **Light finder:** a tone that rises as the camera points toward light.
+- **Low battery** said aloud at 20, 10 and 5 percent.
 - **SOS and Where am I:** a cancellable countdown that texts your address to chosen people,
   and the street address read aloud.
 - **For helpers:** a setup checklist, settings behind an optional PIN, and the whole setup
