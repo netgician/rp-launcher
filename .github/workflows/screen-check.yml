@@ -1,0 +1,58 @@
+name: Screen check
+
+# Run by hand from the Actions tab: photographs chosen screens on an emulator in Demo mode,
+# to check a change by eye. Nothing is committed; the pictures are attached to the run.
+on:
+  workflow_dispatch:
+    inputs:
+      screens:
+        description: "Screens to photograph (StoreShots names, optional :seconds)"
+        required: true
+        default: "home checklist"
+      languages:
+        description: "Languages (en, es)"
+        required: true
+        default: "en"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the test app
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Let the emulator use the processor
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Photograph the screens
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          SCREENS: ${{ inputs.screens }}
+          LANGS: ${{ inputs.languages }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_3
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: for l in $LANGS; do SHOT_LANG=$l sh scripts/check_screens.sh; done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screen-check
+          path: screen-check/
