@@ -79,6 +79,13 @@ class AlarmRingActivity : ComponentActivity() {
             voiceName = config.voiceName
         }
         sound = RingSound(this)
+        // Back would hide the screen and leave it ringing out of sight: only Stop or Done ends it.
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val showing = Alarms.ringing.value.firstOrNull()?.first?.let { Alarms.get(this@AlarmRingActivity, it) }
+                speaker.speak(if (showing?.isReminder == true) tr("Tap Done when you're finished.") else tr("Tap Stop to turn it off."))
+            }
+        })
         Alarms.load(this)
         if (Alarms.ringing.value.isEmpty()) {
             finish()

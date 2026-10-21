@@ -52,9 +52,6 @@ for entry in $SCREENS; do
     *asleep*) adb shell dumpsys deviceidle unforce >/dev/null || true ;;
     battery-low) adb shell dumpsys battery reset ;;
   esac
-  # A ring screen left open would cover the next picture.
-  case "$name" in
-    *-ring*) adb shell input keyevent KEYCODE_BACK; sleep 1 ;;
-  esac
+  # (A ring screen stays until Stop or Done, so put ring screens last.)
   n=$((n + 1))
 done

@@ -85,6 +85,10 @@ class TimerRingActivity : ComponentActivity() {
             pitch = config.speechPitch
             voiceName = config.voiceName
         }
+        // Back would hide the screen and leave it ringing out of sight: only Stop ends it.
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() = speaker.speak(tr("Tap Stop to turn it off."))
+        })
         Timer.load(this)
         if (Timer.state.value.phase != TimerState.Phase.RINGING) {
             finish()

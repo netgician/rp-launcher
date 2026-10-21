@@ -1208,5 +1208,6 @@ internal object Spanish {
         "Alarms and reminders" to "Alarmas y recordatorios",
         "Alarm ringing" to "Alarma sonando",
         "Reminder, %s" to "Recordatorio, %s",
+        "Tap Done when you're finished." to "Toca Listo cuando termines.",
     )
 }
