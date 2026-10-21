@@ -35,6 +35,10 @@ for entry in $SCREENS; do
   case "$name" in
     *-locked) sleep 1; adb shell input keyevent KEYCODE_SLEEP ;;
   esac
+  # "battery-low": the battery pretends to run down to 9 percent, unplugged.
+  case "$name" in
+    battery-low) adb shell dumpsys battery unplug; adb shell dumpsys battery set level 9 ;;
+  esac
   # "-asleep": deep sleep (Doze), as a phone left locked on a table.
   case "$name" in
     *asleep*) adb shell dumpsys deviceidle force-idle >/dev/null || true ;;
@@ -46,6 +50,11 @@ for entry in $SCREENS; do
   echo "$n-$name.png"
   case "$name" in
     *asleep*) adb shell dumpsys deviceidle unforce >/dev/null || true ;;
+    battery-low) adb shell dumpsys battery reset ;;
+  esac
+  # A ring screen left open would cover the next picture.
+  case "$name" in
+    *-ring*) adb shell input keyevent KEYCODE_BACK; sleep 1 ;;
   esac
   n=$((n + 1))
 done

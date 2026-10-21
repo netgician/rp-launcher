@@ -3,7 +3,11 @@ package com.netgician.rplauncher.ui
 import android.content.Context
 import com.netgician.rplauncher.model.AutoNight
 import com.netgician.rplauncher.model.TileSpec
+import com.netgician.rplauncher.i18n.Lang
+import com.netgician.rplauncher.model.Alarm
+import com.netgician.rplauncher.model.AlarmRules
 import com.netgician.rplauncher.model.TimerRules
+import com.netgician.rplauncher.system.Alarms
 import com.netgician.rplauncher.model.ViewingWindow
 import com.netgician.rplauncher.system.Timer
 import kotlinx.coroutines.launch
@@ -13,6 +17,11 @@ import kotlinx.coroutines.launch
  * app stores (scripts/store_screenshots.sh). Release builds ignore this.
  */
 object StoreShots {
+    private val TOOL_SCREENS = setOf(
+        "tools-home", "battery-low", "alarms", "reminders", "alarm-edit", "alarm-time", "alarm-ampm", "alarm-days",
+        "alarm-pickdays", "reminder-message", "alarm-ring", "reminder-ring", "calculator", "music", "notes", "light",
+    )
+
     const val ACTION = "com.netgician.rplauncher.STORE_SHOT"
     const val EXTRA_SCREEN = "screen"
 
@@ -25,6 +34,20 @@ object StoreShots {
     private val TIMER_TILES = listOf(
         TileSpec.Phone, TileSpec.Messages, TileSpec.Timer, TileSpec.See, TileSpec.Torch, TileSpec.Sos,
     )
+
+    /** For checking the new tools' screens. */
+    private val TOOL_TILES = listOf(
+        TileSpec.Clock, TileSpec.Alarms, TileSpec.Reminders, TileSpec.Calculator, TileSpec.Music, TileSpec.Notes, TileSpec.LightFinder,
+    )
+
+    /** Example alarms and reminders, the same each time. */
+    private fun examples(context: Context) {
+        Alarms.load(context).forEach { Alarms.delete(context, it.id) }
+        Alarms.put(context, Alarm(1, 7, 30, days = AlarmRules.WEEKDAYS))
+        Alarms.put(context, Alarm(2, 9, 0, days = AlarmRules.WEEKEND, on = false))
+        Alarms.put(context, Alarm(3, 8, 0, days = AlarmRules.EVERY_DAY, message = if (Lang.spanish) "Toma tus pastillas" else "Take your pills"))
+        Alarms.put(context, Alarm(4, 17, 0, days = setOf(1, 3, 5), message = if (Lang.spanish) "Llama a Mary" else "Call Mary"))
+    }
 
     const val EXTRA_LANGUAGE = "lang"
 
@@ -49,7 +72,11 @@ object StoreShots {
                 // A roomy window, so the store pictures are easy to read at thumbnail size.
                 window = ViewingWindow(0.94f, 0.8f, 0.5f).clamped(),
                 windowCheckedAt = System.currentTimeMillis(),
-                tiles = if (screen.startsWith("timer")) TIMER_TILES else TILES,
+                tiles = when {
+                    screen.startsWith("timer") -> TIMER_TILES
+                    screen in TOOL_SCREENS -> TOOL_TILES
+                    else -> TILES
+                },
                 themeId = theme,
                 autoNight = AutoNight.OFF,
                 language = language ?: it.language,
@@ -73,6 +100,57 @@ object StoreShots {
             "checklist" -> state.go(Screen.Checklist(firstRun = false))
             "pages" -> state.go(Screen.Pages)
             "voicemail" -> state.go(Screen.VoicemailMessage(1))
+            "tools-home", "battery-low" -> {
+                examples(context)
+                state.homePage = 0
+                state.go(Screen.Home)
+            }
+            "alarms" -> {
+                examples(context)
+                state.go(Screen.AlarmList(reminders = false))
+            }
+            "reminders" -> {
+                examples(context)
+                state.go(Screen.AlarmList(reminders = true))
+            }
+            "alarm-edit" -> {
+                examples(context)
+                state.go(Screen.AlarmEdit(3, reminder = true))
+            }
+            "alarm-time" -> {
+                state.alarmDraft = AlarmDraft(reminder = false)
+                typedTime = "730"
+                state.go(Screen.Home)
+                state.scope.launch {
+                    kotlinx.coroutines.delay(800)
+                    state.go(Screen.AlarmTime)
+                }
+            }
+            "alarm-ampm" -> {
+                state.alarmDraft = AlarmDraft(reminder = false, hour = 7, minute = 30)
+                state.go(Screen.AlarmAmPm)
+            }
+            "alarm-days" -> {
+                state.alarmDraft = AlarmDraft(reminder = false, hour = 7, minute = 30)
+                state.go(Screen.AlarmDays)
+            }
+            "alarm-pickdays" -> {
+                state.alarmDraft = AlarmDraft(reminder = false, hour = 7, minute = 30, days = setOf(1, 3, 5))
+                state.go(Screen.AlarmPickDays)
+            }
+            "reminder-message" -> {
+                state.alarmDraft = AlarmDraft(reminder = true, message = if (Lang.spanish) "Toma tus pastillas" else "Take your pills")
+                state.go(Screen.AlarmMessage)
+            }
+            "alarm-ring", "reminder-ring" -> {
+                examples(context)
+                state.go(Screen.Home)
+                Alarms.ring(context, if (screen == "alarm-ring") 1L else 3L)
+            }
+            "calculator" -> state.go(Screen.Calculator)
+            "music" -> state.go(Screen.Music)
+            "notes" -> state.go(Screen.Notes)
+            "light" -> state.go(Screen.LightFinder)
             "timer-pick" -> {
                 Timer.cancel(context)
                 state.go(Screen.Timer)

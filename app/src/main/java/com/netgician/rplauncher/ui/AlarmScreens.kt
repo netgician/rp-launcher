@@ -268,7 +268,7 @@ fun AlarmTimeScreen(state: AppState) {
         return
     }
     val is24 = is24(state)
-    var digits by remember { mutableStateOf("") }
+    var digits by remember { mutableStateOf(StoreShots.takeTypedTime()) }
     LaunchedEffect(Unit) { state.say(tr("Type the time: the hour, then the minutes. For 7:30, type 7, 3, 0.")) }
     val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "delete", "0", "next")
     InWindow(state.config.window) {
