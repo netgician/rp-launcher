@@ -3,7 +3,9 @@ package com.netgician.rplauncher.ui
 import android.content.Context
 import com.netgician.rplauncher.model.AutoNight
 import com.netgician.rplauncher.model.TileSpec
+import com.netgician.rplauncher.model.TimerRules
 import com.netgician.rplauncher.model.ViewingWindow
+import com.netgician.rplauncher.system.Timer
 
 /**
  * Test builds only: the build machine opens each screen in Demo mode and photographs it for the
@@ -16,6 +18,11 @@ object StoreShots {
     private val TILES = listOf(
         TileSpec.Phone, TileSpec.Messages, TileSpec.See, TileSpec.Torch,
         TileSpec.Sos, TileSpec.Contact(Demo.CALLER_NAME, Demo.CALLER_NUMBER),
+    )
+
+    /** For checking the Timer tile's screens (scripts/check_screens.sh). */
+    private val TIMER_TILES = listOf(
+        TileSpec.Phone, TileSpec.Messages, TileSpec.Timer, TileSpec.See, TileSpec.Torch, TileSpec.Sos,
     )
 
     const val EXTRA_LANGUAGE = "lang"
@@ -36,7 +43,7 @@ object StoreShots {
                 // A roomy window, so the store pictures are easy to read at thumbnail size.
                 window = ViewingWindow(0.94f, 0.8f, 0.5f).clamped(),
                 windowCheckedAt = System.currentTimeMillis(),
-                tiles = TILES,
+                tiles = if (screen.startsWith("timer")) TIMER_TILES else TILES,
                 themeId = theme,
                 autoNight = AutoNight.OFF,
                 language = language ?: it.language,
@@ -59,6 +66,38 @@ object StoreShots {
             "checklist" -> state.go(Screen.Checklist(firstRun = false))
             "pages" -> state.go(Screen.Pages)
             "voicemail" -> state.go(Screen.VoicemailMessage(1))
+            "timer-pick" -> {
+                Timer.cancel(context)
+                state.go(Screen.Timer)
+            }
+            "timer" -> {
+                Timer.cancel(context)
+                Timer.start(context, 10 * TimerRules.MINUTE)
+                state.go(Screen.Timer)
+            }
+            "timer-paused" -> {
+                Timer.cancel(context)
+                Timer.start(context, 25 * TimerRules.MINUTE + 30_000)
+                Timer.pause(context)
+                state.go(Screen.Timer)
+            }
+            "timer-home" -> {
+                Timer.cancel(context)
+                Timer.start(context, 10 * TimerRules.MINUTE)
+                state.homePage = 0
+                state.go(Screen.Home)
+            }
+            "timer-minutes" -> {
+                Timer.cancel(context)
+                state.go(Screen.NumberPad(NumberPurpose.TIMER))
+            }
+            // Rings a few seconds later: on screen, or with the screen off for "-locked".
+            "timer-ring", "timer-ring-locked" -> {
+                Timer.cancel(context)
+                Timer.start(context, 3_000)
+                state.homePage = 0
+                state.go(Screen.Home)
+            }
         }
     }
 }
