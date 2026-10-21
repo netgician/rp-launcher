@@ -25,6 +25,8 @@ sealed class TileSpec {
     data object AllApps : TileSpec()
     /** A list of the home screen's pages, to jump straight to one instead of paging through. */
     data object Pages : TileSpec()
+    /** A kitchen timer: big choices, a big countdown, and a loud alarm with a big Stop. */
+    data object Timer : TileSpec()
     data class App(val packageName: String, val className: String, val appLabel: String) : TileSpec()
     data class Contact(val name: String, val number: String) : TileSpec()
     /** One of an app's own shortcuts ("Navigate home", "New chat", a web page added from Chrome). */
@@ -47,6 +49,7 @@ sealed class TileSpec {
             QuickSettings -> tr("Quick settings")
             AllApps -> tr("All apps")
             Pages -> tr("Pages")
+            Timer -> tr("Timer")
             is App -> appLabel
             is Contact -> name
             is Shortcut -> shortcutLabel
@@ -265,6 +268,7 @@ object ConfigJson {
             TileSpec.QuickSettings -> put("type", "quick_settings")
             TileSpec.AllApps -> put("type", "all_apps")
             TileSpec.Pages -> put("type", "pages")
+            TileSpec.Timer -> put("type", "timer")
             is TileSpec.App -> {
                 put("type", "app"); put("pkg", t.packageName); put("cls", t.className); put("label", t.appLabel)
             }
@@ -357,6 +361,7 @@ object ConfigJson {
         "quick_settings" -> TileSpec.QuickSettings
         "all_apps" -> TileSpec.AllApps
         "pages" -> TileSpec.Pages
+        "timer" -> TileSpec.Timer
         "app" -> {
             val pkg = o.optString("pkg"); val cls = o.optString("cls")
             if (pkg.isBlank() || cls.isBlank()) null else TileSpec.App(pkg, cls, o.optString("label", pkg))

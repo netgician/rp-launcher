@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple stopwatch: a round face with one hand, and the button on top. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.2"
+        android:pathData="M12,14m-7.5,0a7.5,7.5 0,1 0,15 0a7.5,7.5 0,1 0,-15 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9,1.5h6v2.2h-6z M11,3.5h2v3h-2z M11,8.5h2v5.5h-2z M12,14m-1.7,0a1.7,1.7 0,1 0,3.4 0a1.7,1.7 0,1 0,-3.4 0 M18.1,4.7l1.6,-1.6l1.7,1.7l-1.6,1.6z" />
+</vector>

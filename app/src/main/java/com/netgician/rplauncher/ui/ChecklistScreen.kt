@@ -39,7 +39,7 @@ private val NEEDS: List<Need> get() = buildList {
         ),
     )
     if (Build.VERSION.SDK_INT >= 33) {
-        add(Need(tr("Notifications"), tr("new texts and missed calls"), listOf(Manifest.permission.POST_NOTIFICATIONS)))
+        add(Need(tr("Notifications"), tr("new texts, missed calls and the timer"), listOf(Manifest.permission.POST_NOTIFICATIONS)))
     }
 }
 
@@ -154,12 +154,22 @@ fun ChecklistScreen(state: AppState, firstRun: Boolean) {
             state.go(Screen.VoicemailSetup)
         }
         now.fullScreen?.let { canFullScreen ->
-            SettingRow(tr("Call screen over the lock screen"), if (canFullScreen) tr("allowed") else tr("not allowed")) {
+            SettingRow(tr("Calls and timer over the lock screen"), if (canFullScreen) tr("allowed") else tr("not allowed")) {
                 if (canFullScreen || Build.VERSION.SDK_INT < 34) state.say(tr("Allowed"))
                 else state.start(
                     Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, android.net.Uri.fromParts("package", context.packageName, null)),
                     tr("Could not open the setting"),
                 )
+            }
+        }
+
+        now.exact?.let { exact ->
+            SettingRow(tr("Timer rings on time"), if (exact) tr("allowed") else tr("not allowed")) {
+                if (exact) state.say(tr("Allowed"))
+                else {
+                    state.say(tr("Turn on Allow setting alarms and reminders, then come back."))
+                    state.start(com.netgician.rplauncher.system.Timer.exactSettings(context), tr("Could not open the setting"))
+                }
             }
         }
 
@@ -196,6 +206,8 @@ private class Statuses(
     val textApp: String?,
     /** Null before Android 14, where it's always allowed. */
     val fullScreen: Boolean?,
+    /** Exact alarms for the timer. Null before Android 12, where they're always allowed. */
+    val exact: Boolean?,
     val granted: Map<String, Boolean>,
 ) {
     companion object {
@@ -211,6 +223,7 @@ private class Statuses(
                 fullScreen = if (Build.VERSION.SDK_INT >= 34) {
                     runCatching { context.getSystemService(NotificationManager::class.java)?.canUseFullScreenIntent() == true }.getOrDefault(true)
                 } else null,
+                exact = if (Build.VERSION.SDK_INT >= 31) com.netgician.rplauncher.system.Timer.canBeExact(context) else null,
                 granted = NEEDS.associate { n -> n.title to n.permissions.any { has(context, it) } },
             )
         }

@@ -66,6 +66,7 @@ class PagingAndConfigTest {
                 TileSpec.Phone,
                 TileSpec.See,
                 TileSpec.Pages,
+                TileSpec.Timer,
                 TileSpec.Shortcut("com.android.chrome", "web:news \"today\"", "Local news"),
                 TileSpec.AllApps,
             ),

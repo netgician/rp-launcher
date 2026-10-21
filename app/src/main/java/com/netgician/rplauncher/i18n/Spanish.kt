@@ -19,6 +19,7 @@ internal object Spanish {
             putAll(safety())
             putAll(see())
             putAll(misc())
+            putAll(timer())
         }
     }
 
@@ -305,7 +306,7 @@ internal object Spanish {
         "speaking texts and voice messages" to "dictar mensajes y mensajes de voz",
         "Location" to "Ubicación",
         "SOS and Where am I" to "SOS y Dónde estoy",
-        "new texts and missed calls" to "mensajes nuevos y llamadas perdidas",
+        "new texts, missed calls and the timer" to "mensajes nuevos, llamadas perdidas y el temporizador",
         "Android blocks some settings for apps installed from a website, until you allow them. 1. Tap Alerts access below. If Android says Restricted setting, tap OK. 2. Tap Allow restricted settings: App info opens. 3. Tap the three dots at the top right, then Allow restricted settings, and confirm with your PIN or fingerprint. 4. Come back here and tap Alerts access, Phone app and Texting app again." to
             "Android bloquea algunos ajustes de las apps instaladas desde un sitio web hasta que los permitas. 1. Toca Acceso a los avisos, más abajo. Si Android dice Configuración restringida, toca Aceptar. 2. Toca Permitir configuración restringida: se abre la Información de la app. 3. Toca los tres puntos de arriba a la derecha, luego Permitir configuración restringida, y confirma con tu PIN o tu huella. 4. Vuelve aquí y toca otra vez Acceso a los avisos, App de teléfono y App de mensajes.",
         "%s allowed" to "%s: permitido",
@@ -329,7 +330,9 @@ internal object Spanish {
         "allowed" to "permitido",
         "needed" to "hace falta",
         "Alerts access (notifications read aloud)" to "Acceso a los avisos (notificaciones en voz alta)",
-        "Call screen over the lock screen" to "Pantalla de llamada sobre la pantalla bloqueada",
+        "Calls and timer over the lock screen" to "Llamadas y temporizador sobre la pantalla bloqueada",
+        "Timer rings on time" to "El temporizador suena a tiempo",
+        "Turn on Allow setting alarms and reminders, then come back." to "Activa Permitir configurar alarmas y recordatorios y luego vuelve.",
         "not allowed" to "no permitido",
         "Allowed" to "Permitido",
         "%s is allowed" to "%s: permitido",
@@ -998,5 +1001,48 @@ internal object Spanish {
         "COOKOUT" to "PARRILLADA",
         "Saturday 4 PM" to "Sábado 4 p. m.",
         "Bring a chair" to "Trae una silla",
+    )
+    private fun timer() = mapOf(
+        "Timer" to "Temporizador",
+        "Timer (kitchen timer with a loud alarm)" to "Temporizador (de cocina, con alarma fuerte)",
+        "The Timer tile's alarm" to "La alarma del temporizador",
+        "Timer. How long?" to "Temporizador. ¿Cuánto tiempo?",
+        "How long?" to "¿Cuánto tiempo?",
+        "Other time" to "Otro tiempo",
+        "Other time: type the minutes" to "Otro tiempo: escribe los minutos",
+        "Timer for %s" to "Temporizador de %s",
+        "Timer set for %s. It rings at %s." to "Temporizador de %s. Suena a las %s.",
+        "To hear it while the phone is locked, a helper can allow notifications in the Setup checklist." to "Para oírlo con el teléfono bloqueado, un ayudante puede permitir las notificaciones en la Lista de ajustes.",
+        "It may ring late while the phone is locked. A helper can fix this in the Setup checklist." to "Puede sonar tarde con el teléfono bloqueado. Un ayudante puede arreglarlo en la Lista de ajustes.",
+        "%s left" to "Tiempo restante: %s",
+        "Paused %s" to "En pausa %s",
+        "Paused, %s" to "En pausa, %s",
+        "Paused" to "En pausa",
+        "Timer done" to "Se acabó el tiempo",
+        "Timer, %s" to "Temporizador, %s",
+        "Timer paused, %s" to "Temporizador en pausa, %s",
+        "Timer done. Tap to stop it." to "Se acabó el tiempo. Toca para detenerlo.",
+        "Timer done. Tap Stop." to "Se acabó el tiempo. Toca Detener.",
+        "Set for %s" to "Programado para %s",
+        "Rings at %s" to "Suena a las %s",
+        "Pause" to "Pausa",
+        "Pause the timer" to "Pausar el temporizador",
+        "Go on" to "Seguir",
+        "Go on with the timer" to "Seguir con el temporizador",
+        "Going again. It rings at %s." to "Sigue contando. Suena a las %s.",
+        "1 more minute" to "1 minuto más",
+        "Add 1 more minute" to "Agregar 1 minuto más",
+        "1 minute added. %s" to "Se agregó 1 minuto. %s",
+        "Stop timer" to "Detener temporizador",
+        "Stop the timer" to "Detener el temporizador",
+        "Timer stopped" to "Temporizador detenido",
+        "Home. The timer keeps going." to "Inicio. El temporizador sigue contando.",
+        "Tap Stop to turn it off." to "Toca Detener para apagarlo.",
+        "Ring again in 1 minute" to "Sonar otra vez en 1 minuto",
+        "It rings again in 1 minute." to "Vuelve a sonar en 1 minuto.",
+        "Type how many minutes" to "Escribe cuántos minutos",
+        "How many minutes?" to "¿Cuántos minutos?",
+        "Start" to "Empezar",
+        "Type from 1 to 1440 minutes" to "Escribe de 1 a 1440 minutos",
     )
 }

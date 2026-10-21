@@ -9,5 +9,7 @@ class RpApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Lang.choose(runCatching { ConfigStore(this).load().language }.getOrNull())
+        // A timer survives RP Launcher closing and the phone restarting: set its alarm again.
+        runCatching { com.netgician.rplauncher.system.Timer.restore(this) }
     }
 }

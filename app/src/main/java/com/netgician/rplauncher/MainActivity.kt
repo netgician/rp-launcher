@@ -13,6 +13,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -220,6 +222,15 @@ fun Root(state: AppState) {
     } else Modifier
     CompositionLocalProvider(LocalLv provides style, LocalTapMode provides tapMode, LocalWindowFrame provides c.windowFrame) {
         BackHandler { state.back() }
+        // The timer rings on time while RP Launcher is open, even if Android holds its alarm back.
+        val timerContext = androidx.compose.ui.platform.LocalContext.current
+        val timer by com.netgician.rplauncher.system.Timer.state.collectAsState()
+        androidx.compose.runtime.LaunchedEffect(timer.phase, timer.endsAt) {
+            if (timer.phase == com.netgician.rplauncher.model.TimerState.Phase.RUNNING) {
+                kotlinx.coroutines.delay((timer.endsAt - System.currentTimeMillis()).coerceAtLeast(0L))
+                com.netgician.rplauncher.system.Timer.tick(timerContext)
+            }
+        }
         // A short fade between screens: no sudden jumps, and never a white frame.
         // Test builds only: see each screen through a tunnel, as someone with RP might.
         val tunnel = state.tunnel
@@ -285,6 +296,7 @@ fun Root(state: AppState) {
                     Screen.WhereAmI -> WhereAmIScreen(state)
                     Screen.SosSetup -> SosSetupScreen(state)
                     Screen.Pages -> PagesScreen(state)
+                    Screen.Timer -> TimerScreen(state)
                     Screen.PickShortcutApp -> AppListScreen(
                         state = state,
                         title = tr("Shortcut from which app?"),

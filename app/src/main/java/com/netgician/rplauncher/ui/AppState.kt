@@ -53,6 +53,8 @@ sealed interface Screen {
     data class PickShortcut(val packageName: String, val appLabel: String) : Screen
     data object ReadText : Screen
     data object Alerts : Screen
+    /** The Timer tile: how long, then the countdown. */
+    data object Timer : Screen
 
     // Texts
     data object Texts : Screen
@@ -94,8 +96,8 @@ sealed interface Screen {
     data object SosSetup : Screen
 }
 
-/** Why the number pad is open: a person to text, or this phone's own number for Check texts. */
-enum class NumberPurpose { TEXT, OWN_NUMBER, VOICEMAIL }
+/** Why the number pad is open: a person to text, this phone's own number, the voicemail number, or a timer's minutes. */
+enum class NumberPurpose { TEXT, OWN_NUMBER, VOICEMAIL, TIMER }
 
 /** Whether night colours are on right now, for screens outside the home screen (the call screen). */
 object NightNow {
@@ -305,6 +307,7 @@ class AppState(
             Screen.AddTile -> go(Screen.EditTiles)
             Screen.PickApp -> go(Screen.AddTile)
             Screen.Pages -> go(Screen.Home)
+            Screen.Timer -> go(Screen.Home)
             Screen.PickShortcutApp -> go(Screen.AddTile)
             is Screen.PickShortcut -> go(Screen.PickShortcutApp)
             Screen.Texts -> go(Screen.Home)
@@ -323,6 +326,7 @@ class AppState(
                 when (s.purpose) {
                     NumberPurpose.OWN_NUMBER -> Screen.TextsCheck
                     NumberPurpose.VOICEMAIL -> Screen.VoicemailSetup
+                    NumberPurpose.TIMER -> Screen.Timer
                     NumberPurpose.TEXT -> Screen.NewText
                 },
             )
@@ -383,6 +387,14 @@ class AppState(
             }
             TileSpec.AllApps -> go(Screen.Apps)
             TileSpec.Pages -> go(Screen.Pages)
+            TileSpec.Timer -> {
+                // The tile says "Timer done" while it rings: one tap stops it.
+                val t = com.netgician.rplauncher.system.Timer.load(activity)
+                if (t.phase == com.netgician.rplauncher.model.TimerState.Phase.RINGING) {
+                    com.netgician.rplauncher.system.Timer.stop(activity)
+                    say(tr("Timer stopped"))
+                } else go(Screen.Timer)
+            }
             is TileSpec.Shortcut -> com.netgician.rplauncher.system.Shortcuts.start(activity, spec)?.let { say(it) }
             is TileSpec.App -> start(
                 Apps.launchIntent(spec.packageName, spec.className),

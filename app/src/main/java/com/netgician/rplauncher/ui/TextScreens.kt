@@ -1,6 +1,8 @@
 package com.netgician.rplauncher.ui
 
 import com.netgician.rplauncher.i18n.tr
+import com.netgician.rplauncher.model.TimerRules
+import com.netgician.rplauncher.model.TimerWords
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -761,6 +763,7 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
             when (purpose) {
                 NumberPurpose.OWN_NUMBER -> tr("Type this phone's own number")
                 NumberPurpose.VOICEMAIL -> tr("Type the voicemail number. Your carrier can tell you what it is.")
+                NumberPurpose.TIMER -> tr("Type how many minutes")
                 NumberPurpose.TEXT -> tr("Type the phone number")
             },
         )
@@ -780,7 +783,11 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
             rows = keys.size / 3,
             onSpeak = state::say,
             header = { m ->
-                SpokenText(
+                if (purpose == NumberPurpose.TIMER) {
+                    val minutes = number.toLongOrNull()?.takeIf { it > 0 }
+                    val shown = minutes?.let { TimerWords.length(it * TimerRules.MINUTE) }
+                    SpokenText(shown ?: tr("How many minutes?"), m, state::say, spoken = shown ?: tr("Nothing typed yet"))
+                } else SpokenText(
                     number.ifEmpty { tr("Type the number") }, m, state::say,
                     spoken = if (number.isEmpty()) tr("Nothing typed yet") else People.spoken(number),
                 )
@@ -796,8 +803,12 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
                         state.say(tr("Deleted"))
                     }
                 }
-                "done" -> Tile(tr("Done"), m, emphasized = true) {
-                    if (number.length < 3) {
+                "done" -> Tile(if (purpose == NumberPurpose.TIMER) tr("Start") else tr("Done"), m, emphasized = true) {
+                    if (purpose == NumberPurpose.TIMER) {
+                        val minutes = TimerRules.typedMinutes(number)
+                        if (minutes == null) state.say(tr("Type from 1 to 1440 minutes"))
+                        else startTimer(state, minutes * TimerRules.MINUTE)
+                    } else if (number.length < 3) {
                         state.say(tr("Type the whole number first"))
                     } else if (purpose == NumberPurpose.OWN_NUMBER) {
                         SendRecords.learnNumber(context, number)
@@ -812,7 +823,7 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
                     }
                 }
                 else -> Tile(key, m, spoken = com.netgician.rplauncher.calls.CallWords.key(key)) {
-                    if (number.length < 15) {
+                    if (number.length < (if (purpose == NumberPurpose.TIMER) 4 else 15)) {
                         number += key
                         state.say(com.netgician.rplauncher.calls.CallWords.key(key))
                     }

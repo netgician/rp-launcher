@@ -64,6 +64,7 @@ fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.Wifi, TileSpec.Bluetooth, TileSpec.Volume, TileSpec.QuickSettings -> null
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
     TileSpec.Pages -> TileIcon.Vector(Icons.Filled.List)
+    TileSpec.Timer -> TileIcon.Drawable(R.drawable.ic_timer)
     is TileSpec.App, is TileSpec.Shortcut -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)
 }
@@ -128,7 +129,8 @@ fun HomeScreen(state: AppState) {
                     icon = TileIcon.Vector(Icons.Filled.Settings),
                     onLongPress = longPress(state, tr("Setup, for helpers"), pos),
                 ) { state.openSetup() }
-                is HomeItem.Spec -> SpecTile(state, item.spec, m, pos, alerts.size, newTexts, missedCalls)
+                is HomeItem.Spec -> if (item.spec == TileSpec.Timer) TimerTile(state, m, pos)
+                else SpecTile(state, item.spec, m, pos, alerts.size, newTexts, missedCalls)
             }
         }
         popup?.let { a ->
