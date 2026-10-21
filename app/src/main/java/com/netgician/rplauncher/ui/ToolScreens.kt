@@ -284,7 +284,7 @@ fun CalculatorScreen(state: AppState) {
             headerHeight = 120f * state.config.textScale,
         ) { key, m, _ ->
             when (key) {
-                "clear" -> Tile(tr("Clear"), m, spoken = tr("Clear everything")) {
+                "clear" -> Tile("C", m, spoken = tr("Clear everything")) {
                     c = CalcRules.clear()
                     state.say(tr("Cleared"))
                 }
@@ -322,11 +322,12 @@ fun CalculatorScreen(state: AppState) {
 fun MediaScreen(state: AppState) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(com.netgician.rplauncher.system.Media.now(context)) }
-    var playing by remember { mutableStateOf(com.netgician.rplauncher.system.Media.isPlaying(context)) }
+    // Null when the phone won't say (no Alerts access): then the button is "Play or pause".
+    var playing by remember { mutableStateOf(com.netgician.rplauncher.system.Media.now(context)?.playing) }
     LaunchedEffect(Unit) {
         while (true) {
             now = com.netgician.rplauncher.system.Media.now(context)
-            playing = com.netgician.rplauncher.system.Media.isPlaying(context)
+            playing = now?.playing
             delay(1_000)
         }
     }
@@ -334,7 +335,7 @@ fun MediaScreen(state: AppState) {
     LaunchedEffect(Unit) {
         state.say(
             when {
-                what != null && playing -> tr("Music. Playing: %s", what)
+                what != null && playing == true -> tr("Music. Playing: %s", what)
                 what != null -> tr("Music. Paused: %s", what)
                 else -> tr("Music. Tap Play to start or go on with what you were playing.")
             },
@@ -344,7 +345,7 @@ fun MediaScreen(state: AppState) {
         }
     }
     val title = when {
-        what != null && playing -> tr("Playing: %s", what)
+        what != null && playing == true -> tr("Playing: %s", what)
         what != null -> tr("Paused: %s", what)
         else -> tr("Music")
     }
@@ -352,18 +353,25 @@ fun MediaScreen(state: AppState) {
     ChoiceList(
         state, title,
         choices = listOf(
-            Control(if (playing) tr("Pause") else tr("Play"), icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true) {
+            Control(
+                when (playing) { true -> tr("Pause"); false -> tr("Play"); null -> tr("Play or pause") },
+                icon = TileIcon.Vector(Icons.Filled.PlayArrow), emphasized = true,
+            ) {
                 media.playPause(context)
-                state.say(if (playing) tr("Paused") else tr("Playing"))
-                playing = !playing
+                when (playing) {
+                    true -> state.say(tr("Paused"))
+                    false -> state.say(tr("Playing"))
+                    null -> Unit
+                }
+                playing = playing?.not()
             },
-            Control(tr("Next"), spoken = tr("Next track")) {
+            Control(tr("Next track")) {
                 media.next(context)
-                state.say(tr("Next"))
+                state.say(tr("Next track"))
             },
-            Control(tr("Previous"), spoken = tr("Previous track")) {
+            Control(tr("Previous track")) {
                 media.previous(context)
-                state.say(tr("Previous"))
+                state.say(tr("Previous track"))
             },
             Control(tr("Louder")) { state.say(tr("Volume %s percent", media.volume(context, up = true))) },
             Control(tr("Quieter")) { state.say(tr("Volume %s percent", media.volume(context, up = false))) },
