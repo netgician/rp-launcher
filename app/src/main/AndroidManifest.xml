@@ -228,6 +228,35 @@
             android:theme="@style/Theme.RpLauncher"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale" />
 
+        <!-- An alarm or reminder going off: the time or the message, with a big Stop or Done, over the lock screen. -->
+        <activity
+            android:name=".ui.AlarmRingActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.netgician.rplauncher.alarm"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.RpLauncher"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale" />
+
+        <!-- Alarms and reminders going off, and Stop, Done and 10 more minutes. Only the phone itself can reach this. -->
+        <receiver
+            android:name=".system.AlarmReceiver"
+            android:exported="false" />
+
+        <!-- The clock or time zone changed: alarms, reminders and the timer are set again.
+             Only the system can send these broadcasts. -->
+        <receiver
+            android:name=".system.ClockChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <!-- The timer's alarm, and Stop and 1 more minute from its notification. Only the phone itself can reach this. -->
         <receiver
             android:name=".system.TimerReceiver"

@@ -65,6 +65,13 @@ fun iconFor(spec: TileSpec): TileIcon? = when (spec) {
     TileSpec.AllApps -> TileIcon.Vector(Icons.Filled.Menu)
     TileSpec.Pages -> TileIcon.Vector(Icons.Filled.List)
     TileSpec.Timer -> TileIcon.Drawable(R.drawable.ic_timer)
+    TileSpec.Alarms -> TileIcon.Drawable(R.drawable.ic_alarm)
+    TileSpec.Reminders -> TileIcon.Vector(Icons.Filled.DateRange)
+    TileSpec.Clock -> null
+    TileSpec.Notes -> TileIcon.Drawable(R.drawable.ic_mic)
+    TileSpec.Calculator -> TileIcon.Drawable(R.drawable.ic_calc)
+    TileSpec.Music -> TileIcon.Vector(Icons.Filled.PlayArrow)
+    TileSpec.LightFinder -> TileIcon.Drawable(R.drawable.ic_bulb)
     is TileSpec.App, is TileSpec.Shortcut -> null
     is TileSpec.Contact -> TileIcon.Vector(Icons.Filled.Call)
 }
@@ -129,8 +136,12 @@ fun HomeScreen(state: AppState) {
                     icon = TileIcon.Vector(Icons.Filled.Settings),
                     onLongPress = longPress(state, tr("Setup, for helpers"), pos),
                 ) { state.openSetup() }
-                is HomeItem.Spec -> if (item.spec == TileSpec.Timer) TimerTile(state, m, pos)
-                else SpecTile(state, item.spec, m, pos, alerts.size, newTexts, missedCalls)
+                is HomeItem.Spec -> when (item.spec) {
+                    TileSpec.Timer -> TimerTile(state, m, pos)
+                    TileSpec.Alarms -> AlarmsTile(state, m, pos)
+                    TileSpec.Clock -> ClockTile(state, m, pos)
+                    else -> SpecTile(state, item.spec, m, pos, alerts.size, newTexts, missedCalls)
+                }
             }
         }
         popup?.let { a ->

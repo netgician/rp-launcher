@@ -56,6 +56,23 @@ sealed interface Screen {
     /** The Timer tile: how long, then the countdown. */
     data object Timer : Screen
 
+    // Alarms and reminders: the list, one of them, then the steps of a new or changed one.
+    data class AlarmList(val reminders: Boolean) : Screen
+    data class AlarmEdit(val id: Long, val reminder: Boolean) : Screen
+    data object AlarmMessage : Screen
+    data object AlarmTime : Screen
+    data object AlarmAmPm : Screen
+    data object AlarmDays : Screen
+    data object AlarmPickDays : Screen
+
+    // Voice notes, the calculator, music and the light finder.
+    data object Notes : Screen
+    data object NoteRecord : Screen
+    data class Note(val name: String) : Screen
+    data object Calculator : Screen
+    data object Music : Screen
+    data object LightFinder : Screen
+
     // Texts
     data object Texts : Screen
     data class Conversation(val threadId: Long) : Screen
@@ -159,6 +176,9 @@ class AppState(
 
     /** The last tile spoken in touch-to-hear mode; it gets a thicker outline. */
     var heard by mutableStateOf<String?>(null)
+
+    /** A new or changed alarm or reminder, while its steps are chosen. */
+    var alarmDraft by mutableStateOf<AlarmDraft?>(null)
 
     /** The latest text read from the camera. */
     var readText by mutableStateOf<ReadText?>(null)
@@ -308,6 +328,11 @@ class AppState(
             Screen.PickApp -> go(Screen.AddTile)
             Screen.Pages -> go(Screen.Home)
             Screen.Timer -> go(Screen.Home)
+            is Screen.AlarmList -> go(Screen.Home)
+            is Screen.AlarmEdit -> go(Screen.AlarmList(s.reminder))
+            Screen.AlarmMessage, Screen.AlarmTime, Screen.AlarmAmPm, Screen.AlarmDays, Screen.AlarmPickDays -> alarmBack(this, s)
+            Screen.Notes, Screen.Calculator, Screen.Music, Screen.LightFinder -> go(Screen.Home)
+            Screen.NoteRecord, is Screen.Note -> go(Screen.Notes)
             Screen.PickShortcutApp -> go(Screen.AddTile)
             is Screen.PickShortcut -> go(Screen.PickShortcutApp)
             Screen.Texts -> go(Screen.Home)
@@ -387,6 +412,13 @@ class AppState(
             }
             TileSpec.AllApps -> go(Screen.Apps)
             TileSpec.Pages -> go(Screen.Pages)
+            TileSpec.Alarms -> go(Screen.AlarmList(reminders = false))
+            TileSpec.Reminders -> go(Screen.AlarmList(reminders = true))
+            TileSpec.Clock -> say(clockSpoken(activity))
+            TileSpec.Notes -> go(Screen.Notes)
+            TileSpec.Calculator -> go(Screen.Calculator)
+            TileSpec.Music -> go(Screen.Music)
+            TileSpec.LightFinder -> go(Screen.LightFinder)
             TileSpec.Timer -> {
                 // The tile says "Timer done" while it rings: one tap stops it.
                 val t = com.netgician.rplauncher.system.Timer.load(activity)

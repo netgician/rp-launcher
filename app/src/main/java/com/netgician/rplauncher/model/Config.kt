@@ -27,6 +27,19 @@ sealed class TileSpec {
     data object Pages : TileSpec()
     /** A kitchen timer: big choices, a big countdown, and a loud alarm with a big Stop. */
     data object Timer : TileSpec()
+    /** Wake-up alarms, with the next one's time on the tile. */
+    data object Alarms : TileSpec()
+    /** Spoken reminders ("Take your pills") at set times and days. */
+    data object Reminders : TileSpec()
+    /** The time and date, large; a tap says them. */
+    data object Clock : TileSpec()
+    /** Short recorded notes ("Car is on level 3"). */
+    data object Notes : TileSpec()
+    data object Calculator : TileSpec()
+    /** Play, Pause, Next and Back for whatever is playing. */
+    data object Music : TileSpec()
+    /** A tone that rises toward light, from the back camera. */
+    data object LightFinder : TileSpec()
     data class App(val packageName: String, val className: String, val appLabel: String) : TileSpec()
     data class Contact(val name: String, val number: String) : TileSpec()
     /** One of an app's own shortcuts ("Navigate home", "New chat", a web page added from Chrome). */
@@ -50,6 +63,13 @@ sealed class TileSpec {
             AllApps -> tr("All apps")
             Pages -> tr("Pages")
             Timer -> tr("Timer")
+            Alarms -> tr("Alarms")
+            Reminders -> tr("Reminders")
+            Clock -> tr("Clock")
+            Notes -> tr("Voice notes")
+            Calculator -> tr("Calculator")
+            Music -> tr("Music")
+            LightFinder -> tr("Light finder")
             is App -> appLabel
             is Contact -> name
             is Shortcut -> shortcutLabel
@@ -151,6 +171,8 @@ data class LauncherConfig(
     val windowReminderMonths: Int = 0,
     /** A bright frame around the viewing window, like the window check's, so its edges are easy to find. */
     val windowFrame: Boolean = true,
+    /** Low battery said aloud at 20, 10 and 5 percent. */
+    val lowBatteryWarning: Boolean = true,
     /** The number Voicemail calls, set by a helper; null to use the one the phone has. */
     val voicemailNumber: String? = null,
     /** RP Launcher's own language: "en", "es", or null to follow the phone. */
@@ -247,6 +269,7 @@ object ConfigJson {
         put("windowCheckedAt", c.windowCheckedAt)
         put("windowReminderMonths", c.windowReminderMonths)
         put("windowFrame", c.windowFrame)
+        put("lowBatteryWarning", c.lowBatteryWarning)
         c.voicemailNumber?.let { put("voicemail", it) }
         c.language?.let { put("language", it) }
     }.toString()
@@ -269,6 +292,13 @@ object ConfigJson {
             TileSpec.AllApps -> put("type", "all_apps")
             TileSpec.Pages -> put("type", "pages")
             TileSpec.Timer -> put("type", "timer")
+            TileSpec.Alarms -> put("type", "alarms")
+            TileSpec.Reminders -> put("type", "reminders")
+            TileSpec.Clock -> put("type", "clock")
+            TileSpec.Notes -> put("type", "notes")
+            TileSpec.Calculator -> put("type", "calculator")
+            TileSpec.Music -> put("type", "music")
+            TileSpec.LightFinder -> put("type", "light_finder")
             is TileSpec.App -> {
                 put("type", "app"); put("pkg", t.packageName); put("cls", t.className); put("label", t.appLabel)
             }
@@ -340,6 +370,7 @@ object ConfigJson {
             windowReminderMonths = o.optInt("windowReminderMonths", d.windowReminderMonths)
                 .let { m -> if (m in LauncherConfig.WINDOW_REMINDERS) m else d.windowReminderMonths },
             windowFrame = o.optBoolean("windowFrame", d.windowFrame),
+            lowBatteryWarning = o.optBoolean("lowBatteryWarning", d.lowBatteryWarning),
             voicemailNumber = o.optString("voicemail", "").filter { it.isDigit() || it in "+*#" }.ifBlank { null },
             language = o.optString("language", "").takeIf { it == "en" || it == "es" },
         )
@@ -362,6 +393,13 @@ object ConfigJson {
         "all_apps" -> TileSpec.AllApps
         "pages" -> TileSpec.Pages
         "timer" -> TileSpec.Timer
+        "alarms" -> TileSpec.Alarms
+        "reminders" -> TileSpec.Reminders
+        "clock" -> TileSpec.Clock
+        "notes" -> TileSpec.Notes
+        "calculator" -> TileSpec.Calculator
+        "music" -> TileSpec.Music
+        "light_finder" -> TileSpec.LightFinder
         "app" -> {
             val pkg = o.optString("pkg"); val cls = o.optString("cls")
             if (pkg.isBlank() || cls.isBlank()) null else TileSpec.App(pkg, cls, o.optString("label", pkg))

@@ -237,6 +237,11 @@ fun SettingsScreen(state: AppState) {
             state.update { it.copy(windowFrame = next) }
             state.say(if (next) tr("Frame on. A bright line now shows the edges of your viewing window.") else tr("Frame off"))
         }
+        SettingRow(tr("Low battery warning"), if (c.lowBatteryWarning) tr("on") else tr("off")) {
+            val next = !c.lowBatteryWarning
+            state.update { it.copy(lowBatteryWarning = next) }
+            state.say(if (next) tr("Low battery warning on. It's said aloud at 20, 10 and 5 percent.") else tr("Low battery warning off"))
+        }
         SettingRow(tr("Window check reminder"), if (c.windowReminderMonths == 0) tr("Off") else tr("Every %s months", c.windowReminderMonths)) {
             val next = LauncherConfig.WINDOW_REMINDERS.after(c.windowReminderMonths)
             state.update {
@@ -499,6 +504,13 @@ fun AddTileScreen(state: AppState) {
         SettingRow(tr("SOS (emergency texts)")) { add(TileSpec.Sos) }
         SettingRow(tr("Where am I (your street address)")) { add(TileSpec.WhereAmI) }
         SettingRow(tr("Timer (kitchen timer with a loud alarm)")) { add(TileSpec.Timer) }
+        SettingRow(tr("Alarms (wake-up alarms)")) { add(TileSpec.Alarms) }
+        SettingRow(tr("Reminders (spoken, like Take your pills)")) { add(TileSpec.Reminders) }
+        SettingRow(tr("Clock (says the time and date)")) { add(TileSpec.Clock) }
+        SettingRow(tr("Voice notes (record and play back)")) { add(TileSpec.Notes) }
+        SettingRow(tr("Calculator (big, talking)")) { add(TileSpec.Calculator) }
+        SettingRow(tr("Music (play, pause, next)")) { add(TileSpec.Music) }
+        SettingRow(tr("Light finder (a tone that rises toward light)")) { add(TileSpec.LightFinder) }
         SettingRow(tr("Notifications (the drop-down)")) { add(TileSpec.Notifications) }
         SettingRow(tr("Quick settings (the drop-down)")) { add(TileSpec.QuickSettings) }
         SettingRow(tr("Wi-Fi")) { add(TileSpec.Wifi) }

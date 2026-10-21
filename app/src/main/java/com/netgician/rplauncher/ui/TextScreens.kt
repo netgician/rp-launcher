@@ -669,7 +669,7 @@ fun ComposeMoreScreen(state: AppState) {
 
 /** Big-text typing. The keyboard's Done key, or the Done typing tile, finishes. */
 @Composable
-private fun TypingBox(state: AppState, initial: String, onDone: (String) -> Unit) {
+internal fun TypingBox(state: AppState, initial: String, onDone: (String) -> Unit) {
     val lv = LocalLv.current
     var value by remember { mutableStateOf(TextFieldValue(initial, TextRange(initial.length))) }
     val focus = remember { FocusRequester() }

@@ -299,6 +299,19 @@ fun Root(state: AppState) {
                     Screen.SosSetup -> SosSetupScreen(state)
                     Screen.Pages -> PagesScreen(state)
                     Screen.Timer -> TimerScreen(state)
+                    is Screen.AlarmList -> AlarmListScreen(state, screen.reminders)
+                    is Screen.AlarmEdit -> AlarmEditScreen(state, screen.id, screen.reminder)
+                    Screen.AlarmMessage -> AlarmMessageScreen(state)
+                    Screen.AlarmTime -> AlarmTimeScreen(state)
+                    Screen.AlarmAmPm -> AlarmAmPmScreen(state)
+                    Screen.AlarmDays -> AlarmDaysScreen(state)
+                    Screen.AlarmPickDays -> AlarmPickDaysScreen(state)
+                    Screen.Notes -> NotesScreen(state)
+                    Screen.NoteRecord -> NoteRecordScreen(state)
+                    is Screen.Note -> NoteScreen(state, screen.name)
+                    Screen.Calculator -> CalculatorScreen(state)
+                    Screen.Music -> MediaScreen(state)
+                    Screen.LightFinder -> LightFinderScreen(state)
                     Screen.PickShortcutApp -> AppListScreen(
                         state = state,
                         title = tr("Shortcut from which app?"),
