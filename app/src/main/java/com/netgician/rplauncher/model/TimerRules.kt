@@ -66,11 +66,23 @@ object TimerRules {
     /** An alarm a moment early still counts as on time. */
     const val EARLY_MS = 1_500L
 
-    /** The choices on the Timer screen, in minutes. Anything else is typed in. */
-    val PRESETS: List<Int> = listOf(1, 3, 5, 10, 15, 20, 30, 60)
+    /** The choices on the Timer screen. Anything else is typed in. */
+    val PRESETS: List<Long> = listOf(30 * SECOND, MINUTE, 3 * MINUTE, 5 * MINUTE, 10 * MINUTE, 15 * MINUTE, 30 * MINUTE, 60 * MINUTE)
 
-    /** Typed minutes, from 1 up to a day. */
-    fun typedMinutes(digits: String): Int? = digits.toIntOrNull()?.takeIf { it in 1..(MAX_MS / MINUTE).toInt() }
+    /** The most digits a typed time can have: hours, minutes and seconds. */
+    const val MAX_DIGITS = 6
+
+    /**
+     * A typed time, the way a microwave reads it: the last two digits are seconds, the two
+     * before them minutes, and any before that hours. "130" is 1:30, "500" is 5:00, "45" is
+     * 45 seconds, and "90" is 90 seconds. Null for nothing typed, or over a day.
+     */
+    fun typed(digits: String): Long? {
+        if (digits.isEmpty() || digits.length > MAX_DIGITS || digits.any { !it.isDigit() }) return null
+        val n = digits.padStart(MAX_DIGITS, '0')
+        val seconds = n.substring(0, 2).toLong() * 3600 + n.substring(2, 4).toLong() * 60 + n.substring(4, 6).toLong()
+        return (seconds * SECOND).takeIf { it in SECOND..MAX_MS }
+    }
 
     /**
      * After the phone restarts or RP Launcher starts again: a timer that ran out only just

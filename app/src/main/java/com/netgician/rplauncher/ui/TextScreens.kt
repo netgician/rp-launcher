@@ -763,7 +763,7 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
             when (purpose) {
                 NumberPurpose.OWN_NUMBER -> tr("Type this phone's own number")
                 NumberPurpose.VOICEMAIL -> tr("Type the voicemail number. Your carrier can tell you what it is.")
-                NumberPurpose.TIMER -> tr("Type how many minutes")
+                NumberPurpose.TIMER -> tr("Type the time: minutes, then seconds. For 1 minute 30 seconds, type 1, 3, 0.")
                 NumberPurpose.TEXT -> tr("Type the phone number")
             },
         )
@@ -784,9 +784,13 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
             onSpeak = state::say,
             header = { m ->
                 if (purpose == NumberPurpose.TIMER) {
-                    val minutes = number.toLongOrNull()?.takeIf { it > 0 }
-                    val shown = minutes?.let { TimerWords.length(it * TimerRules.MINUTE) }
-                    SpokenText(shown ?: tr("How many minutes?"), m, state::say, spoken = shown ?: tr("Nothing typed yet"))
+                    // Shown as a clock as it's typed: 1, 3, 0 reads 1:30.
+                    val ms = TimerRules.typed(number)
+                    SpokenText(
+                        if (number.isEmpty()) tr("Type the time") else ms?.let { TimerWords.clock(it) } ?: tr("Too long"),
+                        m, state::say,
+                        spoken = if (number.isEmpty()) tr("Nothing typed yet") else ms?.let { TimerWords.length(it) } ?: tr("Longer than 24 hours"),
+                    )
                 } else SpokenText(
                     number.ifEmpty { tr("Type the number") }, m, state::say,
                     spoken = if (number.isEmpty()) tr("Nothing typed yet") else People.spoken(number),
@@ -800,14 +804,15 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
                 } else {
                     Tile(tr("Delete"), m, spoken = tr("Delete the last digit")) {
                         number = number.dropLast(1)
-                        state.say(tr("Deleted"))
+                        val ms = if (purpose == NumberPurpose.TIMER) TimerRules.typed(number) else null
+                        state.say(if (ms != null) tr("Deleted. %s", TimerWords.length(ms)) else tr("Deleted"))
                     }
                 }
                 "done" -> Tile(if (purpose == NumberPurpose.TIMER) tr("Start") else tr("Done"), m, emphasized = true) {
                     if (purpose == NumberPurpose.TIMER) {
-                        val minutes = TimerRules.typedMinutes(number)
-                        if (minutes == null) state.say(tr("Type from 1 to 1440 minutes"))
-                        else startTimer(state, minutes * TimerRules.MINUTE)
+                        val ms = TimerRules.typed(number)
+                        if (ms == null) state.say(tr("Type a time up to 24 hours"))
+                        else startTimer(state, ms)
                     } else if (number.length < 3) {
                         state.say(tr("Type the whole number first"))
                     } else if (purpose == NumberPurpose.OWN_NUMBER) {
@@ -823,7 +828,13 @@ fun NumberPadScreen(state: AppState, purpose: NumberPurpose) {
                     }
                 }
                 else -> Tile(key, m, spoken = com.netgician.rplauncher.calls.CallWords.key(key)) {
-                    if (number.length < (if (purpose == NumberPurpose.TIMER) 4 else 15)) {
+                    if (purpose == NumberPurpose.TIMER) {
+                        // Says the whole time so far, so it's clear how the digits are read.
+                        if (number.length < TimerRules.MAX_DIGITS && !(number.isEmpty() && key == "0")) {
+                            number += key
+                            state.say(TimerRules.typed(number)?.let { TimerWords.length(it) } ?: tr("Longer than 24 hours"))
+                        }
+                    } else if (number.length < 15) {
                         number += key
                         state.say(com.netgician.rplauncher.calls.CallWords.key(key))
                     }

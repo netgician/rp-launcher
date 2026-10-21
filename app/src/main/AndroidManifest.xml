@@ -39,9 +39,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- The Timer tile rings on time with the screen locked. Android 14 and later ask the person
-         (Setup checklist: Timer rings on time); without it the timer may ring late while asleep. -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- The Timer tile rings on time with the screen locked and the phone asleep. Without an
+         exact alarm, Android may hold a timer back by ten minutes or more. Android 13 and later
+         give USE_EXACT_ALARM at install; Android 12 uses SCHEDULE_EXACT_ALARM, also on by default. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
 
     <!-- The Notifications and Quick settings tiles pull down the phone's drop-down. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />

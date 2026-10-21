@@ -228,7 +228,7 @@ fun Root(state: AppState) {
         val timerContext = androidx.compose.ui.platform.LocalContext.current
         val timer by com.netgician.rplauncher.system.Timer.state.collectAsState()
         androidx.compose.runtime.LaunchedEffect(timer.phase, timer.endsAt) {
-            if (timer.phase == com.netgician.rplauncher.model.TimerState.Phase.RUNNING) {
+            if (timer.phase == com.netgician.rplauncher.model.TimerState.Phase.RUNNING && com.netgician.rplauncher.system.Timer.inAppCheck) {
                 kotlinx.coroutines.delay((timer.endsAt - System.currentTimeMillis()).coerceAtLeast(0L))
                 com.netgician.rplauncher.system.Timer.tick(timerContext)
             }

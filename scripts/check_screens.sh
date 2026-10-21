@@ -32,8 +32,17 @@ for entry in $SCREENS; do
   case "$name" in
     *-locked) sleep 1; adb shell input keyevent KEYCODE_SLEEP ;;
   esac
+  # "-asleep": deep sleep (Doze), as a phone left locked on a table.
+  case "$name" in
+    *asleep*) adb shell dumpsys deviceidle force-idle >/dev/null || true ;;
+  esac
+  sleep 2
+  adb shell dumpsys alarm | grep -B2 -A6 "$PKG" > "$OUT/$n-$name-alarms.txt" || true
   sleep "${wait:-4}"
   adb exec-out screencap -p > "$OUT/$n-$name.png"
   echo "$n-$name.png"
+  case "$name" in
+    *asleep*) adb shell dumpsys deviceidle unforce >/dev/null || true ;;
+  esac
   n=$((n + 1))
 done

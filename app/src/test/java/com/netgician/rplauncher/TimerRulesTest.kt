@@ -83,12 +83,21 @@ class TimerRulesTest {
     }
 
     @Test
-    fun typedMinutes() {
-        assertEquals(25, TimerRules.typedMinutes("25"))
-        assertEquals(1440, TimerRules.typedMinutes("1440"))
-        assertNull(TimerRules.typedMinutes("0"))
-        assertNull(TimerRules.typedMinutes("1441"))
-        assertNull(TimerRules.typedMinutes(""))
+    fun typedLikeAMicrowave() {
+        assertEquals(45 * 1_000L, TimerRules.typed("45"))
+        assertEquals(90 * 1_000L, TimerRules.typed("90"))
+        assertEquals(MINUTE + 30_000, TimerRules.typed("130"))
+        assertEquals(5 * MINUTE, TimerRules.typed("500"))
+        assertEquals(25 * MINUTE, TimerRules.typed("2500"))
+        assertEquals(60 * MINUTE + 30 * MINUTE, TimerRules.typed("13000"))
+        assertEquals(TimerRules.MAX_MS, TimerRules.typed("240000"))
+        assertNull(TimerRules.typed("0"))
+        assertNull(TimerRules.typed("240001"))
+        assertNull(TimerRules.typed("1234567"))
+        assertNull(TimerRules.typed(""))
+        assertEquals("1:30", TimerWords.clock(TimerRules.typed("130")!!))
+        assertEquals("1 minute, 30 seconds", TimerWords.length(TimerRules.typed("130")!!))
+        assertEquals("30 seconds", TimerWords.length(TimerRules.PRESETS.first()))
     }
 
     @Test

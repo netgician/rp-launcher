@@ -44,6 +44,12 @@ object Timer {
     /** True while RP Launcher's home screen is on screen: then the ring screen opens straight away. */
     @Volatile var appVisible: Boolean = false
 
+    /**
+     * RP Launcher also checks the time itself while it's open. Test builds turn this off to
+     * prove the alarm alone rings a locked, sleeping phone (scripts/check_screens.sh).
+     */
+    @Volatile var inAppCheck: Boolean = true
+
     private val current = MutableStateFlow(TimerState())
     val state: StateFlow<TimerState> = current
     @Volatile private var loaded = false

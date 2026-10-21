@@ -50,6 +50,7 @@ object StoreShots {
                 sosContacts = listOf(TileSpec.Contact(Demo.CALLER_NAME, Demo.CALLER_NUMBER), TileSpec.Contact("Bob", "+19195550111")),
             )
         }
+        Timer.inAppCheck = screen != "timer-asleep-locked"
         when (screen) {
             "home", "home-night" -> {
                 state.homePage = 0
@@ -90,6 +91,14 @@ object StoreShots {
             "timer-minutes" -> {
                 Timer.cancel(context)
                 state.go(Screen.NumberPad(NumberPurpose.TIMER))
+            }
+            // Only the alarm can ring this one: the in-app check is off, as when the phone sleeps.
+            "timer-asleep-locked" -> {
+                Timer.cancel(context)
+                Timer.inAppCheck = false
+                Timer.start(context, 20_000)
+                state.homePage = 0
+                state.go(Screen.Home)
             }
             // Rings a few seconds later: on screen, or with the screen off for "-locked".
             "timer-ring", "timer-ring-locked" -> {

@@ -67,8 +67,8 @@ fun TimerScreen(state: AppState) {
 @Composable
 private fun TimerPick(state: AppState) {
     LaunchedEffect(Unit) { state.say(tr("Timer. How long?")) }
-    // 0 is Back, -1 is "Other time"; the rest are minutes.
-    val items = listOf(0) + TimerRules.PRESETS + listOf(-1)
+    // 0 is Back, -1 is "Other time"; the rest are lengths in milliseconds.
+    val items = listOf(0L) + TimerRules.PRESETS + listOf(-1L)
     InWindow(state.config.window) {
         PagedTiles(
             items = items,
@@ -83,16 +83,16 @@ private fun TimerPick(state: AppState) {
             header = { m -> SpokenText(tr("How long?"), m, state::say, spoken = tr("Timer. How long?")) },
         ) { item, m, pos ->
             when (item) {
-                0 -> Tile(
+                0L -> Tile(
                     tr("Back"), m, spoken = tr("Back to the home screen"), icon = TileIcon.Vector(Icons.Filled.Home),
                     onLongPress = longPress(state, tr("Back to the home screen"), pos),
                 ) { state.go(Screen.Home) }
-                -1 -> Tile(
-                    tr("Other time"), m, spoken = tr("Other time: type the minutes"),
-                    onLongPress = longPress(state, tr("Other time: type the minutes"), pos),
+                -1L -> Tile(
+                    tr("Other time"), m, spoken = tr("Other time: type minutes and seconds"),
+                    onLongPress = longPress(state, tr("Other time: type minutes and seconds"), pos),
                 ) { state.go(Screen.NumberPad(NumberPurpose.TIMER)) }
                 else -> {
-                    val ms = item * TimerRules.MINUTE
+                    val ms = item
                     val label = TimerWords.length(ms)
                     Tile(label, m, spoken = tr("Timer for %s", label), onLongPress = longPress(state, tr("Timer for %s", label), pos)) {
                         startTimer(state, ms)
