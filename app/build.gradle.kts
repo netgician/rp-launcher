@@ -59,6 +59,11 @@ android {
     }
 
     buildTypes {
+        // Test builds are numbered by the build machine ("0.5.0-test.152"), so an updater app
+        // such as Obtainium can tell each new one apart.
+        debug {
+            versionNameSuffix = "-test." + (System.getenv("GITHUB_RUN_NUMBER") ?: "local")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
