@@ -167,6 +167,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         TextsBus.foreground = true
+        com.netgician.rplauncher.system.Timer.appVisible = true
         torch.start()
         lightSensor?.start()
         state?.refreshNightByClock()
@@ -182,6 +183,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         TextsBus.foreground = false
+        com.netgician.rplauncher.system.Timer.appVisible = false
         torch.stop()
         lightSensor?.stop()
         speaker.stop()

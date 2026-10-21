@@ -39,6 +39,11 @@ object Timer {
     const val ACTION_STOP = "com.netgician.rplauncher.TIMER_STOP"
     const val ACTION_MORE = "com.netgician.rplauncher.TIMER_MORE"
 
+    private const val CHANNEL_QUIET = "timer_quiet"
+
+    /** True while RP Launcher's home screen is on screen: then the ring screen opens straight away. */
+    @Volatile var appVisible: Boolean = false
+
     private val current = MutableStateFlow(TimerState())
     val state: StateFlow<TimerState> = current
     @Volatile private var loaded = false
@@ -125,9 +130,10 @@ object Timer {
         if (s.phase == TimerState.Phase.RINGING) return
         save(context, s.ring(now()))
         unschedule(context)
-        notifyRinging(context)
-        // Shown at once when RP Launcher is on screen; otherwise the notification brings it up
-        // over the lock screen, or as a banner with Stop while another app is open.
+        // With RP Launcher on screen, the ring screen opens at once and plays the sound itself,
+        // so no notification banner covers it. Otherwise the loud notification rings and brings
+        // the ring screen up over the lock screen, or shows Stop while another app is open.
+        notifyRinging(context, loud = !appVisible)
         runCatching {
             context.startActivity(Intent(context, TimerRingActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
@@ -181,7 +187,17 @@ object Timer {
         runCatching { context.getSystemService(AlarmManager::class.java)?.cancel(alarmIntent(context)) }
     }
 
-    /** Silences the ringing: the notification carries the sound. */
+    /**
+     * The ring screen is showing and plays the sound itself: the notification goes quiet, so no
+     * banner sits on top of the screen, but keeps Stop for the drop-down.
+     */
+    fun takeOver(context: Context) {
+        if (load(context).phase != TimerState.Phase.RINGING) return
+        quiet(context)
+        notifyRinging(context, loud = false)
+    }
+
+    /** Silences the ringing notification. */
     private fun quiet(context: Context) {
         runCatching { NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID) }
     }
@@ -201,9 +217,17 @@ object Timer {
                 lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             },
         )
+        // While the ring screen is up: no sound or banner of its own.
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_QUIET, tr("Timer ringing"), NotificationManager.IMPORTANCE_LOW).apply {
+                setSound(null, null)
+                enableVibration(false)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+            },
+        )
     }
 
-    private fun notifyRinging(context: Context) {
+    private fun notifyRinging(context: Context, loud: Boolean) {
         if (!notificationsAllowed(context)) return
         channel(context)
         val screen = PendingIntent.getActivity(
@@ -216,23 +240,23 @@ object Timer {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val s = load(context)
-        val n = NotificationCompat.Builder(context, CHANNEL)
+        val n = NotificationCompat.Builder(context, if (loud) CHANNEL else CHANNEL_QUIET)
             .setSmallIcon(R.drawable.ic_timer)
             .setContentTitle(tr("Timer done"))
             .setContentText(TimerWords.which(s).ifEmpty { tr("Tap Stop to turn it off.") })
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(if (loud) NotificationCompat.PRIORITY_MAX else NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
-            .setFullScreenIntent(screen, true)
             .setContentIntent(screen)
             .addAction(0, tr("Stop"), action(2, ACTION_STOP))
             .addAction(0, tr("1 more minute"), action(3, ACTION_MORE))
             .setTimeoutAfter(TimerRules.RING_FOR_MS)
+            .apply { if (loud) setFullScreenIntent(screen, true) }
             .build()
-        // The sound and vibration repeat until Stop.
-        n.flags = n.flags or android.app.Notification.FLAG_INSISTENT
+        // The sound and vibration repeat until Stop, or until the ring screen takes over.
+        if (loud) n.flags = n.flags or android.app.Notification.FLAG_INSISTENT
         @Suppress("MissingPermission")
         runCatching { NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, n) }
     }

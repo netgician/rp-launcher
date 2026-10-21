@@ -11,6 +11,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,8 +50,9 @@ import java.util.Calendar
 
 /**
  * The timer going off: "Timer done", with a big Stop and 1 more minute, over the lock screen
- * and inside the viewing window, in the person's colours. The sound comes from the timer's
- * notification; this screen plays it itself only when notifications are off.
+ * and inside the viewing window, in the person's colours. While it's showing, this screen
+ * plays the alarm sound and vibration itself and keeps the notification quiet, so no banner
+ * covers it. They go on if the person leaves without stopping, until Stop or ten minutes.
  */
 class TimerRingActivity : ComponentActivity() {
     private lateinit var speaker: Speaker
@@ -54,6 +60,9 @@ class TimerRingActivity : ComponentActivity() {
     private var lightSensor: LightSensor? = null
     private var night by mutableStateOf(NightNow.active)
     private var ownSound: Ringtone? = null
+    private var buzzing = false
+    /** Stopped by a tap here: wait for the spoken word before closing. */
+    private var leaving = false
 
     private fun refreshNightByClock() {
         if (config.autoNight == AutoNight.CLOCK) {
@@ -81,7 +90,30 @@ class TimerRingActivity : ComponentActivity() {
             finish()
             return
         }
-        if (!Timer.notificationsAllowed(this)) playOwnSound()
+        // Closes once it's stopped: here, from the notification, from the home tile, or by
+        // 1 more minute. Watched for the whole life of the screen, even when it's behind another.
+        lifecycleScope.launch {
+            Timer.state.collect { s ->
+                if (s.phase != TimerState.Phase.RINGING) {
+                    stopAlarm()
+                    delay(if (leaving) 1_500 else 300)
+                    finish()
+                }
+            }
+        }
+        // Said now and every 30 seconds while it rings.
+        lifecycleScope.launch {
+            delay(700)
+            while (Timer.state.value.phase == TimerState.Phase.RINGING) {
+                speaker.speak(tr("Timer done. Tap Stop."))
+                delay(30_000)
+            }
+        }
+        // It goes quiet by itself after a while, like a kitchen timer left ringing.
+        lifecycleScope.launch {
+            delay((Timer.state.value.rangAt + TimerRules.RING_FOR_MS - System.currentTimeMillis()).coerceAtLeast(0L))
+            if (Timer.state.value.phase == TimerState.Phase.RINGING) Timer.stop(this@TimerRingActivity)
+        }
 
         setContent {
             val theme = if (night && config.autoNight != AutoNight.OFF) config.nightTheme else config.theme
@@ -93,30 +125,6 @@ class TimerRingActivity : ComponentActivity() {
             }
             CompositionLocalProvider(LocalLv provides style, LocalWindowFrame provides config.windowFrame) {
                 val s by Timer.state.collectAsState()
-                var leaving by remember { mutableStateOf(false) }
-                // Stopped here, from the notification, or by 1 more minute: close.
-                LaunchedEffect(s.phase) {
-                    if (s.phase != TimerState.Phase.RINGING) {
-                        stopOwnSound()
-                        delay(if (leaving) 1_500 else 300)
-                        finish()
-                    }
-                }
-                // Said now and every 30 seconds while it rings.
-                LaunchedEffect(Unit) {
-                    delay(700)
-                    while (Timer.state.value.phase == TimerState.Phase.RINGING) {
-                        speaker.speak(tr("Timer done. Tap Stop."))
-                        delay(30_000)
-                    }
-                }
-                // It goes quiet by itself after a while, like a kitchen timer left ringing.
-                LaunchedEffect(s.rangAt) {
-                    if (s.phase == TimerState.Phase.RINGING) {
-                        delay((s.rangAt + TimerRules.RING_FOR_MS - System.currentTimeMillis()).coerceAtLeast(0L))
-                        if (Timer.state.value.phase == TimerState.Phase.RINGING) Timer.stop(this@TimerRingActivity)
-                    }
-                }
                 InWindow(config.window) {
                     val say: (String) -> Unit = { speaker.speak(it) }
                     Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -150,22 +158,53 @@ class TimerRingActivity : ComponentActivity() {
         }
     }
 
-    /** The alarm sound, looping, at alarm volume: only when there's no notification to play it. */
-    private fun playOwnSound() {
-        val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: return
-        ownSound = runCatching {
-            RingtoneManager.getRingtone(this, uri)?.apply {
-                audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
-                if (Build.VERSION.SDK_INT >= 28) isLooping = true
-                play()
-            }
-        }.getOrNull()
+    override fun onResume() {
+        super.onResume()
+        if (Timer.state.value.phase == TimerState.Phase.RINGING) {
+            Timer.takeOver(this)
+            startAlarm()
+        }
     }
 
-    private fun stopOwnSound() {
+    private val alarmAudio: AudioAttributes
+        get() = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+
+    private fun vibrator(): Vibrator? = if (Build.VERSION.SDK_INT >= 31) {
+        getSystemService(VibratorManager::class.java)?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        getSystemService(Vibrator::class.java)
+    }
+
+    /** The phone's alarm sound, looping at alarm volume, and a repeating buzz. */
+    private fun startAlarm() {
+        if (ownSound == null) {
+            val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            ownSound = uri?.let {
+                runCatching {
+                    RingtoneManager.getRingtone(this, it)?.apply {
+                        audioAttributes = alarmAudio
+                        if (Build.VERSION.SDK_INT >= 28) isLooping = true
+                        play()
+                    }
+                }.getOrNull()
+            }
+        }
+        if (!buzzing) {
+            buzzing = runCatching {
+                @Suppress("DEPRECATION")
+                vibrator()?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 800, 400, 800, 1_200), 0), alarmAudio)
+            }.isSuccess
+        }
+    }
+
+    private fun stopAlarm() {
         runCatching { ownSound?.stop() }
         ownSound = null
+        if (buzzing) runCatching { vibrator()?.cancel() }
+        buzzing = false
     }
 
     override fun onStart() {
@@ -180,7 +219,7 @@ class TimerRingActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        stopOwnSound()
+        stopAlarm()
         if (::speaker.isInitialized) speaker.shutdown()
         super.onDestroy()
     }

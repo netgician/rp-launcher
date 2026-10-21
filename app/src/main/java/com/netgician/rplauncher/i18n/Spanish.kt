@@ -1006,6 +1006,7 @@ internal object Spanish {
         "Timer" to "Temporizador",
         "Timer (kitchen timer with a loud alarm)" to "Temporizador (de cocina, con alarma fuerte)",
         "The Timer tile's alarm" to "La alarma del temporizador",
+        "Timer ringing" to "Temporizador sonando",
         "Timer. How long?" to "Temporizador. ¿Cuánto tiempo?",
         "How long?" to "¿Cuánto tiempo?",
         "Other time" to "Otro tiempo",
