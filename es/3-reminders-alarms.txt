@@ -1,0 +1,109 @@
+      operation=PendingIntent{4739a91: PendingIntentRecord{a0c6045 android broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=302, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+    RTC_WAKEUP #34: Alarm{b772df6 type 0 origWhen 1792654200000 whenElapsed 32855503 com.netgician.rplauncher}
+      tag=*walarm*:com.netgician.rplauncher.ALARM_RING
+      type=RTC_WAKEUP origWhen=2026-10-22 07:30:00.000 window=0 exactAllowReason=policy_permission repeatInterval=0 count=0 flags=0x3
+      policyWhenElapsed: requester=+9h4m48s161ms app_standby=-1s998ms device_idle=-- battery_saver=-- tare=-1s998ms
+      whenElapsed=+9h4m48s161ms maxWhenElapsed=+9h4m48s161ms
+      Alarm clock:
+        triggerTime=2026-10-22 07:30:00.000
+        showIntent=PendingIntent{403b5f7: PendingIntentRecord{a27e4a8 com.netgician.rplauncher startActivity}}
+      operation=PendingIntent{b0fec64: PendingIntentRecord{15ef66 com.netgician.rplauncher broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=301, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+    RTC_WAKEUP #35: Alarm{9264ecd type 0 origWhen 1792656000000 whenElapsed 34655503 com.netgician.rplauncher}
+      tag=*walarm*:com.netgician.rplauncher.ALARM_RING
+      type=RTC_WAKEUP origWhen=2026-10-22 08:00:00.000 window=0 exactAllowReason=policy_permission repeatInterval=0 count=0 flags=0x3
+      policyWhenElapsed: requester=+9h34m48s161ms app_standby=-1s986ms device_idle=-- battery_saver=-- tare=-1s986ms
+      whenElapsed=+9h34m48s161ms maxWhenElapsed=+9h34m48s161ms
+      Alarm clock:
+        triggerTime=2026-10-22 08:00:00.000
+        showIntent=PendingIntent{e03382: PendingIntentRecord{a27e4a8 com.netgician.rplauncher startActivity}}
+      operation=PendingIntent{7b3ba93: PendingIntentRecord{a019bf2 com.netgician.rplauncher broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=301, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+    ELAPSED_WAKEUP #36: Alarm{f5f5243 type 2 origWhen 43243684 whenElapsed 43243684 com.google.android.networkstack}
+      tag=*walarm*:DhcpClient.wlan0.RENEW
+      type=ELAPSED_WAKEUP origWhen=+11h57m56s342ms window=0 exactAllowReason=listener repeatInterval=0 count=0 flags=0x9
+      policyWhenElapsed: requester=+11h57m56s342ms app_standby=-35s92ms device_idle=-- battery_saver=-- tare=-2m3s615ms
+      whenElapsed=+11h57m56s342ms maxWhenElapsed=+11h57m56s342ms
+--
+      whenElapsed=+23h59m28s540ms maxWhenElapsed=+1d0h59m28s540ms
+      operation=PendingIntent{473d755: PendingIntentRecord{dac9a38 com.google.android.gms/com.google.android.gms.lockbox startService}}
+    RTC_WAKEUP #53: Alarm{b116ad0 type 0 origWhen 1792774800000 whenElapsed 153455504 com.netgician.rplauncher}
+      tag=*walarm*:com.netgician.rplauncher.ALARM_RING
+      type=RTC_WAKEUP origWhen=2026-10-23 17:00:00.000 window=0 exactAllowReason=policy_permission repeatInterval=0 count=0 flags=0x3
+      policyWhenElapsed: requester=+1d18h34m48s162ms app_standby=-1s982ms device_idle=-- battery_saver=-- tare=-1s982ms
+      whenElapsed=+1d18h34m48s162ms maxWhenElapsed=+1d18h34m48s162ms
+      Alarm clock:
+        triggerTime=2026-10-23 17:00:00.000
+        showIntent=PendingIntent{1d60ac9: PendingIntentRecord{a27e4a8 com.netgician.rplauncher startActivity}}
+      operation=PendingIntent{fe205ce: PendingIntentRecord{f536525 com.netgician.rplauncher broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=301, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+    RTC #54: Alarm{be793d1 type 1 origWhen 1792807200000 whenElapsed 185855503 android}
+      tag=*alarm*:BatteryStatsImpl
+      type=RTC origWhen=2026-10-24 02:00:00.000 window=+1h0m0s0ms repeatInterval=0 count=0 flags=0x8
+      policyWhenElapsed: requester=+2d3h34m48s161ms app_standby=-24s457ms device_idle=-- battery_saver=-- tare=-24s457ms
+      whenElapsed=+2d3h34m48s161ms maxWhenElapsed=+2d4h34m48s161ms
+--
+  Temporary Quota Reserves:
+  
+  Next wake from idle: Alarm{b772df6 type 0 origWhen 1792654200000 whenElapsed 32855503 com.netgician.rplauncher}
+    tag=*walarm*:com.netgician.rplauncher.ALARM_RING
+    type=RTC_WAKEUP origWhen=2026-10-22 07:30:00.000 window=0 exactAllowReason=policy_permission repeatInterval=0 count=0 flags=0x3
+    policyWhenElapsed: requester=+9h4m48s161ms app_standby=-1s998ms device_idle=-- battery_saver=-- tare=-1s998ms
+    whenElapsed=+9h4m48s161ms maxWhenElapsed=+9h4m48s161ms
+    Alarm clock:
+      triggerTime=2026-10-22 07:30:00.000
+      showIntent=PendingIntent{403b5f7: PendingIntentRecord{a27e4a8 com.netgician.rplauncher startActivity}}
+    operation=PendingIntent{b0fec64: PendingIntentRecord{15ef66 com.netgician.rplauncher broadcastIntent}}
+    idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=301, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+  
+  Past-due non-wakeup alarms: (none)
+    Number of delayed alarms: 0, total delay time: 0
+    Max delay time: 0, max non-interactive time: 0
+  
+--
+      #1: Reason=alarm_cancelled elapsed=-2s2ms rtc=2026-10-21 22:25:09.837
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+1d18h34m48s162ms app_standby=-8s348ms device_idle=-- battery_saver=-- tare=-8s348ms
+      #2: Reason=alarm_cancelled elapsed=-2s9ms rtc=2026-10-21 22:25:09.829
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+9h34m48s162ms app_standby=-8s352ms device_idle=-- battery_saver=-- tare=-8s352ms
+      #3: Reason=alarm_cancelled elapsed=-2s11ms rtc=2026-10-21 22:25:09.828
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+9h4m48s161ms app_standby=-8s357ms device_idle=-- battery_saver=-- tare=-8s357ms
+      #4: Reason=alarm_cancelled elapsed=-8s363ms rtc=2026-10-21 22:25:03.476
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+1d18h34m48s162ms app_standby=-14s5ms device_idle=-- battery_saver=-- tare=-14s5ms
+      #5: Reason=alarm_cancelled elapsed=-8s367ms rtc=2026-10-21 22:25:03.472
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+9h34m48s162ms app_standby=-14s15ms device_idle=-- battery_saver=-- tare=-14s15ms
+      #6: Reason=alarm_cancelled elapsed=-8s373ms rtc=2026-10-21 22:25:03.466
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+9h4m48s161ms app_standby=-14s22ms device_idle=-- battery_saver=-- tare=-14s22ms
+      #7: Reason=alarm_cancelled elapsed=-14s29ms rtc=2026-10-21 22:24:57.810
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+1d18h34m48s161ms app_standby=-14s184ms device_idle=-- battery_saver=-- tare=-14s184ms
+      #8: Reason=alarm_cancelled elapsed=-14s37ms rtc=2026-10-21 22:24:57.802
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+9h34m48s162ms app_standby=-14s199ms device_idle=-- battery_saver=-- tare=-14s199ms
+      #9: Reason=alarm_cancelled elapsed=-14s40ms rtc=2026-10-21 22:24:57.799
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+9h4m48s161ms app_standby=-14s202ms device_idle=-- battery_saver=-- tare=-14s202ms
+      #10: Reason=alarm_cancelled elapsed=-24s517ms rtc=2026-10-21 22:24:47.322
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.netgician.rplauncher.ALARM_RING 
+          policyWhenElapsed: requester=+1d18h34m48s162ms app_standby=-35s92ms device_idle=-- battery_saver=-- tare=-35s479ms
+  
+  Top Alarms:
+    +7s19ms running, 2 wakeups, 2 alarms: u0a168:com.android.systemui
+      *walarm*:ReverseChargingControl
+    +3s219ms running, 0 wakeups, 11 alarms: u0a168:com.android.systemui
