@@ -86,8 +86,9 @@ jobs:
           TAG="v${VERSION}-test.${GITHUB_RUN_NUMBER}"
           echo "TEST_TAG=$TAG" >> "$GITHUB_ENV"
           cp app/build/outputs/apk/debug/app-debug.apk rp-launcher-test.apk
-          # Only the newest test build is kept.
-          for old in $(gh release list --limit 100 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' | grep -E '^(latest-test|v.*-test\.[0-9]+)$'); do
+          # The newest five test builds are kept, so a recent one can still be approved.
+          for old in $(gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+              --jq '[.[] | select(.isPrerelease) | select(.tagName | test("^(latest-test|v.*-test\\.[0-9]+)$"))] | sort_by(.createdAt) | reverse | .[4:] | .[].tagName'); do
             gh release delete "$old" --yes --cleanup-tag || true
           done
           gh release create "$TAG" rp-launcher-test.apk \

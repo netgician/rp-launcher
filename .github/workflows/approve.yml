@@ -1,0 +1,62 @@
+name: Approve a test build
+
+# Run by hand (the Actions tab, or Claude): copies a test build that's been tried and found
+# good to an "Approved build" release. Phones that should only get good builds follow it in
+# Obtainium (prereleases off, title filter "^Approved build"); test phones keep getting every
+# test build.
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: "Test build to approve, like 0.5.0-test.83 (blank for the newest)"
+        required: false
+        default: ""
+      notes:
+        description: "What's new, in a line or two (Obtainium shows it)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Only check, don't publish"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Approve the build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD: ${{ inputs.build }}
+          NOTES: ${{ inputs.notes }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          set -e
+          if [ -z "$BUILD" ]; then
+            TAG=$(gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+              --jq '[.[] | select(.isPrerelease) | select(.tagName | test("^v.*-test\\.[0-9]+$"))] | sort_by(.createdAt) | last | .tagName')
+          else
+            TAG="v${BUILD#v}"
+          fi
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then echo "::error::No test build found"; exit 1; fi
+          VERSION="${TAG#v}"
+          NEW="approved-$VERSION"
+          COMMIT=$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)
+          mkdir -p out && cd out
+          gh release download "$TAG" -p rp-launcher-test.apk
+          mv rp-launcher-test.apk rp-launcher.apk
+          echo "::notice title=Approving::$TAG (commit ${COMMIT::7}) as $NEW, $(du -h rp-launcher.apk | cut -f1)"
+          if [ "$DRY" = "true" ]; then echo "Dry run: nothing published."; exit 0; fi
+          # The newest approved build before this one stays, in case it's needed again.
+          for old in $(gh release list --limit 100 --json tagName,createdAt \
+              --jq '[.[] | select(.tagName | startswith("approved-"))] | sort_by(.createdAt) | reverse | .[1:] | .[].tagName'); do
+            gh release delete "$old" --yes --cleanup-tag || true
+          done
+          gh release delete "$NEW" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$NEW" rp-launcher.apk --target "$COMMIT" --latest \
+            --title "Approved build $VERSION" \
+            --notes "Approved build $VERSION.${NOTES:+ $NOTES}"
